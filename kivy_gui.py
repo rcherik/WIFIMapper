@@ -1,3 +1,6 @@
+import sys
+import time
+import threading 
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.gridlayout import GridLayout
@@ -6,9 +9,6 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.clock import Clock
-import threading 
-import time
-import sys
 from scapy.all import *
 
 #Builder.load_file("test.kv")
@@ -23,6 +23,7 @@ class Thread(threading.Thread):
         return self.stop
 
     def callback(self, pkt):
+        pkt.show()
         if self.app and self.app.layout:
             self.app.layout.new_pkt(pkt)
 
@@ -32,10 +33,10 @@ class Thread(threading.Thread):
     def add_app(self, app):
         self.app = app
 
-class LoginScreen(StackLayout):
+class MainLayout(StackLayout):
 
     def __init__(self, **kwargs):
-        super(LoginScreen, self).__init__(**kwargs)
+        super(MainLayout, self).__init__(**kwargs)
         self.btn_lst = []
 
     def new_pkt(self, pkt):
@@ -48,7 +49,7 @@ class LoginScreen(StackLayout):
 	btn = Button(text="prout", width=5, size_hint=(0.15, 0.15))
         self.add_widget(btn)
 
-class MyApp(App):
+class Wifi_mapper(App):
 
     def __init__(self, thread):
         App.__init__(self)
@@ -56,14 +57,14 @@ class MyApp(App):
         self.layout = None
 
     def build(self):
-        self.layout = LoginScreen()
+        self.layout = MainLayout()
+        self.thread.start()
         return self.layout
 
 if __name__ == '__main__':
     thread = Thread()
-    app = MyApp(thread)
+    app = Wifi_mapper(thread)
     thread.add_app(app)
-    thread.start()
     app.run()
     thread.stop = True
     thread.join()
