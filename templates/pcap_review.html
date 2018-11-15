@@ -1,0 +1,249 @@
+{% extends "index.html" %}
+
+{% block body %}
+
+<!-- Access point pannel -->
+<div class="panel panel-default">
+	<div class="panel-heading clickable accordion-toggle"
+		data-toggle="collapse"
+		data-target="#ap_tab">
+		<h3>Access Points</h3>
+	</div>
+	<div class="panel-body">
+		<div class="wrapper container accordian-body collapse in" id="ap_tab">
+			<table class="table table-sm"
+				data-toggle="table"
+				data-sort-name="SAenc"
+				data-sort-order="desc">
+				<thead>
+					<tr>
+						<th data-field="SAbssid"
+							data-sortable="true">bssid</th>
+						<th data-field="SAssid"
+							data-sortable="true">ssid</th>
+						<th data-field="SAprobes"
+							data-sortable="true">beacons</th>
+						<th data-field="SAchan"
+							data-sortable="true">channel</th>
+						<th data-field="SAenc"
+							data-sortable="true">cipher</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for key, value in ap.iteritems() %}
+					<tr class="{{ 'bg-danger text-white' if not value.is_known() else '' }}">
+						<td>{{ key }}</td>
+						{% if value.is_known() %}
+						<td>{{ value.ssid if value.ssid else '' }}</td>
+						{% else %}
+						<td>{{ value.get_seen() }}</td>
+						{% endif %}
+						<td>{{ value.beacons }}</td>
+						<td>{{ value.channel if value.channel else '' }}</td>
+						<td>{{ value.crypto if value.crypto else '' }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<!-- Station pannel -->
+<div class="panel panel-default">
+	<div class="panel-heading clickable accordion-toggle"
+		data-toggle="collapse"
+		data-target="#station_tab">
+		<h3>Stations</h3>
+	</div>
+	<div class="panel-body">
+
+		<div class="wrapper container">
+			{% if handshakes > 0 %}
+			<a href="/pcap/{{ page_num }}/all_handshake"
+				target="_blank">
+				<button type="button" class="btn btn-default">
+					Download handshakes ({{ handshakes }})
+				</button>
+			</a>
+			{% else %}
+				<button type="button" class="btn btn-default disabled">
+					No handshakes
+				</button>
+			{% endif %}
+		</div>
+
+		<!-- Collapsable div -->
+		<div class="wrapper container accordian-body collapse in" id="station_tab">
+
+
+
+			<table class="table table-striped table-sm table-hover"
+				data-toggle="table"
+				data-sort-name="Sbssid"
+				data-sort-order="desc">
+				<thead>
+					<tr>
+						<th>#</th>
+						<th data-field="Sbssid"
+							data-sortable="true">bssid</th>
+						<th data-field="Smac"
+							data-sortable="true">station</th>
+						<th data-field="SpacketS"
+							data-sortable="true">sent</th>
+						<th data-field="SpacketR"
+							data-sortable="true">recv</th>
+						<th data-field="SrssiMin"
+							data-sortable="true">rssi min</th>
+						<th data-field="SrssiAvg"
+							data-sortable="true">rssi avg</th>
+						<th data-field="SrssiMax"
+							data-sortable="true">rssi max</th>
+						<th data-field="Shandshake"
+							data-sortable="true">handshake</th>
+						<th data-field="Sprobe"
+							data-sortable="true">probe</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for key, value in station.iteritems() %}
+					<tr>
+						<td>
+							<button type="button" class="btn btn-default"
+								data-toggle="modal"
+								data-target="#modal-{{ station[key].id }}"
+								aria-label="Details">
+								<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+							</button>
+						</td>
+						<td>{{ station[key].bssid if station[key].bssid else '' }}</td>
+						<td>{{ station[key].station }}</td>
+						<td>{{ traffic[key].sent if key in traffic else "" }}</td>
+						<td>{{ traffic[key].recv if key in traffic else "" }}</td>
+						<td>{{ traffic[key].min_sig if key in traffic else "" }}</td>
+						<td>{{ traffic[key].get_rssi_avg() if key in traffic else "" }}</td>
+						<td>{{ traffic[key].max_sig if key in traffic else "" }}</td>
+						<td>
+							{% if station[key].success_hs > 0 %}
+							<a href="/pcap/{{ page_num }}/station_handshake?
+									sta={{ key }}"
+								target="_blank">
+
+								<button type="button" class="btn btn-default">
+									{{ station[key].success_hs }}
+								</button>
+							</a>
+							{% else %}
+								{{ station[key].success_hs }}
+							{% endif %}
+
+						</td>
+						<td>{{ station[key].get_probes() }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<!-- Collapsable div end -->
+
+			{% for key, value in station.iteritems() %}
+
+			<!-- Modal station detail -->
+			<div class="modal fade" id="modal-{{ station[key].id }}"
+				tabindex="-1" role="dialog"
+				aria-labelledby="modal-{{ key }}"
+				aria-hidden="true">
+				<div class="modal-dialog modal-lg" role="document">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h3 class="modal-title">Station: {{ station[key].station }}</h3>
+							<button type="button" class="close"
+								data-dismiss="modal"
+								aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
+						<div class="modal-body">
+							<table class="table table-striped table-sm"
+								data-toggle="table"
+								data-sort-name="Cliwpasuccess"
+								data-sort-order="desc">
+								<thead>
+									<tr>
+										<th rowspan="2"
+											class="text-center vertical-center">detail</th>
+										<th rowspan="2"
+											class="text-center vertical-center"
+											data-field="Clibssid"
+											data-sortable="true">bssid</th>
+										<th rowspan="2"
+											class="text-center vertical-center"
+											data-field="Clisent"
+											data-sortable="true">sent</th>
+										<th rowspan="2"
+											class="text-center vertical-center"
+											data-field="Clirecv"
+											data-sortable="true">recv</th>
+										<th class="text-center"
+											colspan="3">Wpa</th>
+									</tr>
+									<tr>
+										<th class="text-center"
+											data-field="Cliwpasteps"
+											data-sortable="true">steps</th>
+										<th class="text-center"
+											data-field="Cliwpasuccess"
+											data-sortable="true">success</th>
+										<th class="text-center"
+											data-field="Cliwpafail"
+											data-sortable="true">fail</th>
+									</tr>
+								</thead>
+								<tbody>
+									{% for t_key, t_val in traffic[key].traffic.iteritems() %}
+									<tr>
+										<td>
+											<a class="btn btn-success"
+												href="/pcap/{{ page_num }}/traffic?
+												sta={{ key }}&ap={{ t_key }}"
+												target="_blank">Open</a>
+										</td>
+										<td>{{ get_broadcast(t_key) }}</td>
+										<td>{{ t_val['sent']['all'] }}</td>
+										<td>{{ t_val['recv']['all'] }}</td>
+										<td>{{ station[key].get_eapol_key(t_key, "steps_done") }}</td>
+										<td>
+											{% if station[key].has_success_hdshake(t_key) %}
+											<a href="/pcap/{{ page_num }}/handshake?
+													sta={{ key }}&ap={{ t_key }}"
+												target="_blank">
+												<button type="button" class="btn btn-default">
+													{{ station[key].get_eapol_key(t_key, "success") }}
+												</button>
+											</a>
+											{% else %}
+												{{ station[key].get_eapol_key(t_key, "success") }}
+											{% endif %}
+										</td>
+										<td>{{ station[key].get_eapol_key(t_key, "fail") }}</td>
+									</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+						<div class="modal-footer">
+							<button type="button"
+								class="btn btn-secondary"
+								data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- Modal station detail end -->
+
+		{% endfor %}
+
+		</div>
+	</div>
+</div>
+<!-- Station pannel end -->
+{% endblock %}

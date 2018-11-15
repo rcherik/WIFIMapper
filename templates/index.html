@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Pcap review</title>
+		<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet"
+			href="{{ url_for('static', filename='bootstrap.min.css') }}">
+		<link rel="stylesheet"
+			href="{{ url_for('static', filename='bootstrap-table.min.css') }}">
+		<script src="{{ url_for('static', filename='pcap_review.js') }}"></script>
+		<script src="{{ url_for('static', filename='jquery-3.3.1.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='bootstrap.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='bootstrap-table.min.js') }}"></script>
+		<link href="{{ url_for('static', filename='style.css') }}"
+			rel="stylesheet" type="text/css" />
+	</head>
+
+	<body class="body">
+		<nav class="navbar navbar-default">
+			<div class="container-fluid">
+				<div class="navbar-header">
+					<a class="navbar-brand" href="/">Pcap reviews</a>
+				</div>
+				<ul class="nav navbar-nav">
+				{% for i in range(file_n) %}
+					<li class="{{ 'active' if i == page_num else '' }}">
+						<a href="/pcap/{{ i }}">{{ file_names[i] }}</a>
+					</li>
+				{% endfor %}
+				</ul>
+			</div>
+		</nav>
+		{% block body %}{% endblock %}
+	</body>
+</html>
