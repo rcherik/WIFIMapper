@@ -23,11 +23,11 @@ class Thread(threading.Thread):
         return self.stop
 
     def callback(self, pkt):
-        if self.app and self.app.layout:
-            self.app.layout.new_pkt(pkt)
+    	if self.app and self.app.layout:
+    		self.app.layout.parse_pkt(pkt)
 
     def run(self):
-        sniff("wlp59s0", prn=self.callback, stop_filter=self.callback_stop)
+        sniff("wlp2s0", prn=self.callback, stop_filter=self.callback_stop)
 
     def add_app(self, app):
         self.app = app
@@ -36,17 +36,26 @@ class LoginScreen(StackLayout):
 
     def __init__(self, **kwargs):
         super(LoginScreen, self).__init__(**kwargs)
-        self.btn_lst = []
+        self.btn_lst = {}
+	self.dic = {}
+
+    def parse_pkt(self, pkt):
+	if Dot11 in pkt and pkt[Dot11].addr2:
+		if pkt[Dot11].addr2 in self.dic:
+			self.dic[pkt[Dot11].addr2] += 1
+			self.update_pkt(pkt[Dot11].addr2)
+		else:
+			self.dic[pkt[Dot11].addr2] = 1
+			self.new_pkt(pkt)
+
+    def update_pkt(self, pkt):
+	self.btn_lst[pkt].text = pkt + '| ' + str(self.dic[pkt])
 
     def new_pkt(self, pkt):
-        btn = Button(text=pkt[Ether].src, width=15, size_hint=(0.15, 0.15))
-        self.btn_lst.append(btn)
+        btn = Button(text=pkt[Dot11].addr2 + '| 1', width=30, size_hint=(0.30, 0.30))
+        self.btn_lst[pkt[Dot11].addr2] = btn
         self.add_widget(btn)
 	#Clock.schedule_interval(self.update, 1)
-
-    def update(self, *args):	
-	btn = Button(text="prout", width=5, size_hint=(0.15, 0.15))
-        self.add_widget(btn)
 
 class MyApp(App):
 
