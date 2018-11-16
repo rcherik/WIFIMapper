@@ -13,13 +13,15 @@ FC_RETRANSMIT = 0x8
 
 def is_control(packet):
 	#Check if packet type is control
-	if packet[Dot11FCS].type == CONTROL:
+	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS
+	if packet[layer].type == CONTROL:
 		return True
 	return False
 
 def is_data(packet):
 	#Check if packet type is data
-	if packet[Dot11FCS].type == DATA:
+	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS
+	if packet[layer].type == DATA:
 		return True
 	return False
 
@@ -47,7 +49,8 @@ def is_retransmitted(packet):
 		:return: True if packet retransmitted else False
 		:rtype: bool
 	"""
-	if packet[Dot11FCS].FCfield & FC_RETRANSMIT:
+	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS
+	if packet[layer].FCfield & FC_RETRANSMIT:
 		return True
 	return False
 

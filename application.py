@@ -107,7 +107,7 @@ class Thread(threading.Thread):
             print("reading")
             for pkt in self.pkts:
                 self.callback(pkt)
-                time.sleep(0.001)
+                #time.sleep(0.001)
             print("Thread: has finished reading")
 
     def set_application(self, app):

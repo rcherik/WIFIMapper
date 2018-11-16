@@ -14,6 +14,7 @@ def get_addrs(packet):
 			from_ds, to_ds
 		:rtype: dict
 	"""
+	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS
 	ds = packet.FCfield & 0x3
 	to_ds = ds & 0x1 != 0
 	from_ds = ds & 0x2 != 0
@@ -22,22 +23,22 @@ def get_addrs(packet):
 			The frame is being forwarded by an AP typically.
 			In this case, the AP is the transmitter but not the original source
 		"""
-		rcv = packet[Dot11FCS].addr1
-		dst = packet[Dot11FCS].addr1
-		trans = packet[Dot11FCS].addr2
-		bssid = packet[Dot11FCS].addr2
-		src = packet[Dot11FCS].addr3
+		rcv = packet[layer].addr1
+		dst = packet[layer].addr1
+		trans = packet[layer].addr2
+		bssid = packet[layer].addr2
+		src = packet[layer].addr3
 		station = rcv
 		sent = False
 	elif not from_ds and not to_ds:
 		"""
 			From station to station
 		"""
-		rcv = packet[Dot11FCS].addr1
-		dst = packet[Dot11FCS].addr1
-		src = packet[Dot11FCS].addr2
-		trans = packet[Dot11FCS].addr2
-		bssid = packet[Dot11FCS].addr3
+		rcv = packet[layer].addr1
+		dst = packet[layer].addr1
+		src = packet[layer].addr2
+		trans = packet[layer].addr2
+		bssid = packet[layer].addr3
 		station = src if bssid == rcv else rcv
 		sent = True if bssid == rcv else False
 	elif not from_ds and to_ds:
@@ -46,21 +47,21 @@ def get_addrs(packet):
 			Here the receiver will be typically the AP which is 
 				maybe not the final destination
 		"""
-		rcv = packet[Dot11FCS].addr1
-		bssid = packet[Dot11FCS].addr1
-		src = packet[Dot11FCS].addr2
-		trans = packet[Dot11FCS].addr2
-		dst = packet[Dot11FCS].addr3
+		rcv = packet[layer].addr1
+		bssid = packet[layer].addr1
+		src = packet[layer].addr2
+		trans = packet[layer].addr2
+		dst = packet[layer].addr3
 		station = src
 		sent = True
 	elif from_ds and to_ds:
 		"""
 			From AP to AP - Do nothing
 		"""
-		rcv = packet[Dot11FCS].addr1
-		trans = packet[Dot11FCS].addr2
-		dst = packet[Dot11FCS].addr3
-		src = packet[Dot11FCS].addr4
+		rcv = packet[layer].addr1
+		trans = packet[layer].addr2
+		dst = packet[layer].addr3
+		src = packet[layer].addr4
 		bssid = None
 		station = None
 		sent = False

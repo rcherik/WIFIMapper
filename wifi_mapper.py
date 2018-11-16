@@ -191,7 +191,8 @@ def get_ap_infos(packet, dic):
 		:param dic: dict from parse()
 		::seealso:: parse()
 	"""
-	bssid = packet[Dot11FCS].addr3
+	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS
+	bssid = packet[layer].addr3
 	if is_multicast(bssid):
 		return
 	if bssid in dic['AP'] and dic['AP'][bssid].is_full():
@@ -217,7 +218,7 @@ def get_ap_infos(packet, dic):
 			channel = ord(elem.info)
 		elif elem.ID == ID_RSN:
 			crypto.add("WPA2")
-		elif elem.ID == ID_VENDOR and\
+		elif elem.ID == ID_VENDOR and hasattr(elem, "info") and\
 			elem.info.startswith('\x00P\xf2\x01\x01\x00'):
 			crypto.add("WPA")
 		elem = elem.payload
