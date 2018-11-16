@@ -27,7 +27,7 @@ class Thread(threading.Thread):
     		self.app.layout.parse_pkt(pkt)
 
     def run(self):
-        sniff("wlp2s0", prn=self.callback, stop_filter=self.callback_stop)
+        sniff("wlan0", prn=self.callback, stop_filter=self.callback_stop)
 
     def add_app(self, app):
         self.app = app
@@ -38,6 +38,16 @@ class LoginScreen(StackLayout):
         super(LoginScreen, self).__init__(**kwargs)
         self.btn_lst = {}
 	self.dic = {}
+	self.mac_dict = {}
+    	try:
+    		with open('./mac_list') as f:
+			lines = f.readlines()
+		for l in lines:
+			t = l.split('\t')
+			self.mac_dict[t[0]] = t[1]
+    	except Exception as e:
+    		print "Error: %s creating mac_list" % e
+		sys.exit(-1)
 
     def parse_pkt(self, pkt):
 	if Dot11 in pkt and pkt[Dot11].addr2:
@@ -49,10 +59,16 @@ class LoginScreen(StackLayout):
 			self.new_pkt(pkt)
 
     def update_pkt(self, pkt):
-	self.btn_lst[pkt].text = pkt + '| ' + str(self.dic[pkt])
+    	try:
+		self.btn_lst[pkt].text = self.mac_dict[pkt[:8].upper()] + pkt[8:]  + ' | ' + str(self.dic[pkt])
+	except:
+		self.btn_lst[pkt].text = pkt  + ' | ' + str(self.dic[pkt])
 
     def new_pkt(self, pkt):
-        btn = Button(text=pkt[Dot11].addr2 + '| 1', width=30, size_hint=(0.30, 0.30))
+    	try:
+	        btn = Button(text=self.mac_dict[pkt[Dot11].addr2[:8].upper()] + pkt[Dot11].addr2[8:] + ' | 1', width=30, size_hint=(0.30, 0.30))
+	except:
+	        btn = Button(text=pkt[Dot11].addr2 + ' | 1', width=30, size_hint=(0.30, 0.30))
         self.btn_lst[pkt[Dot11].addr2] = btn
         self.add_widget(btn)
 	#Clock.schedule_interval(self.update, 1)
