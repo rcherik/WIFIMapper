@@ -1,6 +1,19 @@
-#: import Window kivy.core.window.Window
+#:kivy 1.9.0
 
-ScrollView:
-    size_hint: (1, None)
-    size: (Window.width, Window.height)
-    MainLayout:
+<ScrollScreen>:
+	view: view
+
+	BoxLayout:
+		orientation: 'vertical'
+
+		BoxLayout:
+			size: (64, 64)
+			size_hint: (1, None)
+
+			Button:
+				text: "Some static button"
+				color: (1, 1, 1, 1)
+				background_color: (.3, .3, .3, 1)
+
+		ScrollView:
+			id: view
