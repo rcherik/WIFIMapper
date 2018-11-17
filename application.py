@@ -52,6 +52,16 @@ class Thread(threading.Thread):
         self.pkts = pkts
 	self.dic = {}
 	self.old_dic = {'AP': {}, 'Station': {}, 'Traffic': {}}
+	self.mac_dict = {}
+        try:
+            with open('./mac_list') as f:
+                lines = f.readlines()
+	        for l in lines:
+		    t = l.split('\t')
+		    self.mac_dict[t[0]] = t[1]
+    	except Exception as e:
+            print("Thread: error creating mac_list: %s " % e)
+
 
     def find_iface(self):
         """ Find internet interface and returns it """
@@ -81,7 +91,7 @@ class Thread(threading.Thread):
         parse_pkt(self.old_dic, pkt)
         if self.app and hasattr(self.app, "managers"):
             for manager in self.app.managers:
-                manager.screen.update_gui(self.old_dic)
+                manager.screen.update_gui(self.old_dic, self.mac_dict)
 
     def wait_for_gui(self):
         """ Check if all screen are loaded """
@@ -107,7 +117,7 @@ class Thread(threading.Thread):
             print("reading")
             for pkt in self.pkts:
                 self.callback(pkt)
-                #time.sleep(0.001)
+                time.sleep(0.0001)
             print("Thread: has finished reading")
 
     def set_application(self, app):
@@ -155,17 +165,19 @@ class ScrollScreen(Screen):
             self.btn_dic[id].text = s
             self.btn_dic[id].size = (len(s) * 10, 50)
 
-    def update_gui(self, dic):
+    def update_gui(self, dic, mac_dic):
         """ Update GUI """
         if self.show_ap:
             ap = dic['AP']
             for key, value in ap.iteritems():
-                self.add_btn(key, "AP: %s - %s" % (key, ap[key].ssid))
+                mac = mac_dic.get(key[:8].upper(), "")
+                self.add_btn(key, "AP: %s - %s | %s" % (key, ap[key].ssid, mac))
         if self.show_station:
             sta = dic['Station']
             for key, value in sta.iteritems():
                 s = sta[key].get_probes()
-                self.add_btn(key, "Sta: %s - %s" % (key, s))
+                mac = mac_dic.get(key[:8].upper(), "").upper()
+                self.add_btn(key, "Sta: %s - %s | %s" % (key, s, mac))
 
 class WifiMapper(App):
 
