@@ -1,5 +1,18 @@
 #:kivy 1.9.0
 
+<Card>:
+	padding: 10
+	height: 150
+	size_hint: (None, None)
+	orientation: 'vertical'
+
+	canvas.before:
+		Color:
+			rgba: (1, 1, 1, 0.1)
+		Rectangle:
+			pos: self.pos
+			size: self.size
+
 <ScrollScreen>:
 	view: view
 
@@ -12,7 +25,7 @@
 
 			Button:
 				text: "Some static button"
-				color: (1, 1, 1, 1)
+				color: (1, 0, 0, 1)
 				background_color: (.3, .3, .3, 1)
 
 		ScrollView:
