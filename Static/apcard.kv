@@ -1,0 +1,61 @@
+#:kivy 1.9.0
+
+<APCard>:
+	height: 120
+	width: 200
+	size_hint: (None, None)
+	orientation: 'vertical'
+
+	mac: mac
+	essid: essid
+	security_box: security_box
+	data_box: data_box
+	seen: seen
+
+	canvas.before:
+		Color:
+			rgba: (1, 1, 1, 0.1)
+		Rectangle:
+			pos: self.pos
+			size: self.size
+	Label:
+		id: mac
+		size_hint: (1, 0.2)
+	Label:
+		id: essid
+		size_hint: (1, 0.2)
+	BoxLayout:
+		id: security_box
+		size_hint: (1, 0.2)
+		orientation: 'horizontal'
+		security: security
+		wps: wps
+		Label:
+			id: security
+			size_hint: (0.5, 1)
+		Label:
+			id: wps
+			size_hint: (0.5, 1)
+	BoxLayout:
+		id: data_box
+		size_hint: (1, 0.2)
+		orientation: 'horizontal'
+		rcv: rcv
+		sent: sent
+		beacons: beacons
+		connected: connected
+		Label:
+			id: rcv
+			size_hint: (0.25, 1)
+		Label:
+			id: sent
+			size_hint: (0.25, 1)
+		Label:
+			id: beacons
+			size_hint: (0.25, 1)
+		Label:
+			id: connected
+			size_hint: (0.25, 1)
+	Label:
+		id: seen
+		size_hint: (1, 0.2)

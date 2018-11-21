@@ -6,6 +6,7 @@ from kivy.graphics import Color, Rectangle
 from kivy.lang import Builder
 from kivy.app import App
 """ Our stuff """
+from CardInfoScreen import CardInfoScreen
 
 Builder.load_file("Static/card.kv")
 
@@ -16,6 +17,7 @@ class Card(BoxLayout):
         self.id = kwargs['id']
         self.elem_lst = {}
         self.width = 0
+        self.card_mult = 8
         self.connected = False
         self.bind(size=self.draw_background)
         self.bind(pos=self.draw_background)
@@ -42,7 +44,8 @@ class Card(BoxLayout):
         l = len(text)
         label = Label(text=text,
                     size_hint=(1, max_height))
-        self.width = l * 10 if self.width < l * 10 else self.width
+        self.width = l * self.card_mult\
+                if self.width < l * self.card_mult else self.width
         self.elem_lst[key] = label
         self.add_widget(label)
 
@@ -84,7 +87,8 @@ class Card(BoxLayout):
         if not value or self.elem_lst[key].text == value:
             return
         l = len(value)
-        self.width = l * 10 if self.width < l * 10 else self.width
+        self.width = l * self.card_mult\
+                if self.width < l * self.card_mult else self.width
         self.elem_lst[key].text = value
 
     def update_ap(self):
@@ -109,11 +113,12 @@ class Card(BoxLayout):
             self.update_label(str(i), info)
 
     def on_touch_down(self, touch):
-        #TODO open a tab with card infos
         if self.collide_point(*touch.pos):
             print("Card: Touched !")
             self.pressed = touch.pos
-            App.get_running_app().add_panel(str(self.id), self)
+            screen = CardInfoScreen(name=self.id)
+            App.get_running_app().add_header(self.id, screen)
+            #TODO open a tab with card infos screen
             return True
         return super(Card, self).on_touch_down(touch)
 
@@ -136,5 +141,3 @@ class Card(BoxLayout):
             else:
 	        Color(1, 1, 1, 0.1)
 	    Rectangle(pos=self.pos, size=self.size)
-
-

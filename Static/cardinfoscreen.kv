@@ -1,0 +1,22 @@
+#:kivy 1.9.0
+
+<CardInfoScreen>:
+	scroll_view: scroll_view
+
+	BoxLayout:
+		id: main_layout
+		orientation: 'vertical'
+
+		BoxLayout:
+			id: btn_layout
+			size: (64, 64)
+			size_hint: (1, None)
+
+			Button:
+				id: some_static_button
+				text: "Some static from card infos"
+				color: (1, 0, 0, 1)
+				background_color: (.3, .3, .3, 1)
+
+		ScrollView:
+			id: scroll_view

@@ -16,6 +16,7 @@ class PcapThread(threading.Thread):
     def __init__(self, args, pkts=None):
 	threading.Thread.__init__(self)  
 	self.counter = 0
+        self.started = False
 	self.stop = False
         self.app = None
         if args.pcap:
@@ -28,7 +29,7 @@ class PcapThread(threading.Thread):
 	self.old_dic = {'AP': {}, 'Station': {}, 'Traffic': {}}
 	self.vendor_dict = {}
         try:
-            with open('./mac_list') as f:
+            with open('mac_list') as f:
                 lines = f.readlines()
 	        for l in lines:
 		    t = l.split('\t')
@@ -63,29 +64,21 @@ class PcapThread(threading.Thread):
     def callback(self, pkt):
         """ Callback when packet is sniffed """
         parse_pkt(self.old_dic, pkt)
-        if self.app and hasattr(self.app, "managers"):
-            for manager in self.app.managers:
-                manager.screen.update_gui(self.old_dic, self.vendor_dict)
+        if self.app and hasattr(self.app, "manager"):
+            self.app.manager.update_gui(self.old_dic, self.vendor_dict)
 
     def wait_for_gui(self):
         """ Check if all screen are loaded """
-        if not self.app or not hasattr(self.app, "managers"):
+        if not self.app or not hasattr(self.app, "manager"):
             print("Thread: app not well initialized")
-            return False
-        gui_loaded = False
-        while not gui_loaded:
-            if self.stop:
-                return False
-            for manager in self.app.managers:
-                if not manager.screen.ready:
-                    gui_loaded = False
-                    break
-                else:
-                    gui_loaded = True
+            sys.exit(1)
+        while not self.stop and not self.app.manager.is_ready():
+            pass
         return True
 
     def run(self):
         """ Thread either sniff or waits """
+        self.started = True
         if not self.pcap_file:
             self.wait_for_gui()
             print("Thread: screens are ready - Starts sniffing")
@@ -127,6 +120,7 @@ class PcapThread(threading.Thread):
         self.app = app
 
     def app_shutdown(self):
+        """ Stops thread and app """
         self.wait_for_gui()
         self.app.stop()
         sys.exit(1)

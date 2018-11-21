@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import struct
+from scapy.all import RadioTap
 
 radiotap_formats = {
 	"TSFT":"Q", "Flags":"B", "Rate":"B",
@@ -34,6 +35,8 @@ def get_rssi(packet):
 			fmt = fmt + radiotap_formats[name]
 		decoded = struct.unpack(fmt, packet.notdecoded[:struct.calcsize(fmt)])
 		return decoded[rssipos]
+	if packet[RadioTap].dBm_AntSignal:
+		return packet[RadioTap].dBm_AntSignal
 	return None
 
 # vim:noexpandtab:autoindent:tabstop=4:shiftwidth=4:

@@ -261,9 +261,9 @@ class AccessPoint():
 	def get_seen(self):
 		#Used in web interface to get reasons why AP is in table
 		if len(self.seen) == 0:
-			return "Error"
+			return ""
 		s = ', '.join(self.seen)
-		s = "Seen: {}".format(s)
+		s = "seen: {}".format(s)
 		if self.ssid is not None and len(self.ssid) > 0:
 			s = "{} (probed: {})".format(s, self.ssid)
 		return s

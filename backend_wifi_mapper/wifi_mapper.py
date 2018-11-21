@@ -278,17 +278,18 @@ def wpa_step4(key):
 def add_handshake(packet, dic, station, bssid):
 	key = packet[EAPOL]
 	step = None
+	rssi = rssi_scapy.get_rssi(packet)
 	if wpa_step1(key):
 		step = "step1"
 		add_traffic_sent(dic, station, to_addr=bssid)
-		add_rssi(rssi_scapy.get_rssi(packet), dic, station)
+		add_rssi(rssi, dic, station)
 	if wpa_step2(key):
 		step = "step2"
 		add_traffic_recv(dic, bssid, from_addr=station)
 	if wpa_step3(key):
 		step = "step3"
 		add_traffic_sent(dic, station, to_addr=bssid)
-		add_rssi(rssi_scapy.get_rssi(packet), dic, station)
+		add_rssi(rssi, dic, station)
 	if wpa_step4(key):
 		step = "step4"
 		add_traffic_recv(dic, bssid, from_addr=station)
@@ -325,26 +326,30 @@ def get_station_infos(packet, dic):
 	if ds["from"] and ds["to"]:
 		return
 
+	rssi = rssi_scapy.get_rssi(packet)
 	# Control packets are unreliable to get station, just add traffic and rssi
 	if is_control(packet):
 		if ds["sent"] is True:
 			add_traffic_sent(dic, ds["station"], to_addr=ds["dst"], which="control")
 		else:
 			add_traffic_recv(dic, ds["station"], from_addr=ds["src"], which="control")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["station"])
+		add_rssi(rssi, dic, ds["station"])
+		add_rssi(rssi, dic, ds["bssid"])
 		return
 
 	if packet.haslayer(Dot11ProbeResp):
 		#Station receive probe response
 		add_station(dic, ds["dst"], None)
 		add_traffic_recv(dic, ds["dst"], from_addr=ds["src"], which="probe")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["dst"])
+		add_rssi(rssi, dic, ds["dst"])
+		add_rssi(rssi, dic, ds["bssid"])
 	elif packet.haslayer(Dot11ProbeReq):
 		#Station request information
 		add_station(dic, ds["src"], None)
 		add_traffic_sent(dic, ds["src"], to_addr=None, which="probeReq")
 		get_client_probe(packet, dic, ds["src"])
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["src"])
+		add_rssi(rssi, dic, ds["src"])
+		add_rssi(rssi, dic, ds["bssid"])
 	elif packet.haslayer(Dot11Auth):
 		#Authentication could be from or to station
 		add_station(dic, ds["station"], None)
@@ -355,34 +360,39 @@ def get_station_infos(packet, dic):
 		else:
 			add_traffic_recv(dic, ds["station"], from_addr=ds["src"], which="Auth")
 			add_ap(dic, ds["src"], seen="AuthResp")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["station"])
+		add_rssi(rssi, dic, ds["station"])
+		add_rssi(rssi, dic, ds["bssid"])
 	elif packet.haslayer(Dot11AssoReq):
 		#Station request association
 		add_station(dic, ds["src"], None)
 		add_ap(dic, ds["dst"], seen="AssociationReq")
 		add_traffic_sent(dic, ds["src"], to_addr=ds["dst"], which="Association")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["src"])
+		add_rssi(rssi, dic, ds["src"])
+		add_rssi(rssi, dic, ds["bssid"])
 		dic['Station'][ds["src"]].add_pre_eapol(ds["dst"], "assos") 
 	elif packet.haslayer(Dot11ReassoReq):
 		#Station request Reassociation
 		add_station(dic, ds["src"], None)
 		add_ap(dic, ds["dst"], seen="ReassociationReq")
 		add_traffic_sent(dic, ds["src"], to_addr=ds["dst"], which="Reassociation")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["src"])
+		add_rssi(rssi, dic, ds["src"])
+		add_rssi(rssi, dic, ds["bssid"])
 		dic['Station'][ds["src"]].add_pre_eapol(ds["dst"], "reassos") 
 	elif packet.haslayer(Dot11AssoResp):
 		#Station receive association response
 		add_station(dic, ds["dst"], None)
 		add_ap(dic, ds["src"], seen="AssociationResp")
 		add_traffic_recv(dic, ds["dst"], from_addr=ds["src"], which="Association")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["dst"])
+		add_rssi(rssi, dic, ds["dst"])
+		add_rssi(rssi, dic, ds["bssid"])
 		dic['Station'][ds["dst"]].add_pre_eapol(ds["src"], "assos_resp") 
 	elif packet.haslayer(Dot11ReassoResp):
 		#Station receive Reassociation response
 		add_station(dic, ds["dst"], None)
 		add_ap(dic, ds["src"], seen="ReassociationResp")
 		add_traffic_recv(dic, ds["dst"], from_addr=ds["src"], which="Reassociation")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["dst"])
+		add_rssi(rssi, dic, ds["dst"])
+		add_rssi(rssi, dic, ds["bssid"])
 		dic['Station'][ds["dst"]].add_pre_eapol(ds["src"], "reassos_resp") 
 	elif packet.haslayer(EAPOL):
 		#Wpa handhsake between station and access point
@@ -398,7 +408,8 @@ def get_station_infos(packet, dic):
 		else:
 			add_ap(dic, ds["src"], seen="DisassoRecv")
 			add_traffic_recv(dic, ds["station"], from_addr=ds["src"], which="Disasso")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["station"])
+		add_rssi(rssi, dic, ds["station"])
+		add_rssi(rssi, dic, ds["bssid"])
 		dic['Station'][ds["station"]].add_ap_exit(ds["bssid"], "disasos", exited=ds["sent"])
 	elif packet.haslayer(Dot11Deauth):
 		#Deauthentification could be from or to station
@@ -409,7 +420,8 @@ def get_station_infos(packet, dic):
 		else:
 			add_ap(dic, ds["src"], seen="DeauthRecv")
 			add_traffic_recv(dic, ds["station"], from_addr=ds["src"], which="Deauth")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["station"])
+		add_rssi(rssi, dic, ds["station"])
+		add_rssi(rssi, dic, ds["bssid"])
 		dic['Station'][ds["station"]].add_ap_exit(ds["bssid"], "deauth", exited=ds["sent"])
 	elif is_data(packet) and not is_multicast(ds["dst"]):
 		#Data could be from or to station
@@ -420,7 +432,8 @@ def get_station_infos(packet, dic):
 		else:
 			add_ap(dic, ds["src"], seen="DataRecv")
 			add_traffic_recv(dic, ds["station"], from_addr=ds["src"], which="data")
-		add_rssi(rssi_scapy.get_rssi(packet), dic, ds["station"])
+		add_rssi(rssi, dic, ds["station"])
+		add_rssi(rssi, dic, ds["bssid"])
 
 def get_packet_infos(packet, dic):
 	"""

@@ -1,19 +1,22 @@
 #:kivy 1.9.0
 
-<MainScreen>:
-	view: view
+<CardListScreen>:
+	scroll_view: scroll_view
 
 	BoxLayout:
+		id: main_layout
 		orientation: 'vertical'
 
 		BoxLayout:
+			id: btn_layout
 			size: (64, 64)
 			size_hint: (1, None)
 
 			Button:
+				id: some_static_button
 				text: "Some static button"
 				color: (1, 0, 0, 1)
 				background_color: (.3, .3, .3, 1)
 
 		ScrollView:
-			id: view
+			id: scroll_view

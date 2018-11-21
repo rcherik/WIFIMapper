@@ -9,19 +9,22 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.lang import Builder
 """ Our stuff """
 from Card import Card
+from APCard import APCard
 
-Builder.load_file("Static/mainscreen.kv")
+Builder.load_file("Static/cardlistscreen.kv")
 
-class MainScreen(Screen):
+class CardListScreen(Screen):
 
-    view = ObjectProperty(None)
+    scroll_view = ObjectProperty(None)
+    main_layout = ObjectProperty(None)
+    btn_layout = ObjectProperty(None)
+    some_static_button = ObjectProperty(None)
 
     def __init__(self, **kwargs):
-        """ Delays view creation """
-	super(MainScreen, self).__init__(**kwargs)
+        """ Delays view creation because some views are init in kv langage """
+	super(CardListScreen, self).__init__(**kwargs)
         self.ready = False
 	self.card_dic = {}
-        self.app = kwargs.get('app', None)
         self.show_ap = kwargs.get('ap', False)
 	self.show_station = kwargs.get('station', False)
 
@@ -31,37 +34,38 @@ class MainScreen(Screen):
 	    self.rect = Rectangle(size=self.size, pos=self.pos)
 	self.bind(size=self._update_rect, pos=self._update_rect)
 
-	Clock.schedule_once(self.create_view)
+	Clock.schedule_once(self._create_view)
 
     def _update_rect(self, instance, value):
         """ Update background color """
 	self.rect.pos = instance.pos
 	self.rect.size = instance.size
 
-    def create_view(self, dt):
+    def _create_view(self, *args):
         """ Create layout """
-        self.layout = StackLayout(orientation="lr-tb",
+        self.stack_layout = StackLayout(orientation="lr-tb",
                 padding=10,
                 spacing=10,
                 size_hint_y=None)
-        self.layout.bind(minimum_height=self.layout.setter('height'))
-        self.view.add_widget(self.layout)
+        self.stack_layout.bind(
+                minimum_height=self.stack_layout.setter('height'))
+        self.scroll_view.add_widget(self.stack_layout)
         self.ready = True
 
-    def add_ap_card(self, mac, ap, vendor):
+    def add_ap_card(self, mac, ap, traffic, vendor):
         """ Fill card with access point info """
         if mac not in self.card_dic:
-            card = Card(id=mac, ap=ap, vendor=vendor)
-            self.layout.add_widget(card)
+            card = APCard(key=mac, ap=ap, traffic=traffic, vendor=vendor)
+            self.stack_layout.add_widget(card)
             self.card_dic[mac] = card
         else:
-            self.card_dic[mac].update(id=mac, ap=ap, vendor=vendor)
+            self.card_dic[mac].update(ap=ap, traffic=traffic, vendor=vendor)
 
     def add_station_card(self, mac, station, vendor):
         """ Fill card with access point info """
         if mac not in self.card_dic:
             card = Card(id=mac, station=station, vendor=vendor)
-            self.layout.add_widget(card)
+            self.stack_layout.add_widget(card)
             self.card_dic[mac] = card
         else:
             self.card_dic[mac].update(id=mac, station=station, vendor=vendor)
@@ -71,7 +75,7 @@ class MainScreen(Screen):
         if mac not in self.card_dic:
             s = s or ""
             card = Card(id=mac, text=s, vendor=vendor)
-            self.layout.add_widget(card)
+            self.stack_layout.add_widget(card)
             self.card_dic[mac] = card
         else:
             self.card_dic[mac].update(id=mac, text=s, vendor=vendor)
@@ -82,7 +86,8 @@ class MainScreen(Screen):
             ap = dic['AP']
             for key, value in ap.iteritems():
                 vendor = vendor_dic.get(key[:8].upper(), "")
-                self.add_ap_card(key, ap[key], vendor)
+                traffic = dic['Traffic'].get(key, None)
+                self.add_ap_card(key, ap[key], traffic, vendor)
         if self.show_station:
             sta = dic['Station']
             for key, value in sta.iteritems():
