@@ -1,7 +1,11 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-from scapy.all import Dot11, Dot11FCS
+from scapy.all import Dot11
+try:
+	from scapy.all import Dot11FCS
+except ImportError:
+	Dot11FCS = None
 
 def get_addrs(packet):
 	"""

@@ -1,23 +1,33 @@
 NAME=application.py
-INTERFACE=$(shell /sbin/ip route | awk 'NR==1{print $$5}')
+#INTERFACE=$(shell /sbin/ip route | awk 'NR==1{print $$5}')
+#INTERFACE=$(shell /sbin/ifconfig | /bin/grep '^wl.*Link*.'\
+	| /usr/bin/awk '{print $$1}')
+INTERFACE=$(shell /sbin/iwconfig 2>&- |\
+		  /bin/grep 'IEEE 802.11' |\
+		  /usr/bin/awk '{print $$1}')
 PYTHON=/usr/bin/python
 SUDO=/usr/bin/sudo
+APP=application.py
+APP_DEBUG=$(APP) --debug
 
 all: sniff
 
 sniff:
-	$(SUDO) $(PYTHON) application.py
+	$(SUDO) $(PYTHON) $(APP_DEBUG) --interface $(INTERFACE)
+
+sniff_test:
+	$(SUDO) $(PYTHON) $(APP_DEBUG) --test
 
 read:
-	$(PYTHON) application.py --pcap Traces_pcap/unknown_ap.pcap
+	$(PYTHON) $(APP_DEBUG) --pcap Traces_pcap/unknown_ap.pcap
 	make clean
 
 read_1:
-	$(PYTHON) application.py --pcap Traces_pcap/single_wpa.pcap
+	$(PYTHON) $(APP_DEBUG) --pcap Traces_pcap/single_wpa.pcap
 	make clean
 
 read_2:
-	$(PYTHON) application.py --pcap Traces_pcap/double_wpa_and_fail.pcap
+	$(PYTHON) $(APP_DEBUG) --pcap Traces_pcap/double_wpa_and_fail.pcap
 	make clean
 
 managed:

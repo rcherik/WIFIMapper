@@ -6,7 +6,15 @@ import sys
 #Import logging to silence scapy IPV6 error
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-from scapy.all import rdpcap, DNSRR, RadioTap, Dot11,Dot11FCS, Dot11Elt, Dot11Beacon, Dot11ProbeResp, Dot11ProbeReq, Raw, EAPOL, Dot11AssoReq, Dot11ReassoReq, Dot11AssoResp, Dot11ReassoResp, Dot11Disas, Dot11Deauth, Dot11Auth, wrpcap
+from scapy.all import rdpcap, DNSRR, RadioTap, Dot11, Dot11Elt, Dot11Beacon,\
+		Dot11ProbeResp, Dot11ProbeReq, Raw, EAPOL, Dot11AssoReq,\
+		Dot11ReassoReq, Dot11AssoResp, Dot11ReassoResp, Dot11Disas,\
+		Dot11Deauth, Dot11Auth, wrpcap
+try:
+	from scapy.all import Dot11FCS
+except ImportError:
+	Dot11FCS = None
+
 from scapy.error import Scapy_Exception
 import wpa_scapy
 import rssi_scapy

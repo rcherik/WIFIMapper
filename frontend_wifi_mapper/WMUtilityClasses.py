@@ -20,21 +20,20 @@ class WMScreenManager(ScreenManager):
     station_screen = ObjectProperty(None)
 
     def __init__(self, **kwargs):
-        """ Add screen for thread accessibility """
         self.ap_screen = CardListScreen(ap=True,
                 name="ap", **kwargs)
         self.station_screen = CardListScreen(station=True,
                 name="station", **kwargs)
         super(WMScreenManager, self).__init__(**kwargs)
         self.app = kwargs.get('app', None)
-        self.thread = kwargs.get('thread', None)
+        self.pcapthread = kwargs.get('pcapthread', None)
         self.add_widget(self.ap_screen)
         self.add_widget(self.station_screen)
-	Clock.schedule_once(self.start_thread)
+	Clock.schedule_once(self.start_pcapthread)
 
-    def start_thread(self, *args):
-        if not self.thread.started:
-            self.thread.start()
+    def start_pcapthread(self, *args):
+        if not self.pcapthread.started:
+            self.pcapthread.start()
 
     def is_ready(self):
         return self.ap_screen.ready and self.station_screen.ready
