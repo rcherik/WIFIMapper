@@ -41,7 +41,8 @@ def get_rssi(packet):
 	if scapy.config.conf.version == "2.2.0":
 		sig = 0
 		field, val = packet.getfield_and_val("present")
-		names = [field.names[i][0] for i in range(len(field.names)) if (1 << i) & val != 0]
+		names = [field.names[i][0] for i in range(len(field.names))\
+				if (1 << i) & val != 0]
 		if "dBm_AntSignal" in names:
 			fmt = "<"
 			rssipos = 0
@@ -49,7 +50,8 @@ def get_rssi(packet):
 				if name == "dBm_AntSignal":
 					rssipos = len(fmt) - 1
 				fmt = fmt + radiotap_formats[name]
-			decoded = struct.unpack(fmt, packet.notdecoded[:struct.calcsize(fmt)])
+			decoded = struct.unpack(fmt,
+					packet.notdecoded[:struct.calcsize(fmt)])
 			return decoded[rssipos]
 	return None
 

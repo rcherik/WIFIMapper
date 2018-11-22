@@ -81,7 +81,7 @@ class PcapThread(threading.Thread):
             self._wait_for_gui()
             self.channelthread.start()
             self._say("starts sniffing on interface %s" % self.iface)
-	    sniff(self.iface, prn=self._callback,
+	    sniff(iface=self.iface, prn=self._callback,
                     stop_filter=self._callback_stop, store=0)
         else:
             self.pkts = self.read_pkts(self.pcap_file)

@@ -7,8 +7,8 @@ def callback(pkt):
 
 def test(iface):
     print("scapy (%s)" % scapy.config.conf.version)
-    scapy.all.sniff(iface,
+    scapy.all.sniff(iface=iface,
             prn=callback,
             store=0,
-            timeout=10)
+            timeout=5)
     sys.exit(0)

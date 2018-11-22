@@ -15,7 +15,7 @@ all: sniff
 sniff:
 	$(SUDO) $(PYTHON) $(APP_DEBUG) --interface $(INTERFACE)
 
-sniff_test:
+test:
 	$(SUDO) $(PYTHON) $(APP_DEBUG) --test
 
 read:
