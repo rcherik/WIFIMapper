@@ -60,16 +60,21 @@ class WifiMapper(App):
         self.panel.remove_header(string)
 
     def build(self):
-        self.manager = WMScreenManager(app=self, pcapthread=self.pcapthread)
+        self.manager = WMScreenManager(app=self,
+                args=self.args,
+                pcapthread=self.pcapthread)
         ap_tab = WMPanelHeader(text="Access Points",
+                args=self.args,
                 content=self.manager,
                 screen="ap",
                 can_remove=False)
         station_tab = WMPanelHeader(text="Stations",
+                args=self.args,
                 content=self.manager,
                 screen="station",
                 can_remove=False)
         self.panel = WMTabbedPanel(manager=self.manager,
+                args=self.args,
                 ap=ap_tab,
                 station=station_tab,
                 default_tab=ap_tab)
@@ -87,16 +92,15 @@ class WifiMapper(App):
         if keycode[1] == 'tab':
             found = False
             direction = -1 if not self.shift else 1
+            loop = -1 if direction == -1 else 0
             for header in self.panel.tab_list[::direction]:
                 if found:
                     self.panel.switch_to(header)
-                    
-                    
                     return True
                 if header == self.panel.current_tab:
                     found = True
             if found:
-                self.panel.switch_to(self.panel.tab_list[direction])
+                self.panel.switch_to(self.panel.tab_list[loop])
         if keycode[1] == 'escape':
             self.stop()
         if keycode[1] == 'shift':
@@ -106,6 +110,8 @@ class WifiMapper(App):
     def _say(self, s, **kwargs):
         if self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
+            print(s, **kwargs)
+        else:
             print(s, **kwargs)
 
     def onstop(self):
@@ -167,15 +173,6 @@ def signal_handler(signal, frame):
     app._say("CTRL+C signal")
     app.stop()
 
-def test_pkts(iface):
-    import scapy.all
-
-    scapy.all.sniff(iface,
-            prn=lambda x: x.summary(),
-            store=0,
-            timeout=10)
-    sys.exit(0)
-
 if __name__ == '__main__':
     args = parse_args()
     if not args.pcap and os.geteuid():
@@ -185,7 +182,8 @@ if __name__ == '__main__':
     args.interface = find_iface() if not args.interface else args.interface
 
     if args.test:
-        test_pkts(args.interface)
+        import pkts_test
+        pkts_test.test(args.interface)
 
     if args.interface is None and not args.pcap:
         sys.exit("Interface not found")

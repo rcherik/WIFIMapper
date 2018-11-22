@@ -7,6 +7,16 @@ try:
 except ImportError:
 	Dot11FCS = None
 
+WM_DS_SRC = 0
+WM_DS_TRANS = 1
+WM_DS_RCV = 2
+WM_DS_DST = 3
+WM_DS_BSSID = 4
+WM_DS_STATION = 5
+WM_DS_SENT = 6
+WM_DS_FROM = 7
+WM_DS_TO = 8
+
 def get_addrs(packet):
 	"""
 		From the DS flag, return parsed 802.11 addresses field
@@ -69,8 +79,10 @@ def get_addrs(packet):
 		bssid = None
 		station = None
 		sent = False
-	return {
-		"src":src,
+
+	"""
+	dic =  {
+		"src": src,
 		"trans": trans,
 		"rcv": rcv,
 		"dst": dst,
@@ -80,5 +92,17 @@ def get_addrs(packet):
 		"from": from_ds,
 		"to": to_ds
 	}
+	"""
+	return [
+		src,
+		trans,
+		rcv,
+		dst,
+		bssid,
+		station,
+		sent,
+		from_ds,
+		to_ds
+	]
 
 # vim:noexpandtab:autoindent:tabstop=4:shiftwidth=4:

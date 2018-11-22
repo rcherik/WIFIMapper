@@ -27,6 +27,7 @@ class WMScreenManager(ScreenManager):
         super(WMScreenManager, self).__init__(**kwargs)
         self.app = kwargs.get('app', None)
         self.pcapthread = kwargs.get('pcapthread', None)
+        self.args = kwargs.get('args', None)
         self.add_widget(self.ap_screen)
         self.add_widget(self.station_screen)
 	Clock.schedule_once(self.start_pcapthread)
@@ -38,17 +39,25 @@ class WMScreenManager(ScreenManager):
     def is_ready(self):
         return self.ap_screen.ready and self.station_screen.ready
 
-    def update_gui(self, dic, vendor_dic):
-        self.ap_screen.update_gui(dic, vendor_dic)
-        self.station_screen.update_gui(dic, vendor_dic)
+    def update_gui(self, dic):
+        self.ap_screen.update_gui(dic)
+        self.station_screen.update_gui(dic)
 
     def remove(self, screen_name):
         widget = self.get_screen(screen_name)
         if widget:
             self.remove_widget(widget)
 
+    def _say(self, s, **kwargs):
+        if self.args and self.args.debug:
+            s = "%s: " % (self.__class__.__name__) + s
+            print(s, **kwargs)
+        else:
+            print(s, **kwargs)
+
     def __repr__(self):
-        return "WMScreenManager with screens: {l}".format(l=self.screens)
+        return "{c} with screens: {l}"\
+                .format(c=self.__class__.__name__, l=self.screens)
 
 class WMTabbedPanel(TabbedPanel):
     """ One day maybe for transition """
@@ -63,11 +72,11 @@ class WMTabbedPanel(TabbedPanel):
         super(WMTabbedPanel, self).__init__(**kwargs)
         self.add_widget(self.station_tab)
         self.header_dic = {"AP": self.ap_tab, "Station": self.station_tab}
+        self.args = kwargs.get('args', None)
 
     def add_header(self, key, screen, **kwargs):
         if key not in self.header_dic:
             self.manager.add_widget(screen)
-            print(self.manager)
             header = WMPanelHeader(text=key,
                     master=self,
                     screen=key,
@@ -96,6 +105,13 @@ class WMTabbedPanel(TabbedPanel):
         header.state = 'down'
         self._current_tab = header
 
+    def _say(self, s, **kwargs):
+        if self.args and self.args.debug:
+            s = "%s: " % (self.__class__.__name__) + s
+            print(s, **kwargs)
+        else:
+            print(s, **kwargs)
+
 class WMPanelHeader(TabbedPanelHeader):
 
     def __init__(self, **kwargs):
@@ -104,9 +120,10 @@ class WMPanelHeader(TabbedPanelHeader):
         self.can_remove = kwargs.get("can_remove", True)
         self.ready = False
         super(WMPanelHeader, self).__init__(**kwargs)
-	Clock.schedule_once(self.created_view)
+        self.args = kwargs.get('args', None)
+	Clock.schedule_once(self._created_view)
 
-    def created_view(self, *args):
+    def _created_view(self, *args):
         self.ready = True
 
     def on_touch_down(self, touch):
@@ -120,4 +137,11 @@ class WMPanelHeader(TabbedPanelHeader):
         return super(WMPanelHeader, self).on_touch_down(touch)
 
     def on_pressed(self, instance, pos):
-        print('Panel: pressed at {pos}'.format(pos=pos))
+        self._say('Panel: pressed at {pos}'.format(pos=pos))
+
+    def _say(self, s, **kwargs):
+        if self.args and self.args.debug:
+            s = "%s: " % (self.__class__.__name__) + s
+            print(s, **kwargs)
+        else:
+            print(s, **kwargs)

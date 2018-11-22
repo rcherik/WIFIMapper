@@ -5,6 +5,7 @@ from kivy.uix.label import Label
 from kivy.graphics import Color, Rectangle
 from kivy.lang import Builder
 from kivy.app import App
+from kivy.uix.screenmanager import Screen
 """ Our stuff """
 from CardInfoScreen import CardInfoScreen
 
@@ -25,7 +26,6 @@ class Card(BoxLayout):
 
     def get_args(self, **kwargs):
         self.text = kwargs.get('text', None)
-        self.ap = kwargs.get('ap', None)
         self.station = kwargs.get('station', None)
         self.vendor = kwargs.get('vendor', None)
 
@@ -33,11 +33,21 @@ class Card(BoxLayout):
         self.get_args(**kwargs)
         if self.text:
             self.create_text()
-        elif self.ap:
-            self.create_ap()
         elif self.station:
             self.create_station()
 	    self.is_connected()
+
+    def parent_get_value(self):
+        parent = self.parent
+        while not isinstance(parent, Screen):
+            parent = parent.parent
+        value = parent.sort_by
+        return self.get_value(value)
+
+    def get_value(self, value):
+        if hasattr(self, value):
+            return getattr(self, value)
+        return getattr(self.station, value)
 
     def add_label(self, key, text, max_height):
         text = text or ""
@@ -49,19 +59,11 @@ class Card(BoxLayout):
         self.elem_lst[key] = label
         self.add_widget(label)
 
-    def create_ap(self):
-        self.max_height = 0.33
-        s = "ssid: " + (self.ap.ssid or "")
-        self.add_label("ssid", s, self.max_height)
-        s = "bssid: " + (self.ap.bssid or "")
-        self.add_label("bssid", s, self.max_height)
-        self.add_label("vendor", self.vendor, self.max_height)
-
     def create_station(self):
         self.max_height = 0.2
-        s = "ssid: " + (self.station.station or "")
+        s = "bssid: " + (self.station.bssid or "")
         self.add_label("station", s, self.max_height)
-        s = "ap: " + (self.station.bssid or "")
+        s = "ap: " + (self.station.ap_bssid or "")
         self.add_label("bssid", s, self.max_height)
         s = "probes: " + self.station.get_probes()
         self.add_label("probes", s, self.max_height)
@@ -77,8 +79,6 @@ class Card(BoxLayout):
         self.get_args(**kwargs)
         if self.text:
             self.update_text()
-        elif self.ap:
-            self.update_ap()
         elif self.station:
             self.is_connected()
             self.update_station()
@@ -91,17 +91,10 @@ class Card(BoxLayout):
                 if self.width < l * self.card_mult else self.width
         self.elem_lst[key].text = value
 
-    def update_ap(self):
-        s = "ssid: " + (self.ap.ssid or "")
-        self.update_label("ssid", s)
-        s = "bssid: " + (self.ap.bssid or "")
-        self.update_label("bssid", s)
-        self.update_label("vendor", self.vendor)
-
     def update_station(self):
-        s = "ssid: " + (self.station.station or "")
+        s = "bssid: " + (self.station.bssid or "")
         self.update_label("station", s)
-        s = "ap: " + (self.station.bssid or "")
+        s = "ap: " + (self.station.ap_bssid or "")
         self.update_label("bssid", s)
         s = "probes: " + self.station.get_probes()
         self.update_label("probes", s)
@@ -126,10 +119,10 @@ class Card(BoxLayout):
         print('Card: pressed at {pos}'.format(pos=pos))
 
     def is_connected(self):
-        if not self.connected and self.station and self.station.bssid:
+        if not self.connected and self.station and self.station.ap_bssid:
             self.connected = True
             self.draw_background(self, self.pos)
-        elif self.connected and self.station and not self.station.bssid:
+        elif self.connected and self.station and not self.station.ap_bssid:
             self.connected = False
             self.draw_background(self, self.pos)
 

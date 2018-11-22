@@ -11,6 +11,15 @@ from wifi_mapper_utilities import is_multicast, is_retransmitted
 	Present in main dictionnary in dic['Traffic'][some_station_key]
 	Used only to get station traffic
 """
+
+WM_TRA_SENT = 0
+WM_TRA_RECV = 1
+
+WM_TRA_ALL = 0
+WM_TRA_MNG = 1
+WM_TRA_CTRL = 2
+WM_TRA_DATA = 3
+
 class Traffic():
 
 	def __init__(self, station):
@@ -47,6 +56,13 @@ class Traffic():
 					'all': 0
 				}
 		}
+		#TODO
+		"""
+		self.traffic[addr] = [
+				[0, 0, 0, 0],
+				[0, 0, 0, 0],
+				]
+		"""
 
 	def get_sent(self, addr, key):
 		if addr in self.traffic and\
@@ -106,34 +122,54 @@ class Traffic():
 """
 	Present in main dictionnary in dic['Station'][some_macaddr_key]
 """
+
+#TODO
+WM_STA_STEP_DONE = 0
+WM_STA_SUCESS = 1
+WM_STA_FAIL = 2
+WM_STA_EXT = 3
+WM_STA_KICK = 4
+WM_STA_AUTH = 5
+WM_STA_AUTH_RESP = 6
+WM_STA_DEAUTH = 7
+WM_STA_ASSOS = 8
+WM_STA_REASSOS = 9
+WM_STA_ASSOS_RESP = 10
+WM_STA_REASSOS_RESP = 11
+WM_STA_DISASSOS = 12
+WM_STA_HDSK_PKT = 13
+WM_STA_LAST_SUCCESS = 14
+WM_STA_CURRENT_STEP = 15
+
 class Station():
 
 	id = 0
 	handshakes = {}
 
-	def __init__(self, station, bssid):
-		self.station = station
+	def __init__(self, bssid, ap_bssid):
+		self.bssid = bssid
 		self.probe = set()
-		self.bssid = bssid if not is_multicast(bssid) else None
+		#self.ap_bssid = ap_bssid if not is_multicast(ap_bssid) else None
+		self.ap_bssid = ap_bssid
 		Station.id += 1
 		self.id = Station.id
 		self.eapol = {}
 		self.steps_done = 0
 		self.success_hs = 0
 
-	def get_eapol_key(self, bssid, key):
-		if bssid in self.eapol and key in self.eapol[bssid]:
-			return self.eapol[bssid][key]
+	def get_eapol_key(self, ap_bssid, key):
+		if ap_bssid in self.eapol and key in self.eapol[ap_bssid]:
+			return self.eapol[ap_bssid][key]
 		return ""
 
-	def has_success_hdshake(self, bssid):
-		if bssid in self.eapol and "success" in self.eapol[bssid] and\
-			self.eapol[bssid]["success"] > 0:
+	def has_success_hdshake(self, ap_bssid):
+		if ap_bssid in self.eapol and "success" in self.eapol[ap_bssid] and\
+			self.eapol[ap_bssid]["success"] > 0:
 			return True
 		return False
 
-	def prepare_eapol_dict(self, bssid):
-		self.eapol[bssid] = {
+	def prepare_eapol_dict(self, ap_bssid):
+		self.eapol[ap_bssid] = {
 			"steps_done": 0,
 			"success": 0,
 			"fail": 0,
@@ -152,15 +188,15 @@ class Station():
 			"current_step": None,
 		}
 
-	def add_ap_exit(self, bssid, type, exited):
+	def add_ap_exit(self, ap_bssid, type, exited):
 		"""
-			:param bssid: access point mac addr
+			:param ap_bssid: access point mac addr
 			:param type: "deauth" or disasos"
 			:param exited: bool
 		"""
-		if bssid not in self.eapol:
-			self.prepare_eapol_dict(bssid)
-		ea = self.eapol[bssid]
+		if ap_bssid not in self.eapol:
+			self.prepare_eapol_dict(ap_bssid)
+		ea = self.eapol[ap_bssid]
 		if ea['current_step'] in\
 			("step1", "step2", "step3"):
 			ea["fail"] += 1
@@ -172,36 +208,36 @@ class Station():
 			ea["exited"] += 1
 		else:
 			ea["kicked"] += 1
-		if bssid == self.bssid:
-			self.bssid = None
+		if ap_bssid == self.ap_bssid:
+			self.ap_bssid = None
 
-	def add_pre_eapol(self, bssid, type):
+	def add_pre_eapol(self, ap_bssid, type):
 		"""
-			:param bssid: str access point mac addr
+			:param ap_bssid: str access point mac addr
 			:param type: "auth", "assos", "reassos", "reassos_resp"
 				"auth_resp", "assos_resp"
 		"""
-		if bssid not in self.eapol:
-			self.prepare_eapol_dict(bssid)
-		ea = self.eapol[bssid]
+		if ap_bssid not in self.eapol:
+			self.prepare_eapol_dict(ap_bssid)
+		ea = self.eapol[ap_bssid]
 		ea[type] += 1
 		ea["current_step"] = type
 
-	def add_global_handshake(self, bssid):
+	def add_global_handshake(self, ap_bssid):
 		#Usefull to get all handshakes download
-		if self.station not in Station.handshakes:
-			Station.handshakes[self.station] = set()
-		Station.handshakes[self.station].add(bssid)
+		if self.bssid not in Station.handshakes:
+			Station.handshakes[self.bssid] = set()
+		Station.handshakes[self.bssid].add(ap_bssid)
 
-	def add_eapol(self, packet, bssid, step):
+	def add_eapol(self, packet, ap_bssid, step):
 		"""
 			:param packet: scapy packet with EAPOL layer
-			:param bssid: access point mac addr
+			:param ap_bssid: access point mac addr
 			:param step: str in ("step1", "step2", "step3", "step4")
 		"""
-		if bssid not in self.eapol:
-			self.prepare_eapol_dict(bssid)
-		ea = self.eapol[bssid]
+		if ap_bssid not in self.eapol:
+			self.prepare_eapol_dict(ap_bssid)
+		ea = self.eapol[ap_bssid]
 		ea["current_step"] = step
 		ea['hdshake_pkt'].append(packet)
 		if not is_retransmitted(packet):
@@ -211,8 +247,8 @@ class Station():
 			if not is_retransmitted(packet):
 				ea["success"] += 1
 				self.success_hs += 1
-				self.bssid = bssid
-				self.add_global_handshake(bssid)
+				self.ap_bssid = ap_bssid
+				self.add_global_handshake(ap_bssid)
 			ea['last_success'] = len(ea['hdshake_pkt'])
 
 	def add_probe(self, name):
@@ -241,6 +277,7 @@ class AccessPoint():
 		self.crypto = crypto
 		self.beacons = 0
 		self.proberesp = 0
+		self.known = False
 		self.seen = set()
 		if seen is not None:
 			self.seen.add(seen)
@@ -252,11 +289,11 @@ class AccessPoint():
 		"""
 		if self.beacons or self.proberesp:
 			return True
-		return False
+		return self.known
 
-	def add_seen(self, seen):
+	def update(self, frame):
 		#Adds a layer where AP has been seen
-		self.seen.add(seen)
+		self.seen.add(frame)
 
 	def get_seen(self):
 		#Used in web interface to get reasons why AP is in table

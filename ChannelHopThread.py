@@ -8,7 +8,7 @@ import subprocess
 """ Our stuff """
 from backend_wifi_mapper.find_iface import find_iface
 
-WAIT_TIME = 0.1
+WAIT_TIME = 0.25
 
 class ChannelHopThread(threading.Thread):
     def __init__(self, args):
@@ -43,18 +43,20 @@ class ChannelHopThread(threading.Thread):
                 except Exception as e:
                     self._say("exception sniffing: " + e.message)
                     continue
-                if ret != 0:
+                if ret != 0 and channel not in self.bad_channels:
                     self._say("bad channel {chan} - ret: {ret}"\
                             .format(ret=ret, chan=channel))
                     self.bad_channels.add(channel)
                 else:
-                    self._say("hopped to %s" % channel)
+                    #self._say("hopped to %s" % channel)
                     self.current_chan = channel
                 time.sleep(WAIT_TIME)
 
     def _say(self, s, **kwargs):
         if self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
+            print(s, **kwargs)
+        else:
             print(s, **kwargs)
 
     def _wait_for_gui(self):

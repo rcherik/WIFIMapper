@@ -2,21 +2,16 @@
 
 <CardListScreen>:
 	scroll_view: scroll_view
+	stack_layout: stack_layout
 
 	BoxLayout:
-		id: main_layout
 		orientation: 'vertical'
-
-		BoxLayout:
-			id: btn_layout
-			size: (64, 64)
-			size_hint: (1, None)
-
-			Button:
-				id: some_static_button
-				text: "Some static button"
-				color: (1, 0, 0, 1)
-				background_color: (.3, .3, .3, 1)
 
 		ScrollView:
 			id: scroll_view
+			StackLayout:
+				id: stack_layout
+				orientation: 'lr-tb'
+				padding: 10
+				spacing: 10
+				size_hint_y: None

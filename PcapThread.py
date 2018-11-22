@@ -5,13 +5,18 @@ import os
 import time
 import threading
 """ Scapy """
+import scapy
+import scapy.config
 from scapy.all import sniff, rdpcap
 from scapy.error import Scapy_Exception
 """ Our Stuff """
 from backend_wifi_mapper.find_iface import find_iface
-from backend_wifi_mapper.wifi_mapper import parse_pkt
+from backend_wifi_mapper.wifi_mapper import parse_pkt, WM_AP, WM_STATION,\
+        WM_TRAFFIC, WM_HANDSHAKES
 
 READ_TIME = 0.0005
+
+WM_VENDOR = max([WM_AP, WM_STATION, WM_TRAFFIC, WM_HANDSHAKES]) + 1
 
 class PcapThread(threading.Thread):
     def __init__(self, args, **kwargs):
@@ -26,8 +31,8 @@ class PcapThread(threading.Thread):
         self.pcap_file = args.pcap or None
         self.iface = args.interface or (find_iface() if not args.pcap else None)
         self.channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-	self.pkt_dic = {'AP': {}, 'Station': {}, 'Traffic': {}}
-	self.vendor_dict = {}
+	#self.pkt_dic = {'AP': {}, 'Station': {}, 'Traffic': {}}
+	self.pkt_dic = [{}, {}, {}, {}, {}]
         self._get_mac_list()
 
     def _get_mac_list(self):
@@ -36,9 +41,9 @@ class PcapThread(threading.Thread):
                 lines = f.readlines()
 	        for l in lines:
 		    t = l.split('\t')
-		    self.vendor_dict[t[0]] = t[1]
+		    self.pkt_dic[WM_VENDOR][t[0]] = t[1].replace('\n', "")
     	except Exception as e:
-            print("Thread: error creating mac_list: %s " % e)
+            self._say("error creating mac_list: %s " % e)
 
     def _callback_stop(self, i):
         """ Callback check if sniffing over """
@@ -46,9 +51,11 @@ class PcapThread(threading.Thread):
 
     def _callback(self, pkt):
         """ Callback when packet is sniffed """
-        parse_pkt(self.pkt_dic, pkt)
+        current = self.channelthread.current_chan\
+                if self.channelthread else None
+        parse_pkt(self.pkt_dic, pkt, channel=current)
         if self.app and hasattr(self.app, "manager"):
-            self.app.manager.update_gui(self.pkt_dic, self.vendor_dict)
+            self.app.manager.update_gui(self.pkt_dic)
 
     def _wait_for_gui(self):
         """ Check if all screen are loaded """
@@ -60,23 +67,26 @@ class PcapThread(threading.Thread):
         return True
 
     def _say(self, s, **kwargs):
-        if self.args.debug:
+        if self.args and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
+            print(s, **kwargs)
+        else:
             print(s, **kwargs)
 
     def run(self):
         """ Thread either sniff or waits """
         self.started = True
+        self._say("using scapy (%s)" % scapy.config.conf.version)
         if not self.pcap_file:
             self._wait_for_gui()
             self.channelthread.start()
-            self._say("screens are ready - Starts sniffing on interface %s" % self.iface)
+            self._say("starts sniffing on interface %s" % self.iface)
 	    sniff(self.iface, prn=self._callback,
                     stop_filter=self._callback_stop, store=0)
         else:
             self.pkts = self.read_pkts(self.pcap_file)
             self._wait_for_gui()
-            self._say("screens are ready - Starts reading")
+            self._say("starts parsing")
             for pkt in self.pkts:
                 if self.stop:
                     return
@@ -86,7 +96,7 @@ class PcapThread(threading.Thread):
 
     def read_pkts(self, name):
         """ Load pkts from file """
-        print("Thread: reading file {name}".format(name=name))
+        self._say("reading file {name}".format(name=name))
         start_time = time.time()
         try:
                 packets = rdpcap(name)
