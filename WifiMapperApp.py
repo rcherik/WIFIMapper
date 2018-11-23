@@ -77,15 +77,9 @@ class WifiMapper(App):
                 content=self.manager,
                 screen="ap",
                 can_remove=False)
-        station_tab = WMPanelHeader(text="Stations",
-                args=self.args,
-                content=self.manager,
-                screen="station",
-                can_remove=False)
         self.panel = WMTabbedPanel(manager=self.manager,
                 args=self.args,
                 ap=ap_tab,
-                station=station_tab,
                 default_tab=ap_tab)
 	return self.panel
 

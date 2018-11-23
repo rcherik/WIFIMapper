@@ -5,13 +5,13 @@ from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle
 from kivy.uix.stacklayout import StackLayout
 from kivy.properties import ObjectProperty
-from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.lang import Builder
 """ Our stuff """
+import WMScreen
 
 Builder.load_file("Static/cardinfoscreen.kv")
 
-class CardInfoScreen(Screen):
+class CardInfoScreen(WMScreen.WMScreen):
 
     scroll_view = ObjectProperty(None)
     main_layout = ObjectProperty(None)

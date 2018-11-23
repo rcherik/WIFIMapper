@@ -7,11 +7,12 @@ from kivy.lang import Builder
 from kivy.app import App
 from kivy.uix.screenmanager import Screen
 """ Our stuff """
+import WMCard
 from CardInfoScreen import CardInfoScreen
 
 Builder.load_file("Static/card.kv")
 
-class Card(BoxLayout):
+class Card(WMCard.WMCard):
 
     def __init__(self, **kwargs):
         super(Card, self).__init__(**kwargs)
@@ -44,10 +45,14 @@ class Card(BoxLayout):
         value = parent.sort_by
         return self.get_value(value)
 
+    def _get_nested_attr(self, value):
+        try:
+            return attrgetter(value)(self)
+        except:
+            return None
+
     def get_value(self, value):
-        if hasattr(self, value):
-            return getattr(self, value)
-        return getattr(self.station, value)
+        return self._get_nested_attr(value)
 
     def add_label(self, key, text, max_height):
         text = text or ""

@@ -10,11 +10,12 @@ from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
 from operator import attrgetter
 """ Our stuff """
+import WMCard
 from CardInfoScreen import CardInfoScreen
 
 Builder.load_file("Static/apcard.kv")
 
-class APCard(BoxLayout):
+class APCard(WMCard.WMCard):
 
     mac = ObjectProperty(None)
     essid = ObjectProperty(None)
@@ -149,23 +150,7 @@ class APCard(BoxLayout):
         self._set_label(self.seen, s)
         self._check_width(len(s))
 
-    def _get_nested_attr(self, value):
-        try:
-            return attrgetter(value)(self)
-        except:
-            return None
-
-    def get_value(self, value):
-        """ Get value, generally for sort purpose """
-        return self._get_nested_attr(value)
-
-    def _say(self, s, **kwargs):
-        if self.args and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
-            print(s, **kwargs)
-        else:
-            print(s, **kwargs)
-
+    
     def on_touch_down(self, touch):
         """ Create a tab with card info when touched """
         if self.collide_point(*touch.pos) and hasattr(touch, "button")\

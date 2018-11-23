@@ -1,6 +1,6 @@
 from __future__ import print_function
 """ Kivy """
-from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+from kivy.uix.screenmanager import ScreenManager, FadeTransition
 from kivy.uix.tabbedpanel import TabbedPanelHeader, TabbedPanel
 from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
@@ -19,17 +19,26 @@ class WMScreenManager(ScreenManager):
     ap_screen = ObjectProperty(None)
     station_screen = ObjectProperty(None)
 
-    def __init__(self, **kwargs):
+    def _set_screens(self, **kwargs):
         self.ap_screen = CardListScreen(ap=True,
                 name="ap", **kwargs)
+        self.ap_unknown_screen = CardListScreen(ap_unknown=True,
+                name="ap_unknown", **kwargs)
         self.station_screen = CardListScreen(station=True,
                 name="station", **kwargs)
+        self.station_co_screen = CardListScreen(co_station=True,
+                name="co_station", **kwargs)
+
+    def __init__(self, **kwargs):
+        self.args = kwargs.get('args', None)
+        self._set_screens(**kwargs)
         super(WMScreenManager, self).__init__(**kwargs)
         self.app = kwargs.get('app', None)
         self.pcapthread = kwargs.get('pcapthread', None)
-        self.args = kwargs.get('args', None)
         self.add_widget(self.ap_screen)
+        self.add_widget(self.ap_unknown_screen)
         self.add_widget(self.station_screen)
+        self.add_widget(self.station_co_screen)
 	Clock.schedule_once(self.start_pcapthread)
 
     def start_pcapthread(self, *args):
@@ -37,11 +46,14 @@ class WMScreenManager(ScreenManager):
             self.pcapthread.start()
 
     def is_ready(self):
-        return self.ap_screen.ready and self.station_screen.ready
+        for screen in self.screens:
+            if not screen.ready:
+                return False
+        return True
 
     def update_gui(self, dic):
-        self.ap_screen.update_gui(dic)
-        self.station_screen.update_gui(dic)
+        for screen in self.screens:
+            screen.update_gui(dic)
 
     def remove(self, screen_name):
         widget = self.get_screen(screen_name)
@@ -65,14 +77,33 @@ class WMTabbedPanel(TabbedPanel):
     ap_tab = ObjectProperty(None)
     station_tab = ObjectProperty(None)
 
+    def _set_tab(self, **kwargs):
+        self.ap_unknown_tab = WMPanelHeader(text="Unknown AP",
+                args=self.args,
+                content=self.manager,
+                screen="ap_unknown",
+                can_remove=False)
+        self.station_tab = WMPanelHeader(text="Stations",
+                args=self.args,
+                content=self.manager,
+                screen="station",
+                can_remove=False)
+        self.co_station_tab = WMPanelHeader(text="Connected Stations",
+                args=self.args,
+                content=self.manager,
+                screen="co_station",
+                can_remove=False)
+
     def __init__(self, **kwargs):
 	self.manager = kwargs.get('manager', None)
 	self.ap_tab = kwargs.get('ap', None)
-	self.station_tab = kwargs.get('station', None)
-        super(WMTabbedPanel, self).__init__(**kwargs)
-        self.add_widget(self.station_tab)
-        self.header_dic = {"AP": self.ap_tab, "Station": self.station_tab}
         self.args = kwargs.get('args', None)
+        self._set_tab(**kwargs)
+        super(WMTabbedPanel, self).__init__(**kwargs)
+        self.header_dic = {"AP": self.ap_tab, "Station": self.station_tab}
+        self.add_widget(self.ap_unknown_tab)
+        self.add_widget(self.station_tab)
+        self.add_widget(self.co_station_tab)
 
     def add_header(self, key, screen, **kwargs):
         if key not in self.header_dic:

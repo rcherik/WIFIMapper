@@ -34,7 +34,7 @@ def get_rssi(packet):
 		:return: None or rssi
 		:rtype: None or int
 	"""
-	if scapy.config.conf.version != "2.2.0":
+	if scapy.config.conf.version == "2.2.0":
 		import scapy_ex
 	if hasattr(packet[RadioTap], 'dBm_AntSignal'):
 		return packet[RadioTap].dBm_AntSignal
