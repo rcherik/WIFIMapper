@@ -46,7 +46,7 @@ def stop_threads(pcapthread, channelthread):
 class WifiMapper(App):
 
     def __init__(self, args, **kwargs):
-	App.__init__(self)
+        App.__init__(self)
         self.panel = None
         self.args = args
         self.manager = None
@@ -79,13 +79,12 @@ class WifiMapper(App):
                 can_remove=False)
         self.panel = WMTabbedPanel(manager=self.manager,
                 args=self.args,
-                ap=ap_tab,
                 default_tab=ap_tab)
-	return self.panel
+        return self.panel
 
     def _keyboard_closed(self):
-	self._keyboard.unbind(on_key_down=self._on_keyboard_down)
-	self._keyboard = None
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard = None
 
     def _on_keyboard_up(self, keyboard, keycode):
         if keycode[1] == 'shift':
@@ -108,10 +107,10 @@ class WifiMapper(App):
             self.stop()
         if keycode[1] == 'shift':
             self.shift = True
-	return True
+        return True
 
     def _say(self, s, **kwargs):
-        if self.args.debug:
+        if hasattr(self, "args") and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
         else:

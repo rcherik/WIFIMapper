@@ -11,7 +11,7 @@ class WMScreen(Screen):
         pass
 
     def _say(self, s, **kwargs):
-        if self.args and self.args.debug:
+        if hasattr(self, "args") and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
         else:

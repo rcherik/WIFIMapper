@@ -1,17 +1,68 @@
 #:kivy 1.9.0
+#import WMActionDropDown WMActionDropDown
 
 <CardListScreen>:
-	scroll_view: scroll_view
-	stack_layout: stack_layout
+        scroll_view: scroll_view
+        stack_layout: stack_layout
+        action_bar: action_bar
+        button_dropdown: button_dropdown
 
-	BoxLayout:
-		orientation: 'vertical'
+        BoxLayout:
+                orientation: 'vertical'
 
-		ScrollView:
-			id: scroll_view
-			StackLayout:
-				id: stack_layout
-				orientation: 'lr-tb'
-				padding: 10
-				spacing: 10
-				size_hint_y: None
+                ActionBar:
+                        id: action_bar
+                        pos_hint: {'top': 1}
+                        ActionView:
+                                canvas.before:
+                                        Color:
+                                                rgba: (1, 0, 0, 0.1)
+                                        Rectangle:
+                                                pos: self.pos
+                                                size: self.size
+                                use_separator: True
+                                ActionPrevious:
+                                        title: 'Action Bar'
+                                        with_previous: False
+                                ActionOverflow:
+                                        #add img atlas://data/images/defaulttheme/overflow
+                                ActionButton:
+                                        text: "Smth"
+                                ActionButton:
+                                        important: True
+                                        text: 'Important'
+                                ActionSeparator:
+                                ActionButton:
+                                        text: 'Btn2'
+                                ActionCheck:
+                                        active: False
+                                        size_hint: (None, 1)
+                                ActionButton:
+                                        id: button_dropdown
+                                        text: 'DropDown'
+                                        size_hint: (None, 1)
+                                WMSpinner:
+                                        text: "Spinner"
+                                        values: ('val1', "smth", "lol", "prout")
+                                        size_hint: (None, None)
+                                        size: (100, 44)
+                                        pos_hint: {'center_x': .5, 'center_y': .5}
+                                ActionToggleButton:
+                                        text: 'Toggle'
+                                ActionGroup:
+                                        text: 'Group1'
+                                        ActionButton:
+                                                text: 'Grp1'
+                                        ActionButton:
+                                                text: 'Grp2'
+                                        ActionButton:
+                                                text: 'Grp3'
+
+                ScrollView:
+                        id: scroll_view
+                        StackLayout:
+                                id: stack_layout
+                                orientation: 'lr-tb'
+                                padding: 10
+                                spacing: 10
+                                size_hint_y: None

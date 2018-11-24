@@ -32,9 +32,10 @@ class PcapThread(threading.Thread):
         self.pcap_file = args.pcap or None
         self.iface = args.interface or (find_iface() if not args.pcap else None)
         self.channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-        #self.pkt_dic = {'AP': {}, 'Station': {}, 'Traffic': {}}
-        self.pkt_dic = [{}, {}, {}, {}, {}]
+        self.pkt_dic = [{}, {}, {}, {}, {}] #AP - Station - Traffic - Handshake - Vendor
         self._get_mac_list()
+        self.update_count = 0
+        self.update_every = kwargs.get('live_update', 10)
 
     def _get_mac_list(self):
         try:
@@ -56,7 +57,12 @@ class PcapThread(threading.Thread):
                 if self.channelthread else None
         parse_pkt(self.pkt_dic, pkt, channel=current)
         if self.app and hasattr(self.app, "manager"):
-            self.app.manager.update_gui(self.pkt_dic)
+            if self.pcap_file:
+                self.app.manager.update_gui(self.pkt_dic)
+            elif self.update_count == 0:
+                self.app.manager.update_gui(self.pkt_dic)
+        self.update_count = 0 if self.update_count > self.update_every\
+                else self.update_count + 1
 
     def _wait_for_gui(self):
         """ Check if all screen are loaded """
@@ -68,7 +74,7 @@ class PcapThread(threading.Thread):
         return True
 
     def _say(self, s, **kwargs):
-        if self.args and self.args.debug:
+        if hasattr(self, "args") and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
         else:

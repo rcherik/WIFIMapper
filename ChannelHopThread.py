@@ -53,7 +53,7 @@ class ChannelHopThread(threading.Thread):
                 time.sleep(WAIT_TIME)
 
     def _say(self, s, **kwargs):
-        if self.args.debug:
+        if hasattr(self, "args") and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
         else:

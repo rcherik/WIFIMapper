@@ -16,6 +16,8 @@ from APCard import APCard
 from backend_wifi_mapper.wifi_mapper import WM_AP, WM_STATION, WM_TRAFFIC
 from PcapThread import WM_VENDOR
 import WMScreen
+import WMActionDropDown
+import WMSpinner
 
 Builder.load_file("Static/cardlistscreen.kv")
 
@@ -31,6 +33,8 @@ class CardListScreen(WMScreen.WMScreen):
     main_layout = ObjectProperty(None)
     btn_layout = ObjectProperty(None)
     some_static_button = ObjectProperty(None)
+    button_dropdown = ObjectProperty(None)
+    dropdown = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         """ Delays view creation because some views are init in kv langage """
@@ -51,15 +55,23 @@ class CardListScreen(WMScreen.WMScreen):
 
 	Clock.schedule_once(self._create_view)
 
+    def _create_view(self, *args):
+        """ Create layout """
+        self.stack_layout.bind(
+                minimum_height=self.stack_layout.setter('height'))
+        self.dropdown = WMActionDropDown.WMActionDropDown()
+        self.button_dropdown.bind(on_release=self.dropdown.open)
+        self.dropdown.bind(on_select=lambda instance, x: setattr(self.button_dropdown, 'text', x))
+        self.ready = True
+
     def _set_screen_type(self, **kwargs):
+        """ Get type of pkt to show and base sorting """
         self.show_ap = kwargs.get('ap', False)
-        self.show_ap_unknown = kwargs.get('ap_unknown', False)
 	self.show_station = kwargs.get('station', False)
-	self.show_co_station = kwargs.get('co_station', False)
-        if self.show_ap or self.show_ap_unknown:
+        if self.show_ap:
             self.sort_by = 'ap.bssid'
             self.cmp_reverse = False
-        elif self.show_station or self.show_co_station:
+        elif self.show_station:
             self.sort_by = 'station.bssid'
             self.cmp_reverse = False
 
@@ -68,25 +80,19 @@ class CardListScreen(WMScreen.WMScreen):
 	self.rect.pos = instance.pos
 	self.rect.size = instance.size
 
-    def _create_view(self, *args):
-        """ Create layout """
-        self.stack_layout.bind(
-                minimum_height=self.stack_layout.setter('height'))
-        self.ready = True
-
     def _should_remove(self, mac, obj, update=False):
+        """ If card is not in sorting, remove """
         ret = False
-        if self.show_co_station and not obj.ap_bssid:
-            ret = True
+        """
         if self.show_station and obj.ap_bssid:
-            ret = True
-        if self.show_ap_unknown and obj.known:
             ret = True
         if self.show_ap and not obj.known:
             ret = True
+        
         if ret is True and update:
             card = self.card_dic.pop(mac)
             self.remove_widget(card)
+        """
         return ret
 
     def _set_ap_card(self, mac, ap, traffic, vendor):
@@ -164,13 +170,13 @@ class CardListScreen(WMScreen.WMScreen):
 
     def update_gui(self, dic):
         """ Update GUI """
-        if self.show_ap or self.show_ap_unknown:
+        if self.show_ap:
             ap = dic[WM_AP]
             for key, value in ap.iteritems():
                 vendor = dic[WM_VENDOR].get(key[:8].upper(), "")
                 traffic = dic[WM_TRAFFIC].get(key, None)
                 self._set_ap_card(key, ap[key], traffic, vendor)
-        if self.show_station or self.show_co_station:
+        if self.show_station:
             sta = dic[WM_STATION]
             for key, value in sta.iteritems():
                 probes = sta[key].get_probes()
@@ -182,7 +188,5 @@ class CardListScreen(WMScreen.WMScreen):
     def __repr__(self):
         s = "%s: showing " % (self.__class__.__name__)
         s += "ap" if self.show_ap else ""
-        s += "ap unknown" if self.show_ap_unknown else ""
         s += "station" if self.show_station else ""
-        s += "connected station" if self.show_co_station else ""
         return s

@@ -1,4 +1,5 @@
 from __future__ import print_function
+import copy
 """ Kivy """
 from kivy.uix.screenmanager import ScreenManager, FadeTransition
 from kivy.uix.tabbedpanel import TabbedPanelHeader, TabbedPanel
@@ -19,33 +20,26 @@ class WMScreenManager(ScreenManager):
     ap_screen = ObjectProperty(None)
     station_screen = ObjectProperty(None)
 
-    def _set_screens(self, **kwargs):
-        self.ap_screen = CardListScreen(ap=True,
-                name="ap", **kwargs)
-        self.ap_unknown_screen = CardListScreen(ap_unknown=True,
-                name="ap_unknown", **kwargs)
-        self.station_screen = CardListScreen(station=True,
-                name="station", **kwargs)
-        self.station_co_screen = CardListScreen(co_station=True,
-                name="co_station", **kwargs)
-
     def __init__(self, **kwargs):
+        """ Init screens before super for WMTabbedPanel switch_to """
+        self.to_init_screens = []
         self.args = kwargs.get('args', None)
-        self._set_screens(**kwargs)
-        super(WMScreenManager, self).__init__(**kwargs)
+        self._init_screens(**kwargs)
         self.app = kwargs.get('app', None)
         self.pcapthread = kwargs.get('pcapthread', None)
-        self.add_widget(self.ap_screen)
-        self.add_widget(self.ap_unknown_screen)
-        self.add_widget(self.station_screen)
-        self.add_widget(self.station_co_screen)
-	Clock.schedule_once(self.start_pcapthread)
+        super(WMScreenManager, self).__init__(**kwargs)
+        for screen in self.to_init_screens:
+            self.add_widget(screen)
+        del self.to_init_screens
+	Clock.schedule_once(self._manager_ready)
 
-    def start_pcapthread(self, *args):
+    def _manager_ready(self, *args):
+        """ When kv loaded, may start thread """
         if not self.pcapthread.started:
             self.pcapthread.start()
 
     def is_ready(self):
+        """ Called to check if all screens are init """
         for screen in self.screens:
             if not screen.ready:
                 return False
@@ -60,8 +54,24 @@ class WMScreenManager(ScreenManager):
         if widget:
             self.remove_widget(widget)
 
+    def _to_init_screen(self, **kwargs):
+        """ Create and postpone adding """
+        screen = CardListScreen(**kwargs)
+        self.to_init_screens.append(screen)
+
+    def _init_screens(self, **kwargs):
+        """ Init screens for later adding """
+        self._to_init_screen(ap=True,
+                name="ap", **kwargs)
+        self._to_init_screen(station=True,
+                name="station", **kwargs)
+
+    def add_cardlist_screen(self, **kwargs):
+        screen = CardListScreen(**kwargs)
+        self.add_widget(screen)
+
     def _say(self, s, **kwargs):
-        if self.args and self.args.debug:
+        if hasattr(self, "args") and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
         else:
@@ -77,33 +87,28 @@ class WMTabbedPanel(TabbedPanel):
     ap_tab = ObjectProperty(None)
     station_tab = ObjectProperty(None)
 
-    def _set_tab(self, **kwargs):
-        self.ap_unknown_tab = WMPanelHeader(text="Unknown AP",
-                args=self.args,
-                content=self.manager,
-                screen="ap_unknown",
-                can_remove=False)
-        self.station_tab = WMPanelHeader(text="Stations",
-                args=self.args,
-                content=self.manager,
+    def set_tab(self, key, **kwargs):
+        tab = WMPanelHeader(**kwargs)
+        self.header_dic[key] = tab
+
+    def _init_tabs(self):
+        self.set_tab("Station",
+                text="Stations",
                 screen="station",
-                can_remove=False)
-        self.co_station_tab = WMPanelHeader(text="Connected Stations",
                 args=self.args,
                 content=self.manager,
-                screen="co_station",
                 can_remove=False)
 
     def __init__(self, **kwargs):
 	self.manager = kwargs.get('manager', None)
 	self.ap_tab = kwargs.get('ap', None)
         self.args = kwargs.get('args', None)
-        self._set_tab(**kwargs)
+        self.header_dic = {}
+        self._init_tabs()
         super(WMTabbedPanel, self).__init__(**kwargs)
-        self.header_dic = {"AP": self.ap_tab, "Station": self.station_tab}
-        self.add_widget(self.ap_unknown_tab)
-        self.add_widget(self.station_tab)
-        self.add_widget(self.co_station_tab)
+        for key, value in self.header_dic.iteritems():
+            self.add_widget(value)
+        self.header_dic["AP"] = self.default_tab
 
     def add_header(self, key, screen, **kwargs):
         if key not in self.header_dic:
@@ -137,7 +142,7 @@ class WMTabbedPanel(TabbedPanel):
         self._current_tab = header
 
     def _say(self, s, **kwargs):
-        if self.args and self.args.debug:
+        if hasattr(self, "args") and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
         else:
@@ -171,7 +176,7 @@ class WMPanelHeader(TabbedPanelHeader):
         self._say('Panel: pressed at {pos}'.format(pos=pos))
 
     def _say(self, s, **kwargs):
-        if self.args and self.args.debug:
+        if hasattr(self, "args") and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
         else:
