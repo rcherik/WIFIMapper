@@ -28,7 +28,6 @@ class Card(WMCard.WMCard):
     def get_args(self, **kwargs):
         self.text = kwargs.get('text', None)
         self.station = kwargs.get('station', None)
-        self.vendor = None
 
     def create(self, **kwargs):
         self.get_args(**kwargs)
@@ -75,7 +74,7 @@ class Card(WMCard.WMCard):
         self.add_label("bssid", s, self.max_height)
         s = "probes: " + self.station.get_probes()
         self.add_label("probes", s, self.max_height)
-        self.add_label("vendor", self.vendor, self.max_height)
+        self.add_label("vendor", self.station.vendor, self.max_height)
 
     def create_text(self):
         infos = self.text.split(';')
@@ -106,7 +105,7 @@ class Card(WMCard.WMCard):
         self.update_label("bssid", s)
         s = "probes: " + self.station.get_probes()
         self.update_label("probes", s)
-        self.update_label("vendor", self.vendor)
+        self.update_label("vendor", self.station.vendor)
 
     def update_text(self):
         infos = self.text.split(';')

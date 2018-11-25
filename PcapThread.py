@@ -13,11 +13,9 @@ from scapy.error import Scapy_Exception
 """ Our Stuff """
 from backend_wifi_mapper.find_iface import find_iface
 from backend_wifi_mapper.wifi_mapper import parse_pkt, WM_AP, WM_STATION,\
-        WM_TRAFFIC, WM_HANDSHAKES
+        WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
 
 READ_TIME = 0.0005
-
-WM_VENDOR = max([WM_AP, WM_STATION, WM_TRAFFIC, WM_HANDSHAKES]) + 1
 
 class PcapThread(threading.Thread):
     def __init__(self, args, **kwargs):

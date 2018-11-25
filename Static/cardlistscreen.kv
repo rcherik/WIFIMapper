@@ -6,10 +6,11 @@
         stack_layout: stack_layout
         action_bar: action_bar
         action_previous: action_previous
-        important: important
+        label_curr_page: label_curr_page
+        label_curr_sort: label_curr_sort
         toggle: toggle
         dropdown_group: dropdown_group
-        overflow_group: overflow_group
+        page_layout: page_layout
 
         BoxLayout:
                 orientation: 'vertical'
@@ -31,35 +32,31 @@
                                         with_previous: False
                                 ActionOverflow:
                                         #add img atlas://data/images/defaulttheme/overflow
-                                ActionButton:
-                                        id: important
+                                WMActionLabel:
+                                        id: label_curr_page
                                         important: True
                                         text: 'Important'
+                                        width: 100
+                                        size_hint: (None, 1)
+                                WMActionLabel:
+                                        id: label_curr_sort
+                                        important: True
+                                        text: 'Important'
+                                        width: 150
+                                        size_hint: (None, 1)
                                 WMActionToggleButton:
                                         id: toggle
                                         text: 'Toggle'
                                         state: 'down'
                                 ActionGroup:
                                         id: dropdown_group
-                                        text: 'Sort by'
+                                        text: "Sort by"
                                         mode: 'spinner'
-                                        ActionButton:
-                                                text: 'Grp1'
-                                        ActionButton:
-                                                text: 'Grp2'
-                                        ActionButton:
-                                                text: 'Grp3'
-                                ActionGroup:
-                                        id: overflow_group
-                                        text: 'Page'
-                                        mode: 'normal'
-                                        ActionButton:
-                                                text: 'Grp1'
-                                        ActionButton:
-                                                text: 'Grp2'
 
-                ScrollView:
+                WMCardScrollView:
                         id: scroll_view
+                        bar_width: 2
+                        scroll_type: ['content']
                         StackLayout:
                                 id: stack_layout
                                 orientation: 'lr-tb'
@@ -67,16 +64,12 @@
                                 spacing: 10
                                 size_hint_y: None
 
-                AnchorLayout:
-                        anchor_x: 'center'
-                        anchor_y: 'bottom'
-                        size_hint: (1, 0.1)
-                        BoxLayout:
-                                orientation: 'horizontal'
-                                size_hint: (0.5, 0.5)
-                                Button:
-                                        text: "1"
-                                Button:
-                                        text: "1"
-                                Button:
-                                        text: "1"
+                BoxLayout:
+                        size_hint: (1, 0.05)
+                        AnchorLayout:
+                                anchor_x: 'left'
+                                anchor_y: 'bottom'
+                                BoxLayout:
+                                        id: page_layout
+                                        orientation: 'horizontal'
+                                        size_hint: (None, 1)

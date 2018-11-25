@@ -32,6 +32,7 @@ WM_AP = 0
 WM_STA = WM_STATION = 1
 WM_TRA = WM_TRAFFIC = 2
 WM_HDSHK = WM_HANDSHAKES = 3
+WM_VENDOR = 4
 
 #Macro for ID field in Dot11Elt
 ID_SSID = 0
@@ -132,6 +133,11 @@ def get_all_handshake_pcap(dic, name):
 		wrpcap(name, packets)
 	return ret
 
+def add_traffic(dic, addr):
+	if not is_multicast(addr) and isinstance(addr, str):
+		if addr not in dic[WM_TRA]:
+			dic[WM_TRA][addr] = Traffic(addr)
+
 def add_traffic_sent(dic, addr, to_addr=None, which=None):
 	"""
 		Adds sent to addr in Traffic key from parse() dictionnary
@@ -178,7 +184,8 @@ def add_station(dic, bssid, ap_bssid):
 		if is_multicast(ap_bssid):
 			ap_bssid = None
 		if bssid not in dic[WM_STATION]:
-			dic[WM_STATION][bssid] = Station(bssid, ap_bssid)
+			dic[WM_STATION][bssid] = Station(bssid, ap_bssid, vendor=dic[WM_VENDOR])
+			add_traffic(dic, bssid)
 		elif ap_bssid is not None and dic[WM_STATION][bssid].ap_bssid is None:
 			dic[WM_STATION][bssid].update(ap_bssid)
 
@@ -246,7 +253,8 @@ def get_ap_infos(packet, dic, channel=None):
 		else:
 			crypto.add("OPN")
 	if bssid not in dic[WM_AP]:
-		ap = AccessPoint(bssid, ssid, channel, '/'.join(crypto))
+		ap = AccessPoint(bssid, ssid, channel, '/'.join(crypto), vendor=dic[WM_VENDOR])
+		add_traffic(dic, bssid)
 		if packet.haslayer(Dot11Beacon):
 			ap.add_beacon()
 		else:
@@ -321,7 +329,8 @@ def add_ap(dic, bssid, seen):
 	"""
 	if not is_multicast(bssid):
 		if bssid not in dic[WM_AP]:
-			dic[WM_AP][bssid] = AccessPoint(bssid, seen=seen)
+			dic[WM_AP][bssid] = AccessPoint(bssid, seen=seen, vendor=dic[WM_VENDOR])
+			add_traffic(dic, bssid)
 		else:
 			dic[WM_AP][bssid].update(seen)
 

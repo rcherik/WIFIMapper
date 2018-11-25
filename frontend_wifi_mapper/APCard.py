@@ -30,7 +30,6 @@ class APCard(WMCard.WMCard):
         self.ap = kwargs.get('ap', None)
         self.args = kwargs.get('args', None)
         self.traffic = kwargs.get('traffic', None)
-        self.vendor = kwargs.get('vendor', None)
         self.monitor_fields = kwargs.get('monitor_fields', None)
         self.width_mult = 8
         self.final_width = 0
@@ -94,8 +93,8 @@ class APCard(WMCard.WMCard):
 
     def _set_mac(self):
         s = "[b]%s[/b]" % self.ap.bssid
-        if self.vendor:
-            s += " (%s)" % self.vendor
+        if self.ap.vendor:
+            s += " (%s)" % self.ap.vendor
         self._set_label(self.mac, s)
         self._check_width(len(s))
 
@@ -153,7 +152,7 @@ class APCard(WMCard.WMCard):
     def get_obj(self):
         return self.ap
     
-    def on_touch_down(self, touch):
+    def on_touch_up(self, touch):
         """ Create a tab with card info when touched """
         if self.collide_point(*touch.pos) and hasattr(touch, "button")\
                 and touch.button == "left":
@@ -163,7 +162,7 @@ class APCard(WMCard.WMCard):
             App.get_running_app().add_header(self.key, screen)
             #TODO open a tab with ap card infos screen
             return True
-        return super(APCard, self).on_touch_down(touch)
+        return super(APCard, self).on_touch_up(touch)
 
     def on_pressed(self, instance, pos):
         self._say("pressed at {pos}".format(pos=pos))

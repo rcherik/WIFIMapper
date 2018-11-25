@@ -27,7 +27,7 @@ class Traffic():
 		self.sent = 0
 		self.recv = 0
 		self.max_sig = 0
-		self.avg_sig = 0
+		self.avg_sig = property(self.get_rssi_avg, None)
 		self.min_sig = 0
 		self.first = True
 		self.sigs = 0
@@ -146,7 +146,7 @@ class Station():
 	id = 0
 	handshakes = {}
 
-	def __init__(self, bssid, ap_bssid):
+	def __init__(self, bssid, ap_bssid, vendor=None):
 		self.bssid = bssid
 		self.probe = set()
 		#self.ap_bssid = ap_bssid if not is_multicast(ap_bssid) else None
@@ -158,6 +158,7 @@ class Station():
 		self.steps_done = 0
 		self.success_hs = 0
 		self.new_data = True
+		self.vendor = vendor.get(bssid[:8].upper(), "") if vendor else None
 
 	def update(self, ap_bssid):
 		self.ap_bssid = ap_bssid
@@ -281,7 +282,8 @@ class Station():
 	Present in main dictionnary in dic['AP'][some_bssid_key]
 """
 class AccessPoint():
-	def __init__(self, bssid, ssid=None, channel=None, crypto=None, seen=None):
+	def __init__(self, bssid, ssid=None, channel=None,
+			crypto=None, seen=None, vendor=None):
 		self.bssid = bssid
 		self.ssid = ssid
 		self.channel = set([channel]) if channel else set()
@@ -291,6 +293,7 @@ class AccessPoint():
 		self.known = False
 		self.seen = set([seen]) if seen else set()
 		self.new_data = True
+		self.vendor = vendor.get(bssid[:8].upper(), "") if vendor else None
 
 	def add_beacon(self):
 		self.new_data = True

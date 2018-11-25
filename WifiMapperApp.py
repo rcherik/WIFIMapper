@@ -91,6 +91,7 @@ class WifiMapper(App):
             self.shift = False
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        ret = False
         if keycode[1] == 'tab':
             found = False
             direction = -1 if not self.shift else 1
@@ -103,11 +104,15 @@ class WifiMapper(App):
                     found = True
             if found:
                 self.panel.switch_to(self.panel.tab_list[loop])
+            return True
         if keycode[1] == 'escape':
             self.stop()
+            return True
         if keycode[1] == 'shift':
             self.shift = True
-        return True
+            return True
+        ret = self.manager.keyboard_down(keyboard, keycode, text, modifiers)
+        return ret
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:

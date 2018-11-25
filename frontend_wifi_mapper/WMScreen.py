@@ -10,9 +10,12 @@ class WMScreen(Screen):
     def update_gui(self, dic):
         pass
 
+    def keyboard_down(self, keyboard, keycode, text, modifiers):
+        pass
+
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
+            s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
         else:
             print(s, **kwargs)
