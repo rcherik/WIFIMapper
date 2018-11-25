@@ -1,0 +1,14 @@
+#:kivy 1.9.0
+
+<Card>:
+	padding: 10
+	height: 120
+	size_hint: (None, None)
+	orientation: 'vertical'
+
+	canvas.before:
+		Color:
+			rgba: (1, 1, 1, 0.1)
+		Rectangle:
+			pos: self.pos
+			size: self.size
