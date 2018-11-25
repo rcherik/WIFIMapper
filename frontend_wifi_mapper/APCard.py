@@ -42,13 +42,13 @@ class APCard(WMCard.WMCard):
 	Clock.schedule_once(self._create_view)
 
     def _create_view(self, *args):
-        self.update(self.ap, self.traffic, self.vendor)
+        self.update(self.ap, self.traffic)
 
-    def update(self, ap, traffic, vendor):
+    def update(self, ap, traffic):
         self.final_width = 0
         self.ap = ap
-        self.traffic = traffic
-        self.vendor = vendor
+        if traffic:
+            self.traffic = traffic
         self.has_changed = False
         self._set_mac()
         self._set_essid()
@@ -150,6 +150,8 @@ class APCard(WMCard.WMCard):
         self._set_label(self.seen, s)
         self._check_width(len(s))
 
+    def get_obj(self):
+        return self.ap
     
     def on_touch_down(self, touch):
         """ Create a tab with card info when touched """

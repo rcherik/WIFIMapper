@@ -5,7 +5,6 @@ class WMCard(BoxLayout):
 
     def __init__(self, **kwargs):
         super(WMCard, self).__init__(**kwargs)
-        #TODO
 
     def _get_nested_attr(self, value):
         try:
@@ -15,6 +14,9 @@ class WMCard(BoxLayout):
 
     def get_value(self, value):
         return self._get_nested_attr(value)
+
+    def get_obj(self):
+        pass
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:

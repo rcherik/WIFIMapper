@@ -16,7 +16,7 @@ class Card(WMCard.WMCard):
 
     def __init__(self, **kwargs):
         super(Card, self).__init__(**kwargs)
-        self.id = kwargs['id']
+        self.key = kwargs['key']
         self.elem_lst = {}
         self.width = 0
         self.card_mult = 8
@@ -28,7 +28,7 @@ class Card(WMCard.WMCard):
     def get_args(self, **kwargs):
         self.text = kwargs.get('text', None)
         self.station = kwargs.get('station', None)
-        self.vendor = kwargs.get('vendor', None)
+        self.vendor = None
 
     def create(self, **kwargs):
         self.get_args(**kwargs)
@@ -37,6 +37,9 @@ class Card(WMCard.WMCard):
         elif self.station:
             self.create_station()
 	    self.is_connected()
+
+    def get_obj(self):
+        return self.station
 
     def parent_get_value(self):
         parent = self.parent
@@ -114,8 +117,8 @@ class Card(WMCard.WMCard):
         if self.collide_point(*touch.pos):
             print("Card: Touched !")
             self.pressed = touch.pos
-            screen = CardInfoScreen(name=self.id)
-            App.get_running_app().add_header(self.id, screen)
+            screen = CardInfoScreen(name=self.key)
+            App.get_running_app().add_header(self.key, screen)
             #TODO open a tab with card infos screen
             return True
         return super(Card, self).on_touch_down(touch)

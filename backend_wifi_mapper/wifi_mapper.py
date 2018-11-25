@@ -180,7 +180,7 @@ def add_station(dic, bssid, ap_bssid):
 		if bssid not in dic[WM_STATION]:
 			dic[WM_STATION][bssid] = Station(bssid, ap_bssid)
 		elif ap_bssid is not None and dic[WM_STATION][bssid].ap_bssid is None:
-			dic[WM_STATION][bssid].ap_bssid = ap_bssid
+			dic[WM_STATION][bssid].update(ap_bssid)
 
 def add_rssi(rssi, dic, addr):
 	"""
@@ -213,11 +213,11 @@ def get_ap_infos(packet, dic, channel=None):
 	bssid = packet[layer].addr3
 	if is_multicast(bssid):
 		return
-	if bssid in dic[WM_AP] and dic[WM_AP][bssid].is_full():
+	if bssid in dic[WM_AP]:
 		if packet.haslayer(Dot11Beacon):
-			dic[WM_AP][bssid].beacons += 1
+			dic[WM_AP][bssid].add_beacon()
 		else:
-			dic[WM_AP][bssid].proberesp += 1
+			dic[WM_AP][bssid].add_proberesp()
 		return
 	elem = packet[Dot11Elt]
 	capabilities = packet.sprintf("{Dot11Beacon:%Dot11Beacon.cap%}"
@@ -248,10 +248,9 @@ def get_ap_infos(packet, dic, channel=None):
 	if bssid not in dic[WM_AP]:
 		ap = AccessPoint(bssid, ssid, channel, '/'.join(crypto))
 		if packet.haslayer(Dot11Beacon):
-			ap.beacons += 1
+			ap.add_beacon()
 		else:
-			ap.proberesp += 1
-		ap.known = True
+			ap.add_proberesp()
 		dic[WM_AP][bssid] = ap 
 	else:
 		ap = dic[WM_AP][bssid].check_infos(ssid, channel, '/'.join(crypto))

@@ -151,11 +151,21 @@ class Station():
 		self.probe = set()
 		#self.ap_bssid = ap_bssid if not is_multicast(ap_bssid) else None
 		self.ap_bssid = ap_bssid
+		self.connected = True if ap_bssid else False
 		Station.id += 1
 		self.id = Station.id
 		self.eapol = {}
 		self.steps_done = 0
 		self.success_hs = 0
+		self.new_data = True
+
+	def update(self, ap_bssid):
+		self.ap_bssid = ap_bssid
+		self.connected = True if ap_bssid else False
+		self.new_data = True
+
+	def __getitem__(self, key):
+		return self.__dict__[key]
 
 	def get_eapol_key(self, ap_bssid, key):
 		if ap_bssid in self.eapol and key in self.eapol[ap_bssid]:
@@ -210,6 +220,7 @@ class Station():
 			ea["kicked"] += 1
 		if ap_bssid == self.ap_bssid:
 			self.ap_bssid = None
+			self.connected = False
 
 	def add_pre_eapol(self, ap_bssid, type):
 		"""
@@ -273,27 +284,37 @@ class AccessPoint():
 	def __init__(self, bssid, ssid=None, channel=None, crypto=None, seen=None):
 		self.bssid = bssid
 		self.ssid = ssid
-		self.channel = channel
+		self.channel = set([channel]) if channel else set()
 		self.crypto = crypto
 		self.beacons = 0
 		self.proberesp = 0
 		self.known = False
-		self.seen = set()
-		if seen is not None:
-			self.seen.add(seen)
+		self.seen = set([seen]) if seen else set()
+		self.new_data = True
+
+	def add_beacon(self):
+		self.new_data = True
+		self.beacons += 1
+		self.known = True
+
+	def add_proberesp(self):
+		self.new_data = True
+		self.proberesp += 1
+		self.known = True
 
 	def is_known(self):
-		"""
-			Consider is known only if there was beacons or proberesp
-			Used in web interface to get red table rows
-		"""
 		if self.beacons or self.proberesp:
 			return True
 		return self.known
 
+	def __getitem__(self, key):
+		return self.__dict__[key]
+
 	def update(self, frame):
 		#Adds a layer where AP has been seen
-		self.seen.add(frame)
+		if frame not in self.seen:
+			self.seen.add(frame)
+			self.new_data = True
 
 	def get_seen(self):
 		#Used in web interface to get reasons why AP is in table
@@ -308,10 +329,13 @@ class AccessPoint():
 	def check_infos(self, ssid, channel, crypto):
 		#Might get some more infos in beacons
 		if self.ssid is None:
+			self.new_data = True
 			self.ssid = ssid
-		if self.channel is None:
-			self.channel = channel
-		if self.crypto is None:
+		if channel not in self.channel:
+			self.new_data = True
+			self.channel.add(channel)
+		if self.crypto is None or len(self.crypto) < len(crypto):
+			self.new_data = True
 			self.crypto = crypto
 	
 	def is_full(self):

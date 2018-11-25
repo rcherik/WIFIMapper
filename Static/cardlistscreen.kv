@@ -5,7 +5,11 @@
         scroll_view: scroll_view
         stack_layout: stack_layout
         action_bar: action_bar
-        button_dropdown: button_dropdown
+        action_previous: action_previous
+        important: important
+        toggle: toggle
+        dropdown_group: dropdown_group
+        overflow_group: overflow_group
 
         BoxLayout:
                 orientation: 'vertical'
@@ -22,41 +26,37 @@
                                                 size: self.size
                                 use_separator: True
                                 ActionPrevious:
+                                        id: action_previous
                                         title: 'Action Bar'
                                         with_previous: False
                                 ActionOverflow:
                                         #add img atlas://data/images/defaulttheme/overflow
                                 ActionButton:
-                                        text: "Smth"
-                                ActionButton:
+                                        id: important
                                         important: True
                                         text: 'Important'
-                                ActionSeparator:
-                                ActionButton:
-                                        text: 'Btn2'
-                                ActionCheck:
-                                        active: False
-                                        size_hint: (None, 1)
-                                ActionButton:
-                                        id: button_dropdown
-                                        text: 'DropDown'
-                                        size_hint: (None, 1)
-                                WMSpinner:
-                                        text: "Spinner"
-                                        values: ('val1', "smth", "lol", "prout")
-                                        size_hint: (None, None)
-                                        size: (100, 44)
-                                        pos_hint: {'center_x': .5, 'center_y': .5}
-                                ActionToggleButton:
+                                WMActionToggleButton:
+                                        id: toggle
                                         text: 'Toggle'
+                                        state: 'down'
                                 ActionGroup:
-                                        text: 'Group1'
+                                        id: dropdown_group
+                                        text: 'Sort by'
+                                        mode: 'spinner'
                                         ActionButton:
                                                 text: 'Grp1'
                                         ActionButton:
                                                 text: 'Grp2'
                                         ActionButton:
                                                 text: 'Grp3'
+                                ActionGroup:
+                                        id: overflow_group
+                                        text: 'Page'
+                                        mode: 'normal'
+                                        ActionButton:
+                                                text: 'Grp1'
+                                        ActionButton:
+                                                text: 'Grp2'
 
                 ScrollView:
                         id: scroll_view
@@ -66,3 +66,17 @@
                                 padding: 10
                                 spacing: 10
                                 size_hint_y: None
+
+                AnchorLayout:
+                        anchor_x: 'center'
+                        anchor_y: 'bottom'
+                        size_hint: (1, 0.1)
+                        BoxLayout:
+                                orientation: 'horizontal'
+                                size_hint: (0.5, 0.5)
+                                Button:
+                                        text: "1"
+                                Button:
+                                        text: "1"
+                                Button:
+                                        text: "1"
