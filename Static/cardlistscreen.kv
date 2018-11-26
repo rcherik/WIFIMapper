@@ -6,6 +6,7 @@
         stack_layout: stack_layout
         action_bar: action_bar
         action_previous: action_previous
+        action_pause: action_pause
         label_curr_page: label_curr_page
         label_curr_sort: label_curr_sort
         toggle: toggle
@@ -21,7 +22,7 @@
                         ActionView:
                                 canvas.before:
                                         Color:
-                                                rgba: (1, 0, 0, 0.1)
+                                                rgba: (0, 0.25, 0.75, 0.3)
                                         Rectangle:
                                                 pos: self.pos
                                                 size: self.size
@@ -46,8 +47,14 @@
                                         size_hint: (None, 1)
                                 WMActionToggleButton:
                                         id: toggle
-                                        text: 'Toggle'
+                                        text: 'Hide'
                                         state: 'down'
+                                ActionGroup:
+                                        id: dropdown_group
+                                        text: "Actions"
+                                        WMActionPauseToggleButton:
+                                                id: action_pause
+                                                text: "Pause"
                                 ActionGroup:
                                         id: dropdown_group
                                         text: "Sort by"
@@ -56,7 +63,7 @@
                 WMCardScrollView:
                         id: scroll_view
                         bar_width: 2
-                        scroll_type: ['content']
+                        scroll_type: ['bars']
                         StackLayout:
                                 id: stack_layout
                                 orientation: 'lr-tb'

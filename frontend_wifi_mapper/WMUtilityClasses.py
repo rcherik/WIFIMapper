@@ -45,16 +45,22 @@ class WMScreenManager(ScreenManager):
                 return False
         return True
 
+    def set_input_pause(self, val):
+        for screen in self.screens:
+            screen.set_pause(val)
+
     def keyboard_down(self, keyboard, keycode, text, modifiers):
         screen = self.get_screen(self.current)
-        print(screen)
         if screen:
             screen.keyboard_down(keyboard, keycode, text, modifiers)
         return True
 
     def update_gui(self, dic):
         for screen in self.screens:
-            screen.update_gui(dic)
+            if self.current == screen.name:
+                screen.update_gui(dic, current=True)
+            else:
+                screen.update_gui(dic, current=False)
 
     def remove(self, screen_name):
         widget = self.get_screen(screen_name)
@@ -79,7 +85,7 @@ class WMScreenManager(ScreenManager):
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
+            s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
         else:
             print(s, **kwargs)
@@ -99,7 +105,7 @@ class WMTabbedPanel(TabbedPanel):
         self.header_dic[key] = tab
 
     def _init_tabs(self):
-        self.set_tab("Station",
+        self.set_tab("Stations",
                 text="Stations",
                 screen="station",
                 args=self.args,
@@ -116,6 +122,10 @@ class WMTabbedPanel(TabbedPanel):
         for key, value in self.header_dic.iteritems():
             self.add_widget(value)
         self.header_dic["AP"] = self.default_tab
+
+    def change_header(self, key, txt):
+        if key in self.header_dic:
+            self.header_dic[key].text = txt
 
     def add_header(self, key, screen, **kwargs):
         if key not in self.header_dic:
@@ -150,7 +160,7 @@ class WMTabbedPanel(TabbedPanel):
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
+            s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
         else:
             print(s, **kwargs)
@@ -172,6 +182,8 @@ class WMPanelHeader(TabbedPanelHeader):
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
             self.pressed = touch.pos
+            if not hasattr(touch, "button"):
+                return super(WMPanelHeader, self).on_touch_down(touch)
             if touch.button == "middle" and self.can_remove:
                 self.master.remove_header(self.text)
                 return True

@@ -62,11 +62,25 @@ class WifiMapper(App):
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self._keyboard.bind(on_key_up=self._on_keyboard_up)
 
+    def change_header(self, key, txt):
+        self.panel.change_header(key, txt)
+
     def add_header(self, key, screen, **kwargs):
         self.panel.add_header(key, screen, **kwargs)
 
     def remove_header(self, string):
         self.panel.remove_header(string)
+
+    def pause_input(self):
+        r = self.pcapthread.pause_input()
+        self.manager.set_input_pause(r)
+
+    def resume_input(self):
+        r = self.pcapthread.resume_input()
+        self.manager.set_input_pause(r)
+
+    def is_input(self):
+        return self.pcapthread.is_input()
 
     def build(self):
         self.manager = WMScreenManager(app=self,
@@ -116,7 +130,7 @@ class WifiMapper(App):
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
+            s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
         else:
             print(s, **kwargs)

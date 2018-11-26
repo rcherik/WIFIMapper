@@ -30,7 +30,6 @@ class APCard(WMCard.WMCard):
         self.ap = kwargs.get('ap', None)
         self.args = kwargs.get('args', None)
         self.traffic = kwargs.get('traffic', None)
-        self.monitor_fields = kwargs.get('monitor_fields', None)
         self.width_mult = 8
         self.final_width = 0
         self.space = 2
@@ -86,9 +85,7 @@ class APCard(WMCard.WMCard):
 
     def _set_label(self, label, string):
         if string != label.text:
-            for mon in self.monitor_fields:
-                if label == self._get_nested_attr(mon):
-                    self.has_changed = True
+            self.has_changed = True
             label.text = string
 
     def _set_mac(self):
@@ -102,6 +99,8 @@ class APCard(WMCard.WMCard):
         s = ""
         if self.ap.ssid:
             s = "[b][i]%s[/i][/b]" % (self.ap.ssid)
+        if self.ap.channel:
+            s += " (%s)" % ','.join(str(c) for c in self.ap.channel)
         self._set_label(self.essid, s)
         self._check_width(len(s))
 
@@ -109,7 +108,10 @@ class APCard(WMCard.WMCard):
         crypto = ""
         if self.ap.crypto:
             crypto = "[i]%s[/i]" % (self.ap.crypto or "")
-        wps = "[i]/WPS/[/i]"
+        wps_str = "has wps" if self.ap.wps is True else ""
+        if self.ap.wps is None:
+            wps_str = ""
+        wps = "[i]%s[/i]" % (wps_str)
         self._set_label(self.security_box.security, crypto)
         self._set_label(self.security_box.wps, wps)
         min_len = 0.5 * self.width
@@ -117,10 +119,10 @@ class APCard(WMCard.WMCard):
         self._check_width(len(crypto) + self.space + len(wps))
 
     def _set_data(self):
-        rcv = "rcv: %s" % (self.traffic.recv if self.traffic else 0)
-        sent = "sent: %s" % (self.traffic.sent if self.traffic else 0)
-        beacons = "beacons: %s" % self.ap.beacons
-        connected = "prsp: %s" % self.ap.proberesp
+        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
+        sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
+        beacons = "beacons: %d" % self.ap.beacons
+        connected = "prsp: %d" % self.ap.proberesp
         self._set_label(self.data_box.rcv, rcv)
         self._set_label(self.data_box.sent, sent)
         self._set_label(self.data_box.beacons, beacons)
@@ -130,11 +132,11 @@ class APCard(WMCard.WMCard):
         self._check_width(len1 if len1 > len2 else len2)
 
     def _set_signal(self):
-        min_sig = "min: %s" % (self.traffic.min_sig\
+        min_sig = "min: %d" % (self.traffic.min_sig\
                 if self.traffic else 0)
-        avg_sig = "avg: %s" % (self.traffic.get_rssi_avg()\
+        avg_sig = "avg: %0.1f" % (self.traffic.avg_sig\
                 if self.traffic else 0)
-        max_sig = "max: %s" % (self.traffic.max_sig\
+        max_sig = "max: %d" % (self.traffic.max_sig\
                 if self.traffic else 0)
         self._set_label(self.signal_box.min_sig, min_sig)
         self._set_label(self.signal_box.avg_sig, avg_sig)

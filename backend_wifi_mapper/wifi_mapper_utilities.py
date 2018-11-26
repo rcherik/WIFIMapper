@@ -15,6 +15,13 @@ DATA = 2
 #Macro for FCfield flags
 FC_RETRANSMIT = 0x8
 
+#Macro for fields
+WM_AP = 0
+WM_STA = WM_STATION = 1
+WM_TRA = WM_TRAFFIC = 2
+WM_HDSHK = WM_HANDSHAKES = 3
+WM_VENDOR = 4
+
 def is_control(packet):
 	#Check if packet type is control
 	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS

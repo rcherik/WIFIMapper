@@ -10,4 +10,4 @@ class WMActionToggleButton(ActionToggleButton):
 
     def on_state(self, widget, value):
         if hasattr(self, 'screen') and self.screen:
-            self.screen.reload_gui()
+            self.screen.reload_gui(current=True)

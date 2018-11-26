@@ -10,7 +10,6 @@ class WMCardScrollView(ScrollView):
 	dsx, dsy = self.convert_distance_to_scroll(0, value)
 	sxp = min(1, max(0, self.scroll_x - dsx))
 	syp = min(1, max(0, self.scroll_y - dsy))
-	print(syp)
 	if animate:
 	    if animate is True:
 		animate = {'d': 0.2, 't': 'out_quad'}

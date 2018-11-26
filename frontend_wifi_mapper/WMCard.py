@@ -20,7 +20,7 @@ class WMCard(BoxLayout):
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
+            s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
         else:
             print(s, **kwargs)

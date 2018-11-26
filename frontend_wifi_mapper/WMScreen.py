@@ -7,7 +7,10 @@ class WMScreen(Screen):
         super(WMScreen, self).__init__(**kwargs)
         #TODO
 
-    def update_gui(self, dic):
+    def update_gui(self, dic, **kwargs):
+        pass
+
+    def set_pause(self, val):
         pass
 
     def keyboard_down(self, keyboard, keycode, text, modifiers):

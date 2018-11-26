@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 import sys
+import struct
 #Import logging to silence scapy IPV6 error
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
@@ -24,19 +25,13 @@ from wifi_mapper_ds import WM_DS_SRC, WM_DS_TRANS, WM_DS_RCV, WM_DS_DST,\
 from wifi_mapper_classes import AccessPoint, Station, Traffic,\
 		WM_TRA_SENT, WM_TRA_RECV,\
 		WM_TRA_ALL, WM_TRA_MNG, WM_TRA_CTRL, WM_TRA_DATA
-from wifi_mapper_utilities import is_multicast, is_retransmitted, is_control, is_data
+from wifi_mapper_utilities import is_multicast, is_retransmitted, is_control, is_data,\
+			WM_AP, WM_STATION, WM_TRA, WM_HDSHK, WM_VENDOR
 import time
-
-#Macro for fields
-WM_AP = 0
-WM_STA = WM_STATION = 1
-WM_TRA = WM_TRAFFIC = 2
-WM_HDSHK = WM_HANDSHAKES = 3
-WM_VENDOR = 4
 
 #Macro for ID field in Dot11Elt
 ID_SSID = 0
-ID_DS = 3  #Direct Spectrum/Channel
+ID_CHANNEL = 3  #Direct Spectrum/Channel
 ID_RSN = 48  #Robust Security Network/WPA2
 ID_VENDOR = 221  #potentially WPA
 
@@ -136,7 +131,7 @@ def get_all_handshake_pcap(dic, name):
 def add_traffic(dic, addr):
 	if not is_multicast(addr) and isinstance(addr, str):
 		if addr not in dic[WM_TRA]:
-			dic[WM_TRA][addr] = Traffic(addr)
+			dic[WM_TRA][addr] = Traffic(dic, addr)
 
 def add_traffic_sent(dic, addr, to_addr=None, which=None):
 	"""
@@ -168,7 +163,7 @@ def add_traffic_recv(dic, addr, from_addr=None, which=None):
 		return
 	if not is_multicast(addr) and isinstance(addr, str):
 		if addr not in dic[WM_TRA]:
-			dic[WM_TRA][addr] = Traffic(addr)
+			dic[WM_TRA][addr] = Traffic(dic, addr)
 		dic[WM_TRA][addr].add_recv(from_addr, which)
 
 def add_station(dic, bssid, ap_bssid):
@@ -183,8 +178,10 @@ def add_station(dic, bssid, ap_bssid):
 	if not is_multicast(bssid) and isinstance(bssid, str):
 		if is_multicast(ap_bssid):
 			ap_bssid = None
+		elif ap_bssid not in dic[WM_AP]:
+			dic[WM_AP][ap_bssid] = AccessPoint(dic, ap_bssid, vendor=dic[WM_VENDOR])
 		if bssid not in dic[WM_STATION]:
-			dic[WM_STATION][bssid] = Station(bssid, ap_bssid, vendor=dic[WM_VENDOR])
+			dic[WM_STATION][bssid] = Station(dic, bssid, ap_bssid, vendor=dic[WM_VENDOR])
 			add_traffic(dic, bssid)
 		elif ap_bssid is not None and dic[WM_STATION][bssid].ap_bssid is None:
 			dic[WM_STATION][bssid].update(ap_bssid)
@@ -201,9 +198,31 @@ def add_rssi(rssi, dic, addr):
 	if rssi is not None and not is_multicast(addr) and\
 		isinstance(addr, str):
 		if addr not in dic[WM_TRA]:
-			dic[WM_TRA][addr] = Traffic(addr)
+			dic[WM_TRA][addr] = Traffic(dic, addr)
 		traffic = dic[WM_TRA][addr]
 		traffic.add_rssi(rssi)
+
+def get_wps(elem):
+	"""
+	wps_format = {
+		"Type":"B", #1
+		"DataElemVersion":"H", #2
+		"DataElemVersionLen":"H", #2
+		"Version":"B", #1
+		"DataElemWPS":"H", #2
+		"DataElemWPSLen":"H", #2
+		"WPSSetup":"B", #1
+	}
+	"""
+	data = ">BHHBHHB"
+	try:
+		decoded = struct.unpack(data, elem.info[:11])
+	except Exception as e:
+		print(e.message)
+		return None
+	if len(decoded) < 6:
+		return None
+	return int(decoded[6]) == 0x2
 
 def get_ap_infos(packet, dic, channel=None):
 	"""
@@ -229,7 +248,7 @@ def get_ap_infos(packet, dic, channel=None):
 	elem = packet[Dot11Elt]
 	capabilities = packet.sprintf("{Dot11Beacon:%Dot11Beacon.cap%}"
 						"{Dot11ProbeResp:%Dot11ProbeResp.cap%}").split('+')
-	ssid, channel = None, None
+	ssid, channel, wps = None, None, None
 	crypto = set()
 	while isinstance(elem, Dot11Elt):
 		#Some encoding errors there
@@ -238,14 +257,18 @@ def get_ap_infos(packet, dic, channel=None):
 				ssid = unicode(elem.info, 'utf-8')
 			except UnicodeDecodeError:
 				ssid = ""
-		elif elem.ID == ID_DS and len(elem.info) == 1:
+		elif elem.ID == ID_CHANNEL and len(elem.info) == 1:
 			#elem.info not always a char
 			channel = ord(elem.info)
 		elif elem.ID == ID_RSN:
 			crypto.add("WPA2")
-		elif elem.ID == ID_VENDOR and hasattr(elem, "info") and\
-			elem.info.startswith('\x00P\xf2\x01\x01\x00'):
-			crypto.add("WPA")
+		elif elem.ID == ID_VENDOR:
+			if hasattr(elem, "info") and\
+					elem.info.startswith('\x00P\xf2\x01\x01\x00'):
+				crypto.add("WPA")
+			if hasattr(elem, "oui") and elem.oui == 0x50f2\
+				and hasattr(elem, "info") and elem.info.startswith('\x04'):
+				wps = get_wps(elem)
 		elem = elem.payload
 	if not crypto:
 		if 'privacy' in capabilities:
@@ -253,7 +276,8 @@ def get_ap_infos(packet, dic, channel=None):
 		else:
 			crypto.add("OPN")
 	if bssid not in dic[WM_AP]:
-		ap = AccessPoint(bssid, ssid, channel, '/'.join(crypto), vendor=dic[WM_VENDOR])
+		ap = AccessPoint(dic, bssid, ssid=ssid, channel=channel,
+				crypto='/'.join(crypto), vendor=dic[WM_VENDOR], wps=wps)
 		add_traffic(dic, bssid)
 		if packet.haslayer(Dot11Beacon):
 			ap.add_beacon()
@@ -261,7 +285,8 @@ def get_ap_infos(packet, dic, channel=None):
 			ap.add_proberesp()
 		dic[WM_AP][bssid] = ap 
 	else:
-		ap = dic[WM_AP][bssid].check_infos(ssid, channel, '/'.join(crypto))
+		ap = dic[WM_AP][bssid].update(ssid=ssid, channel=channel,
+				crypto='/'.join(crypto), wps=wps)
 
 #Macro for EAPOL flags
 EAPOL_KEY_TYPE = 1 << 3
@@ -303,6 +328,10 @@ def wpa_step4(key):
 
 def add_handshake(packet, dic, station, bssid):
 	key = packet[EAPOL]
+	if not key:
+		print("EAPOL with no layer ??")
+		packet.show()
+		return
 	step = None
 	rssi = rssi_scapy.get_rssi(packet)
 	if wpa_step1(key):
@@ -329,7 +358,7 @@ def add_ap(dic, bssid, seen):
 	"""
 	if not is_multicast(bssid):
 		if bssid not in dic[WM_AP]:
-			dic[WM_AP][bssid] = AccessPoint(bssid, seen=seen, vendor=dic[WM_VENDOR])
+			dic[WM_AP][bssid] = AccessPoint(dic, bssid, seen=seen, vendor=dic[WM_VENDOR])
 			add_traffic(dic, bssid)
 		else:
 			dic[WM_AP][bssid].update(seen)
