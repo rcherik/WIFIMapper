@@ -20,6 +20,7 @@
                         id: action_bar
                         pos_hint: {'top': 1}
                         ActionView:
+                                spacing: 15
                                 canvas.before:
                                         Color:
                                                 rgba: (0, 0.25, 0.75, 0.3)
@@ -55,6 +56,12 @@
                                         WMActionPauseToggleButton:
                                                 id: action_pause
                                                 text: "Pause"
+                                WMActionInput:
+                                        id: input
+                                        hint_text: "Sort..."
+                                        width: 200
+                                        size_hint: (None, 1)
+                                        multiline: False
                                 ActionGroup:
                                         id: dropdown_group
                                         text: "Sort by"

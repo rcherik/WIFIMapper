@@ -24,6 +24,7 @@ import WMSortActionToggleButton
 import WMPageToggleButton
 import WMCardScrollView
 import WMActionPauseToggleButton
+import WMActionInput
 
 Builder.load_file("Static/cardlistscreen.kv")
 

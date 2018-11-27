@@ -4,6 +4,9 @@ import sys
 import os
 import signal
 
+import gi
+gi.require_version('Gtk', '3.0')
+
 """ Forces kivy to not interpret args """
 os.environ['KIVY_NO_ARGS'] = "1"
 

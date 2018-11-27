@@ -4,7 +4,8 @@ NAME=application.py
 	| /usr/bin/awk '{print $$1}')
 INTERFACE=$(shell /sbin/iwconfig 2>&- |\
 		  /bin/grep 'IEEE 802.11' |\
-		  /usr/bin/awk '{print $$1}')
+		  /usr/bin/awk '{print $$1}' |\
+		  head -1)
 PYTHON=/usr/bin/python
 SUDO=/usr/bin/sudo
 APP=application.py
@@ -50,4 +51,4 @@ clean:
 	rm -f backend_wifi_mapper/*.pyc
 	rm -f frontend_wifi_mapper/*.pyc
 
-.PHONY: managed monitor interface read clean sniff
+.PHONY: managed monitor interface read read_1 read_2 clean sniff test
