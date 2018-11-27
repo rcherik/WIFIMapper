@@ -1,9 +1,12 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-from wifi_mapper_utilities import is_multicast, is_retransmitted
+from wifi_mapper_utilities import is_broadcast, is_retransmitted
 from wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
+from scapy.all import Dot11Elt
+import struct
+
 """
 	Classes used in dictionnary from pcap_paser.parse method
 """
@@ -23,8 +26,8 @@ WM_TRA_DATA = 3
 
 class Traffic():
 
-	def __init__(self, dic, station):
-		self.station = station
+	def __init__(self, dic, bssid):
+		self.bssid = bssid
 		self.sent = 0
 		self.recv = 0
 		self.max_sig = 0
@@ -35,19 +38,6 @@ class Traffic():
 		self.n = 0
 		self.dic = dic
 		self.traffic = {}
-
-	def add_rssi(self, signal):
-		if not isinstance(signal, int):
-			return
-		if self.first or signal > self.max_sig:
-			self.max_sig = signal
-		if self.first or signal < self.min_sig:
-			self.min_sig = signal
-		self.first = False
-		self.avg_sig = self.avg_sig\
-				+ ((signal - self.avg_sig) / (self.n + 1))
-		self.sigs += signal
-		self.n += 1
 
 	def prepare_traffic_dict(self, addr):
 		self.traffic[addr] = {
@@ -81,8 +71,6 @@ class Traffic():
 		return 0
 
 	def add_sent(self, addr, which=None):
-		if not isinstance(addr, str):
-			return
 		self.sent += 1
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
@@ -100,8 +88,6 @@ class Traffic():
 			self.traffic[addr]['sent']['management'] += 1
 
 	def add_recv(self, addr, which=None):
-		if not isinstance(addr, str):
-			return
 		self.recv += 1
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
@@ -148,220 +134,166 @@ WM_STA_CURRENT_STEP = 15
 class Station():
 
 	id = 0
-	handshakes = {}
 
-	def __init__(self, dic, bssid, ap_bssid, vendor=None):
-		self.bssid = bssid
+	def __init__(self, dic, bssid, oui_dict=None):
 		self.dic = dic
-		self.probe = set()
-		self.ap_bssid = ap_bssid
-		if ap_bssid:
-			self.dic[WM_AP][ap_bssid].client_connected(bssid)
-		self.connected = True if ap_bssid else False
+		self.bssid = bssid
+		self.oui = oui_dict.get(bssid[:8].upper(), "") if oui_dict else None
+
+		self.probe_req = None
+		self.assoc_req = None
+		self.rssi = 0
+		self.ap_probed = []
+		self.model = None
+		self.connected = False
+		self.ap_bssid = None
+		self.new_data = True
+
 		Station.id += 1
 		self.id = Station.id
-		self.eapol = {}
-		self.steps_done = 0
-		self.success_hs = 0
-		self.new_data = True
-		self.vendor = vendor.get(bssid[:8].upper(), "") if vendor else None
+		if bssid not in dic[WM_TRAFFIC]:
+			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
 
-	def update(self, ap_bssid):
-		self.ap_bssid = ap_bssid
-		self.connected = True if ap_bssid else False
+	def set_rssi(self, rssi):
 		self.new_data = True
+		self.rssi = rssi
+	
+	def add_ap_probed(self, ssid):
+		self.new_data = True
+		if ssid not in self.ap_probed:
+			self.ap_probed.append(ssid)
+
+	def set_probeReq(self, probe_req):
+		self.probe_req = probe_req
+		#We have both the probe_req and the assoc_req and we never
+		#tried to guess the model: try it.
+#		if self.assoc_req is not None and self.model == None:
+#			self.model = taxonomy(self.probe_req, self.assoc_req)
+		#	self.new_data = True
+
+	def set_assocReq(self, assoc_req):
+		self.assoc_req = assoc_req
+		#We have both the probe_req and the assoc_req and we never
+		#tried to guess the model: try it.
+#		if self.probe_req is not None and self.model == None:
+#			self.model = taxonomy(self.probe_req, self.assoc_req)
+			#self.new_data = True
 
 	def __getitem__(self, key):
 		return self.__dict__[key]
 
-	def get_eapol_key(self, ap_bssid, key):
-		if ap_bssid in self.eapol and key in self.eapol[ap_bssid]:
-			return self.eapol[ap_bssid][key]
-		return ""
-
-	def has_success_hdshake(self, ap_bssid):
-		if ap_bssid in self.eapol and "success" in self.eapol[ap_bssid] and\
-			self.eapol[ap_bssid]["success"] > 0:
-			return True
-		return False
-
-	def prepare_eapol_dict(self, ap_bssid):
-		self.eapol[ap_bssid] = {
-			"steps_done": 0,
-			"success": 0,
-			"fail": 0,
-			"exited": 0,
-			"kicked": 0,
-			"auth": 0,
-			"auth_resp": 0,
-			"deauth": 0,
-			"assos": 0,
-			"reassos": 0,
-			"assos_resp": 0,
-			"reassos_resp": 0,
-			"disasos": 0,
-			"hdshake_pkt": [],
-			"last_success": 0,
-			"current_step": None,
-		}
-
-	def add_ap_exit(self, ap_bssid, type, exited):
-		"""
-			:param ap_bssid: access point mac addr
-			:param type: "deauth" or disasos"
-			:param exited: bool
-		"""
-		if ap_bssid not in self.eapol:
-			self.prepare_eapol_dict(ap_bssid)
-		ea = self.eapol[ap_bssid]
-		if ea['current_step'] in\
-			("step1", "step2", "step3"):
-			ea["fail"] += 1
-			ea["current_step"] = None
-			ea['hdshake_pkt'] = ea['hdshake_pkt'][:ea['last_success']]
-		ea["current_step"] = type
-		ea[type] += 1
-		if exited:
-			ea["exited"] += 1
-		else:
-			ea["kicked"] += 1
-		if ap_bssid == self.ap_bssid:
-			self.ap_bssid = None
-			self.dic[WM_AP][ap_bssid].client_disconnected(self.bssid)
-			self.connected = False
-			self.new_data = True
-
-	def add_pre_eapol(self, ap_bssid, type):
-		"""
-			:param ap_bssid: str access point mac addr
-			:param type: "auth", "assos", "reassos", "reassos_resp"
-				"auth_resp", "assos_resp"
-		"""
-		if ap_bssid not in self.eapol:
-			self.prepare_eapol_dict(ap_bssid)
-		ea = self.eapol[ap_bssid]
-		ea[type] += 1
-		ea["current_step"] = type
-
-	def add_global_handshake(self, ap_bssid):
-		#Usefull to get all handshakes download
-		if self.bssid not in Station.handshakes:
-			Station.handshakes[self.bssid] = set()
-		Station.handshakes[self.bssid].add(ap_bssid)
-
-	def add_eapol(self, packet, ap_bssid, step):
-		"""
-			:param packet: scapy packet with EAPOL layer
-			:param ap_bssid: access point mac addr
-			:param step: str in ("step1", "step2", "step3", "step4")
-		"""
-		if ap_bssid not in self.eapol:
-			self.prepare_eapol_dict(ap_bssid)
-		ea = self.eapol[ap_bssid]
-		ea["current_step"] = step
-		ea['hdshake_pkt'].append(packet)
-		if not is_retransmitted(packet):
-			self.steps_done += 1
-			ea['steps_done'] += 1
-		if step == "step4":
-			if not is_retransmitted(packet):
-				ea["success"] += 1
-				self.success_hs += 1
-				self.ap_bssid = ap_bssid
-				self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
-				self.new_data = True
-				self.add_global_handshake(ap_bssid)
-			ea['last_success'] = len(ea['hdshake_pkt'])
-
-	def add_probe(self, name):
-		if len(name) == 0:
-			return
-		if not isinstance(name, unicode):
-			try:
-				uni = unicode(name, 'utf-8')
-				self.probe.add(uni)
-			except UnicodeDecodeError:
-				return
-		else:
-			self.probe.add(name)
-
-	def get_probes(self):
-		return ', '.join(self.probe)
+	def get_ap_probed(self):
+		return ', '.join(self.ap_probed)
 
 """
 	Present in main dictionnary in dic['AP'][some_bssid_key]
 """
 class AccessPoint():
 
-	def __init__(self, dic, bssid, ssid=None, channel=None,
-			crypto=None, seen=None, vendor=None, wps=None):
+	def __init__(self, dic, bssid, ssid=None, oui_dict=None):
+		self.dic = dic
 		self.bssid = bssid
-		self.ssid = ssid
-		self.channel = set([channel]) if channel else set()
-		self.crypto = crypto
+		self.oui = oui_dict.get(bssid[:8].upper(), "") if oui_dict else None
+
+		self.ssid = None
+		self.channel = None
+		self.security = None
+		self.known = False
+		self.wps = None
+		self.client_co = set()
 		self.beacons = 0
 		self.proberesp = 0
-		self.known = False
-		self.seen = set([seen]) if seen else set()
 		self.new_data = True
-		self.vendor = vendor.get(bssid[:8].upper(), "") if vendor else None
-		self.dic = dic
-		self.client_co = set()
+		self.rssi = 0
 		self.client_hist_co = []
-		self.client_deco = []
-		self.wps = wps
+
+		if bssid not in dic[WM_TRAFFIC]:
+			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
+
+	def set_rssi(self, rssi):
+		self.rssi = rssi
+		self.new_data = True
+	
+	def set_ssid(self, ssid):
+		self.ssid = ssid
+		self.new_data = True
+	
+	def set_channel(self, channel):
+		self.channel = str(ord(channel))
+		self.new_data = True
+	
+	def set_known(self, known):
+		self.known = known
+		self.new_data = True
+
+	def set_security(self, pkt):
+		self.new_data = True
+		elem = pkt[Dot11Elt]
+		security = None
+		while isinstance(elem, Dot11Elt):
+				if elem.ID == 48:
+					security = "WPA2"
+				elif elem.ID == 221 and hasattr(elem, "info") and\
+					elem.info.startswith('\x00P\xf2\x01\x01\x00'):
+					security = "WPA"
+				elem = elem.payload
+		if not security:
+			capabilities = pkt.sprintf("{Dot11Beacon:%Dot11Beacon.cap%}"\
+				"{Dot11ProbeResp:%Dot11ProbeResp.cap%}").split('+')
+			if 'privacy' in capabilities:
+				security = "WEP"
+			else:
+				security = "OPN"
+		self.security = security
+	
+	def set_wps(self, elem):
+		self.new_data = True
+		"""
+		wps_format = {
+			"Type":"B", #1
+			"DataElemVersion":"H", #2
+			"DataElemVersionLen":"H", #2
+			"Version":"B", #1
+			"DataElemWPS":"H", #2
+			"DataElemWPSLen":"H", #2
+			"WPSSetup":"B", #1
+		}
+		"""
+		data = ">BHHBHHB"
+		try:
+			decoded = struct.unpack(data, elem.info[:11])
+		except Exception as e:
+			print(e.message)
+			return None
+		if len(decoded) < 6:
+			return None
+		self.wps = int(decoded[6]) == 0x2
 
 	def add_beacon(self):
+		self.new_data = True
 		self.new_data = True
 		self.beacons += 1
 		self.known = True
 
-	def add_proberesp(self):
-		self.new_data = True
-		self.proberesp += 1
-		self.known = True
-
 	def client_connected(self, bssid):
+		self.new_data = True
 		self.client_co.add(bssid)
 		self.client_hist_co.append(bssid)
 		self.new_data = True
 
 	def client_disconnected(self, bssid):
+		self.new_data = True
 		if bssid in self.client_co:
 			self.client_co.remove(bssid)
 		self.client_deco.append(bssid)
 		self.new_data = True
 
-	def is_known(self):
-		if self.beacons or self.proberesp:
-			return True
-		return self.known
-
 	def __getitem__(self, key):
 		return self.__dict__[key]
 
-	def update(self, frame=None, ssid=None, channel=None,
-			crypto=None, wps=None):
-		#Adds a layer where AP has been seen
-		if frame and frame not in self.seen:
-			self.seen.add(frame)
-			self.new_data = True
-		if ssid and self.ssid is None:
-			self.new_data = True
-			self.ssid = ssid
-		if channel and channel not in self.channel:
-			self.new_data = True
-			self.channel.add(channel)
-		if crypto and (self.crypto is None\
-				or len(self.crypto) < len(crypto)):
-			self.new_data = True
-			self.crypto = crypto
-		if wps and self.wps is None:
-			self.new_data = True
-			self.wps = wps
-
 	def get_seen(self):
 		#Used in web interface to get reasons why AP is in table
+		return ""
 		if len(self.seen) == 0:
 			return ""
 		s = ', '.join(self.seen)
