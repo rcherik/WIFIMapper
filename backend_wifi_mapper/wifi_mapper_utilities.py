@@ -36,7 +36,7 @@ def is_data(packet):
 		return True
 	return False
 
-def is_multicast(addr):
+def is_broadcast(addr):
 	"""
 		Check strongest byte's strongest bit to see if mac addr is broadcast
 
@@ -46,11 +46,7 @@ def is_multicast(addr):
 	"""
 	if not isinstance(addr, str):
 		return True
-	if addr == "00:00:00:00:00:00":
-		return True
-	split = addr.split(':')
-	hexa = int(split[0], 16)
-	if hexa & 0x1:
+	if addr == "00:00:00:00:00:00" or addr == "ff:ff:ff:ff:ff:ff" or addr.startswith("33:33"):
 		return True
 	return False
 

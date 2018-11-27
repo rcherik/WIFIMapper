@@ -90,8 +90,8 @@ class APCard(WMCard.WMCard):
 
     def _set_mac(self):
         s = "[b]%s[/b]" % self.ap.bssid
-        if self.ap.vendor:
-            s += " (%s)" % self.ap.vendor
+        if self.ap.oui:
+            s += " (%s)" % self.ap.oui
         self._set_label(self.mac, s)
         self._check_width(len(s))
 
@@ -100,14 +100,14 @@ class APCard(WMCard.WMCard):
         if self.ap.ssid:
             s = "[b][i]%s[/i][/b]" % (self.ap.ssid)
         if self.ap.channel:
-            s += " (%s)" % ','.join(str(c) for c in self.ap.channel)
+            s += " (%s)" % self.ap.channel
         self._set_label(self.essid, s)
         self._check_width(len(s))
 
     def _set_security(self):
         crypto = ""
-        if self.ap.crypto:
-            crypto = "[i]%s[/i]" % (self.ap.crypto or "")
+        if self.ap.security:
+            crypto = "[i]%s[/i]" % (self.ap.security or "")
         wps_str = "has wps" if self.ap.wps is True else ""
         if self.ap.wps is None:
             wps_str = ""

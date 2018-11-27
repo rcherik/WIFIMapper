@@ -18,15 +18,14 @@ except ImportError:
 
 from scapy.error import Scapy_Exception
 import wpa_scapy
-import rssi_scapy
 import wifi_mapper_ds
 from wifi_mapper_ds import WM_DS_SRC, WM_DS_TRANS, WM_DS_RCV, WM_DS_DST,\
-		WM_DS_BSSID, WM_DS_STATION, WM_DS_SENT, WM_DS_FROM, WM_DS_TO
+		WM_DS_AP, WM_DS_STATION, WM_DS_SENT, WM_DS_FROM, WM_DS_TO
 from wifi_mapper_classes import AccessPoint, Station, Traffic,\
 		WM_TRA_SENT, WM_TRA_RECV,\
 		WM_TRA_ALL, WM_TRA_MNG, WM_TRA_CTRL, WM_TRA_DATA
-from wifi_mapper_utilities import is_multicast, is_retransmitted, is_control, is_data,\
-			WM_AP, WM_STATION, WM_TRA, WM_HDSHK, WM_VENDOR
+from wifi_mapper_utilities import is_broadcast, is_retransmitted, is_control, is_data,\
+			WM_AP, WM_STATION, WM_TRA, WM_HDSHK, WM_VENDOR, WM_STA
 import time
 
 #Macro for ID field in Dot11Elt
@@ -44,7 +43,7 @@ def get_broadcast(addr):
 		:rtype: str
 
 	"""
-	if is_multicast(addr):
+	if is_broadcast(addr):
 		return "< %s - Broadcast >" % addr
 	return addr
 
@@ -62,478 +61,189 @@ def get_client_probe(packet, dic, station):
 			sta = dic[WM_STATION][station].add_probe(elem.info)
 		elem = elem.payload
 
-def check_for_handshakes(dic):
-	"""
-		:return: all successful handshakes
-		:rtype: int
-	"""
-	n = 0
-	for key, value in Station.handshakes.iteritems():
-		if key in dic[WM_STATION]:
-			for bssid in value:
-				n += dic[WM_STATION][key].eapol[bssid]['success']
-	return n
-
-def get_handshake_pcap(dic, station, bssid, name):
-	"""
-		Write pcap of handshakes between station and ap
-		:return: True if wrote a file
-		:rtype: bool
-	"""
-	if station not in dic[WM_STATION] or\
-		bssid not in dic[WM_STATION][station].eapol or\
-		dic[WM_STATION][station].eapol[bssid]['success'] == 0:
-		return False
-	packets = dic[WM_STATION][station].get_eapol_key(bssid, "hdshake_pkt")
-	if packets is None or len(packets) == 0:
-		return False
-	wrpcap(name, packets)
-	return True
-
-def get_station_handshake_pcap(dic, station, name):
-	"""
-		Write pcap of a station's handshakes
-		:return: True if wrote a file
-		:rtype: bool
-	"""
-	if station not in dic[WM_STATION]:
-		return False
-	packets = []
-	ret = False
-	for key, value in dic[WM_STATION][station].eapol.iteritems():
-		if value['success'] > 0:
-			ret = True
-			pkt = value['hdshake_pkt']
-			packets += pkt
-	if ret:
-		wrpcap(name, packets)
-	return ret
-
-def get_all_handshake_pcap(dic, name):
-	"""
-		Write pcap of a file's handshakes
-		:return: True if wrote a file
-		:rtype: bool
-	"""
-	packets = []
-	ret = False
-	for key, value in Station.handshakes.iteritems():
-		if key in dic[WM_STATION]:
-			for bssid in value:
-				if dic[WM_STATION][key].eapol[bssid]['success'] > 0:
-					ret = True
-					pkt = dic[WM_STATION][key].eapol[bssid]['hdshake_pkt']
-					packets += pkt
-	if ret:
-		wrpcap(name, packets)
-	return ret
-
 def add_traffic(dic, addr):
-	if not is_multicast(addr) and isinstance(addr, str):
+	if not is_broadcast(addr) and isinstance(addr, str):
 		if addr not in dic[WM_TRA]:
 			dic[WM_TRA][addr] = Traffic(dic, addr)
 
-def add_traffic_sent(dic, addr, to_addr=None, which=None):
-	"""
-		Adds sent to addr in Traffic key from parse() dictionnary
 
-		:param dic: dict from parse()
-		:param addr: str mac addr
-		:param to_addr: str mac addr
-		::seealso:: parse()
-	"""
-
-	if is_multicast(to_addr) and which == "control":
-		return
-	if not is_multicast(addr) and isinstance(addr, str):
-		if addr not in dic[WM_TRA]:
-			dic[WM_TRA][addr] = Traffic(addr)
-		dic[WM_TRA][addr].add_sent(to_addr, which)
-
-def add_traffic_recv(dic, addr, from_addr=None, which=None):
-	"""
-		Adds recv to addr in Traffic key from parse() dictionnary
-
-		:param dic: dict from parse()
-		:param addr: str mac addr
-		:param from_addr: str mac addr
-		::seealso:: parse()
-	"""
-	if is_multicast(from_addr) and which == "control":
-		return
-	if not is_multicast(addr) and isinstance(addr, str):
-		if addr not in dic[WM_TRA]:
-			dic[WM_TRA][addr] = Traffic(dic, addr)
-		dic[WM_TRA][addr].add_recv(from_addr, which)
-
-def add_station(dic, bssid, ap_bssid):
-	"""
-		Adds bssid in Station key from parse() dictionnary
-
-		:param dic: dict from parse()
-		:param bssid: str mac addr
-		:param ap_bssid: str mac addr
-		::seealso:: parse()
-	"""
-	if not is_multicast(bssid) and isinstance(bssid, str):
-		if is_multicast(ap_bssid):
-			ap_bssid = None
-		elif ap_bssid not in dic[WM_AP]:
-			dic[WM_AP][ap_bssid] = AccessPoint(dic, ap_bssid, vendor=dic[WM_VENDOR])
-		if bssid not in dic[WM_STATION]:
-			dic[WM_STATION][bssid] = Station(dic, bssid, ap_bssid, vendor=dic[WM_VENDOR])
-			add_traffic(dic, bssid)
-		elif ap_bssid is not None and dic[WM_STATION][bssid].ap_bssid is None:
-			dic[WM_STATION][bssid].update(ap_bssid)
-
-def add_rssi(rssi, dic, addr):
-	"""
-		Adds rssi value to address in Traffic key from parse() dictionnary
-
-		:param rssi: int
-		:param dic: dict from parse()
-		:param addr: str mac addr
-		::seealso:: parse()
-	"""
-	if rssi is not None and not is_multicast(addr) and\
-		isinstance(addr, str):
-		if addr not in dic[WM_TRA]:
-			dic[WM_TRA][addr] = Traffic(dic, addr)
-		traffic = dic[WM_TRA][addr]
-		traffic.add_rssi(rssi)
-
-def get_wps(elem):
-	"""
-	wps_format = {
-		"Type":"B", #1
-		"DataElemVersion":"H", #2
-		"DataElemVersionLen":"H", #2
-		"Version":"B", #1
-		"DataElemWPS":"H", #2
-		"DataElemWPSLen":"H", #2
-		"WPSSetup":"B", #1
-	}
-	"""
-	data = ">BHHBHHB"
-	try:
-		decoded = struct.unpack(data, elem.info[:11])
-	except Exception as e:
-		print(e.message)
-		return None
-	if len(decoded) < 6:
-		return None
-	return int(decoded[6]) == 0x2
-
-def get_ap_infos(packet, dic, channel=None):
-	"""
-		Get infos of access point in a beacon or probe response
-
-		Parse Dot11 elements from packet and capabilities to get
-			used privacy settings, ssid and channel
-
-		:param packet: scapy packet
-		:param dic: dict from parse()
-		::seealso:: parse()
-	"""
-	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS
-	bssid = packet[layer].addr3
-	if is_multicast(bssid):
-		return
-	if bssid in dic[WM_AP]:
-		if packet.haslayer(Dot11Beacon):
-			dic[WM_AP][bssid].add_beacon()
-		else:
-			dic[WM_AP][bssid].add_proberesp()
-		return
-	elem = packet[Dot11Elt]
-	capabilities = packet.sprintf("{Dot11Beacon:%Dot11Beacon.cap%}"
-						"{Dot11ProbeResp:%Dot11ProbeResp.cap%}").split('+')
-	ssid, channel, wps = None, None, None
-	crypto = set()
-	while isinstance(elem, Dot11Elt):
-		#Some encoding errors there
-		if elem.ID == ID_SSID:
-			try:
-				ssid = unicode(elem.info, 'utf-8')
-			except UnicodeDecodeError:
-				ssid = ""
-		elif elem.ID == ID_CHANNEL and len(elem.info) == 1:
-			#elem.info not always a char
-			channel = ord(elem.info)
-		elif elem.ID == ID_RSN:
-			crypto.add("WPA2")
-		elif elem.ID == ID_VENDOR:
-			if hasattr(elem, "info") and\
-					elem.info.startswith('\x00P\xf2\x01\x01\x00'):
-				crypto.add("WPA")
-			if hasattr(elem, "oui") and elem.oui == 0x50f2\
-				and hasattr(elem, "info") and elem.info.startswith('\x04'):
-				wps = get_wps(elem)
-		elem = elem.payload
-	if not crypto:
-		if 'privacy' in capabilities:
-			crypto.add("WEP")
-		else:
-			crypto.add("OPN")
-	if bssid not in dic[WM_AP]:
-		ap = AccessPoint(dic, bssid, ssid=ssid, channel=channel,
-				crypto='/'.join(crypto), vendor=dic[WM_VENDOR], wps=wps)
-		add_traffic(dic, bssid)
-		if packet.haslayer(Dot11Beacon):
-			ap.add_beacon()
-		else:
-			ap.add_proberesp()
-		dic[WM_AP][bssid] = ap 
-	else:
-		ap = dic[WM_AP][bssid].update(ssid=ssid, channel=channel,
-				crypto='/'.join(crypto), wps=wps)
-
-#Macro for EAPOL flags
-EAPOL_KEY_TYPE = 1 << 3
-EAPOL_INSTALL = 1 << 6
-EAPOL_KEY_ACK = 1 << 7
-EAPOL_KEY_MIC = 1 << 8
-EAPOL_SECURE = 1 << 9
-EAPOL_ERROR = 1 << 10
-EAPOL_REQUEST = 1 << 11
-EAPOL_ENCRYPTED = 1 << 12
-
-def wpa_step1(key):
-	if key.key_info & EAPOL_KEY_ACK and\
-		not key.key_info & EAPOL_KEY_MIC:
-		return True
-	return False
-
-def wpa_step2(key):
-	if key.key_info & EAPOL_KEY_MIC and\
-		not key.key_info & EAPOL_SECURE:
-		return True
-	return False
-
-def wpa_step3(key):
-	if key.key_info & EAPOL_KEY_ACK and\
-		key.key_info & EAPOL_KEY_MIC and\
-		key.key_info & EAPOL_SECURE and\
-		key.key_info & EAPOL_INSTALL and\
-		key.key_info & EAPOL_ENCRYPTED:
-		return True
-	return False
-
-def wpa_step4(key):
-	if key.key_info & EAPOL_KEY_MIC and\
-		key.key_info & EAPOL_SECURE and\
-		not key.key_info & EAPOL_ENCRYPTED:
-		return True
-	return False
-
-def add_handshake(packet, dic, station, bssid):
-	key = packet[EAPOL]
-	if not key:
-		print("EAPOL with no layer ??")
-		packet.show()
-		return
-	step = None
-	rssi = rssi_scapy.get_rssi(packet)
-	if wpa_step1(key):
-		step = "step1"
-		add_traffic_sent(dic, station, to_addr=bssid)
-		add_rssi(rssi, dic, station)
-	if wpa_step2(key):
-		step = "step2"
-		add_traffic_recv(dic, bssid, from_addr=station)
-	if wpa_step3(key):
-		step = "step3"
-		add_traffic_sent(dic, station, to_addr=bssid)
-		add_rssi(rssi, dic, station)
-	if wpa_step4(key):
-		step = "step4"
-		add_traffic_recv(dic, bssid, from_addr=station)
-	dic[WM_STATION][station].add_eapol(packet, bssid, step)
-
-def add_ap(dic, bssid, seen):
+def add_ap(dic, bssid):
 	"""
 		Adds an access point out of beacon/probeRes layers
 
 		:param seen: str, seen from which layer, used in web interface
 	"""
-	if not is_multicast(bssid):
+	if not is_broadcast(bssid):
 		if bssid not in dic[WM_AP]:
-			dic[WM_AP][bssid] = AccessPoint(dic, bssid, seen=seen, vendor=dic[WM_VENDOR])
-			add_traffic(dic, bssid)
+			dic[WM_AP][bssid] = AccessPoint(dic, bssid, oui_dict=dic[WM_VENDOR])
+			return dic[WM_AP][bssid]
 		else:
-			dic[WM_AP][bssid].update(seen)
+			return dic[WM_AP][bssid]
+	else:
+		return None
 
-def get_station_infos(packet, dic, channel=None):
+def add_station(dic, bssid):
 	"""
-		Parse the packet from its layers type
-			add station and access point thanks to from-DS to-DS
+		Adds bssid in Station key from parse() dictionnary
 
-		Handles traffic, rssi, handshakes, all stations and some ap
-
-		:param packet: scapy packet
-		:param dic: dictionnary from parse()
-
+		:param dic: dict from parse()
+		:param bssid: str mac addr
 		::seealso:: parse()
 	"""
+	if not is_broadcast(bssid) and isinstance(bssid, str):
+		if bssid not in dic[WM_STATION]:
+			dic[WM_STATION][bssid] = Station(dic, bssid, oui_dict=dic[WM_VENDOR])
+			return dic[WM_STATION][bssid]
+	else:
+		return None
 
-	ds = wifi_mapper_ds.get_addrs(packet)
+def ap_sender(pkt, dic, src, dst):
+	#sender is an AP, do we know it ?
+	if src in dic[WM_AP]:
+		#yes we do
+		ap = dic[WM_AP][src]
+	else:
+		#no we don't, create it
+		ap = add_ap(dic, src)
+	#sender is an AP, receiver must be an STA. Do we know it ?
+	if dst in dic[WM_STA]:
+		#yes we do
+		sta = dic[WM_STA][dst]
+	else:
+		#no we don't, create it
+		sta = add_station(dic, dst)
+	return ap, sta
 
-	# Packets from AP to AP do not concern stations
-	if ds[WM_DS_FROM] and ds[WM_DS_TO]:
-		return
+def sta_sender(pkt, dic, src, dst):
+	#sender is an STA, do we know it ?
+	if src in dic[WM_STA]:
+		#yes we do
+		sta = dic[WM_STA][src]
+	else:
+		#no we don't, create it
+		sta = add_station(dic, src)
+	#sender is an STA, receiver must be an AP. Do we know it ?
+	if dst in dic[WM_AP]:
+		#yes we do
+		ap = dic[WM_AP][dst]
+	else:
+		#no we don't, create it
+		ap = add_station(dic, dst)
+	return ap, sta
 
-	rssi = rssi_scapy.get_rssi(packet)
-	# Control packets are unreliable to get station, just add traffic and rssi
-	if is_control(packet):
-		if ds[WM_DS_SENT] is True:
-			add_traffic_sent(dic, ds[WM_DS_STATION], to_addr=ds[WM_DS_DST],
-					which="control")
-		else:
-			add_traffic_recv(dic, ds[WM_DS_STATION], from_addr=ds[WM_DS_SRC],
-					which="control")
-		add_rssi(rssi, dic, ds[WM_DS_STATION])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-		return
+def parse_beacon(pkt, dic, ap):
+	elem = pkt[Dot11Elt]
+	while isinstance(elem, Dot11Elt):
+		if elem.ID == ID_SSID:
+			ap.set_ssid(elem.info)
+		elif elem.ID == ID_CHANNEL:
+			ap.set_channel(elem.info)
+		elif elem.ID == ID_VENDOR:
+			if hasattr(elem, "oui") and elem.oui == 0x50f2 \
+			and hasattr(elem, "info") and elem.info.startswith('\x04'):
+				ap.set_wps(elem)
+		elem = elem.payload
+	ap.set_security(pkt)
+	ap.set_known(True)
+	ap.add_beacon()
 
-	if packet.haslayer(Dot11ProbeResp):
-		#Station receive probe response
-		add_station(dic, ds[WM_DS_DST], None)
-		add_traffic_recv(dic, ds[WM_DS_DST], from_addr=ds[WM_DS_SRC],
-				which="probe")
-		add_rssi(rssi, dic, ds[WM_DS_DST])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-	elif packet.haslayer(Dot11ProbeReq):
-		#Station request information
-		add_station(dic, ds[WM_DS_SRC], None)
-		add_traffic_sent(dic, ds[WM_DS_SRC], to_addr=None,
-				which="probeReq")
-		get_client_probe(packet, dic, ds[WM_DS_SRC])
-		add_rssi(rssi, dic, ds[WM_DS_SRC])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-	elif packet.haslayer(Dot11Auth):
-		#Authentication could be from or to station
-		add_station(dic, ds[WM_DS_STATION], None)
-		if ds[WM_DS_SENT]:
-			add_traffic_sent(dic, ds[WM_DS_STATION], to_addr=ds[WM_DS_DST],
-					which="Auth")
-			add_ap(dic, ds[WM_DS_DST], seen="Auth")
-			dic[WM_STATION][ds[WM_DS_STATION]].\
-					add_pre_eapol(ds[WM_DS_DST], "auth")
-		else:
-			add_traffic_recv(dic, ds[WM_DS_STATION], from_addr=ds[WM_DS_SRC],\
-					which="Auth")
-			add_ap(dic, ds[WM_DS_SRC], seen="AuthResp")
-		add_rssi(rssi, dic, ds[WM_DS_STATION])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-	elif packet.haslayer(Dot11AssoReq):
-		#Station request association
-		add_station(dic, ds[WM_DS_SRC], None)
-		add_ap(dic, ds[WM_DS_DST], seen="AssociationReq")
-		add_traffic_sent(dic, ds[WM_DS_SRC], to_addr=ds[WM_DS_DST],\
-				which="Association")
-		add_rssi(rssi, dic, ds[WM_DS_SRC])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-		dic[WM_STATION][ds[WM_DS_SRC]].add_pre_eapol(ds[WM_DS_DST], "assos")
-	elif packet.haslayer(Dot11ReassoReq):
-		#Station request Reassociation
-		add_station(dic, ds[WM_DS_SRC], None)
-		add_ap(dic, ds[WM_DS_DST], seen="ReassociationReq")
-		add_traffic_sent(dic, ds[WM_DS_SRC], to_addr=ds[WM_DS_DST],\
-				which="Reassociation")
-		add_rssi(rssi, dic, ds[WM_DS_SRC])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-		dic[WM_STATION][ds[WM_DS_SRC]].add_pre_eapol(ds[WM_DS_DST], "reassos") 
-	elif packet.haslayer(Dot11AssoResp):
-		#Station receive association response
-		add_station(dic, ds[WM_DS_DST], None)
-		add_ap(dic, ds[WM_DS_SRC], seen="AssociationResp")
-		add_traffic_recv(dic, ds[WM_DS_DST], from_addr=ds[WM_DS_SRC],\
-				which="Association")
-		add_rssi(rssi, dic, ds[WM_DS_DST])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-		dic[WM_STATION][ds[WM_DS_DST]].\
-				add_pre_eapol(ds[WM_DS_SRC], "assos_resp") 
-	elif packet.haslayer(Dot11ReassoResp):
-		#Station receive Reassociation response
-		add_station(dic, ds[WM_DS_DST], None)
-		add_ap(dic, ds[WM_DS_SRC], seen="ReassociationResp")
-		add_traffic_recv(dic, ds[WM_DS_DST], from_addr=ds[WM_DS_SRC],\
-				which="Reassociation")
-		add_rssi(rssi, dic, ds[WM_DS_DST])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-		dic[WM_STATION][ds[WM_DS_DST]].\
-				add_pre_eapol(ds[WM_DS_SRC], "reassos_resp") 
-	elif packet.haslayer(EAPOL):
-		#Wpa handhsake between station and access point
-		add_station(dic, ds[WM_DS_STATION], None)
-		add_ap(dic, ds[WM_DS_BSSID], seen="Handshake")
-		add_handshake(packet, dic, ds[WM_DS_STATION], ds[WM_DS_BSSID])
-	elif packet.haslayer(Dot11Disas):
-		#Disassociation could be from or to station
-		add_station(dic, ds[WM_DS_STATION], ds[WM_DS_BSSID])
-		if ds[WM_DS_SENT]:
-			add_ap(dic, ds[WM_DS_DST], seen="DisassoSent")
-			add_traffic_sent(dic, ds[WM_DS_STATION], to_addr=ds[WM_DS_DST],\
-					which="Disasso")
-		else:
-			add_ap(dic, ds[WM_DS_SRC], seen="DisassoRecv")
-			add_traffic_recv(dic, ds[WM_DS_STATION], from_addr=ds[WM_DS_SRC],\
-					which="Disasso")
-		add_rssi(rssi, dic, ds[WM_DS_STATION])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-		dic[WM_STATION][ds[WM_DS_STATION]].\
-				add_ap_exit(ds[WM_DS_BSSID], "disasos", exited=ds[WM_DS_SENT])
-	elif packet.haslayer(Dot11Deauth):
-		#Deauthentification could be from or to station
-		add_station(dic, ds[WM_DS_STATION], ds[WM_DS_BSSID])
-		if ds[WM_DS_SENT]:
-			add_ap(dic, ds[WM_DS_DST], seen="DeauthSent")
-			add_traffic_sent(dic, ds[WM_DS_STATION], to_addr=ds[WM_DS_DST],\
-					which="Deauth")
-		else:
-			add_ap(dic, ds[WM_DS_SRC], seen="DeauthRecv")
-			add_traffic_recv(dic, ds[WM_DS_STATION], from_addr=ds[WM_DS_SRC],\
-					which="Deauth")
-		add_rssi(rssi, dic, ds[WM_DS_STATION])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
-		dic[WM_STATION][ds[WM_DS_STATION]].\
-				add_ap_exit(ds[WM_DS_BSSID], "deauth", exited=ds[WM_DS_SENT])
-	elif is_data(packet) and not is_multicast(ds[WM_DS_DST]):
-		#Data could be from or to station
-		add_station(dic, ds[WM_DS_STATION], ds[WM_DS_BSSID])
-		if ds[WM_DS_SENT]:
-			add_ap(dic, ds[WM_DS_DST], seen="DataSent")
-			add_traffic_sent(dic, ds[WM_DS_STATION], to_addr=ds[WM_DS_DST],\
-					which="data")
-		else:
-			add_ap(dic, ds[WM_DS_SRC], seen="DataRecv")
-			add_traffic_recv(dic, ds[WM_DS_STATION], from_addr=ds[WM_DS_SRC],\
-					which="data")
-		add_rssi(rssi, dic, ds[WM_DS_STATION])
-		add_rssi(rssi, dic, ds[WM_DS_BSSID])
+def parse_probeReq(pkt, dic, sta, ap):
+	elem = pkt[Dot11Elt]
+	while isinstance(elem, Dot11Elt):
+		#Get the SSID
+		if elem.ID == ID_SSID:
+			#SSID is not specified
+			if elem.len == 0:
+				pass
+			else:
+				sta.add_ap_probed(elem.info)
+		elem = elem.payload
+	sta.set_probeReq(str(pkt[Dot11ProbeReq]).encode('hex'))
 
-def get_packet_infos(packet, dic, channel=None):
+def parse_assocReq(pkt, dic, sta):
+	sta.set_assocReq(str(pkt[Dot11AssoReq])[4:].encode('hex'))
+
+def parse_reassocReq(pkt, dic, sta):
+	sta.set_assocReq(str(pkt[Dot11ReassoReq])[4:].encode('hex'))
+
+def parse_assocResp(pkt, dic, sta, ap):
+	pass
+
+def handle_traffic(pkt, dic, src, dst):
+	#check if dst is not Broadcast
+	if is_broadcast(dst) is False:
+		if src not in dic[WM_TRA]:
+			dic[WM_TRA][src] = Traffic(dic, src)
+#		if src == '58:7f:57:1d:c0:28':
+#			print(dst)
+		dic[WM_TRA][src].add_sent(dst)
+		if dst not in dic[WM_TRA]:
+			dic[WM_TRA][dst] = Traffic(dic, dst)
+		dic[WM_TRA][dst].add_recv(src)
+
+def parse_pkt(pkt, dic, channel=None):
 	"""
-		Get access point info from beacon or probe response
-			and get station infos from anything but beacon
-
 		:param packet: scapy packet
 		:param dic: dictionnary from parse function
 
 		::seealso:: parse()
 	"""
-	if packet.haslayer(Dot11Beacon) or\
-		packet.haslayer(Dot11ProbeResp):
-		get_ap_infos(packet, dic, channel=channel)
-	if not packet.haslayer(Dot11Beacon):
-		get_station_infos(packet, dic, channel=channel)
+	#ignore control frames
+	if is_control(pkt):
+		return
 
-def parse_pkt(dic, pkt, channel=None):
+	#check if we know both devices, create them if we don't
+
+	#get the sender and the destination
+	#Note: ap or sta will be None if broadcast
+	ds = wifi_mapper_ds.get_addrs(pkt)
+	src = ds[WM_DS_SRC]
+	dst = ds[WM_DS_DST]
+	if src == '58:7f:57:1d:c0:28':
+		print(dst)
+		pkt.show()
+	if src == ds[WM_DS_AP]:
+		ap, sta = ap_sender(pkt, dic, src, dst)
+	elif src == ds[WM_DS_STATION]:
+		ap, sta = sta_sender(pkt, dic, src, dst)
+	else:
+		#TODO FIX WEIRD MULTICAST 
+		return
+
+	#start by parsing what is in every packets: RSSI and traffic
+	try:
+		if src == ds[WM_DS_AP]:
+			ap.set_rssi(pkt.dBm_AntSignal)
+		else:
+			sta.set_rssi(pkt.dBm_AntSignal)
+	except Exception, e:
+		print(e)
+	handle_traffic(pkt, dic, src, dst)
+
+	#keep on with parsing specified packets
+	if pkt.haslayer(Dot11Beacon):
+		parse_beacon(pkt, dic, ap)
+	elif pkt.haslayer(Dot11ProbeResp):
+		parse_beacon(pkt, dic, ap)
+	elif pkt.haslayer(Dot11ProbeReq):
+		parse_probeReq(pkt, dic, sta, ap)
+	elif pkt.haslayer(Dot11AssoReq):
+		parse_assocReq(pkt, dic, sta)
+	elif pkt.haslayer(Dot11ReassoReq):
+		parse_reassocReq(pkt, dic, sta)
+	elif pkt.haslayer(Dot11AssoResp):
+		parse_assocResp(pkt, dic, sta, ap)
+	elif pkt.haslayer(Dot11ReassoResp):
+		parse_assocResp(pkt, dic, sta, ap)
+#	elif pkt.haslayer(Dot11Disas):
+#	elif pkt.haslayer(Dot11Deauth):
+#	elif is_data(pkt) and not is_broadcast(ds[WM_DS_DST]):
+
+def start_parsing_pkt(dic, pkt, channel=None):
 	if pkt.haslayer(RadioTap):
-		get_packet_infos(pkt, dic, channel=channel)
+		parse_pkt(pkt, dic, channel=channel)
 	else:
 		return False
-	dic[WM_HDSHK] = check_for_handshakes(dic)
 	#Sometimes things like printer are both station and AP
 	for key, value in dic[WM_AP].iteritems():
 		if key in dic[WM_STATION]:

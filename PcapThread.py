@@ -12,7 +12,7 @@ from scapy.utils import rdpcap, PcapReader
 from scapy.error import Scapy_Exception
 """ Our Stuff """
 from backend_wifi_mapper.find_iface import find_iface
-from backend_wifi_mapper.wifi_mapper import parse_pkt
+from backend_wifi_mapper.wifi_mapper import start_parsing_pkt
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
 
@@ -59,7 +59,7 @@ class PcapThread(threading.Thread):
         """ Callback when packet is sniffed """
         current = self.channelthread.current_chan\
                 if self.channelthread else None
-        parse_pkt(self.pkt_dic, pkt, channel=current)
+        start_parsing_pkt(self.pkt_dic, pkt, channel=current)
         if self.app and hasattr(self.app, "manager"):
             if self.pcap_file:
                 self.app.manager.update_gui(self.pkt_dic)

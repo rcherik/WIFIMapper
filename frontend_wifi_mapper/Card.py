@@ -72,9 +72,9 @@ class Card(WMCard.WMCard):
         self.add_label("station", s, self.max_height)
         s = "ap: " + (self.station.ap_bssid or "")
         self.add_label("bssid", s, self.max_height)
-        s = "probes: " + self.station.get_probes()
+        s = "probes: " + self.station.get_ap_probed()
         self.add_label("probes", s, self.max_height)
-        self.add_label("vendor", self.station.vendor, self.max_height)
+        self.add_label("oui", self.station.oui, self.max_height)
 
     def create_text(self):
         infos = self.text.split(';')
