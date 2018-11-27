@@ -17,6 +17,9 @@ WM_DS_SENT = 6
 WM_DS_FROM = 7
 WM_DS_TO = 8
 
+WM_DS_SENDER = 9
+WM_DS_RECEIVER = 10
+
 def get_addrs(packet):
 	"""
 		From the DS flag, return parsed 802.11 addresses field
@@ -44,6 +47,8 @@ def get_addrs(packet):
 		src = packet[layer].addr3
 		station = rcv
 		sent = False
+		sender = bssid
+		receiver = rcv
 	elif not from_ds and not to_ds:
 		"""
 			From station to station
@@ -55,6 +60,8 @@ def get_addrs(packet):
 		bssid = packet[layer].addr3
 		station = src if bssid == rcv else rcv
 		sent = True if bssid == rcv else False
+		sender = station if bssid == rcv else src #TODO station to station, do we want the ap getting involved ?
+		receiver = bssid if bssid == rcv else rcv #TODO ^^^^
 	elif not from_ds and to_ds:
 		"""
 			The frame is being sent from a station to the DS.
@@ -68,6 +75,8 @@ def get_addrs(packet):
 		dst = packet[layer].addr3
 		station = src
 		sent = True
+		sender = station
+		receiver = bssid
 	elif from_ds and to_ds:
 		"""
 			From AP to AP - Do nothing
@@ -79,20 +88,10 @@ def get_addrs(packet):
 		bssid = None
 		station = None
 		sent = False
+		sender = None
+		receiver = None
 
-	"""
-	dic =  {
-		"src": src,
-		"trans": trans,
-		"rcv": rcv,
-		"dst": dst,
-		"bssid": bssid,
-		"station": station,
-		"sent": sent,
-		"from": from_ds,
-		"to": to_ds
-	}
-	"""
+
 	return [
 		src,
 		trans,
@@ -102,7 +101,9 @@ def get_addrs(packet):
 		station,
 		sent,
 		from_ds,
-		to_ds
+		to_ds,
+		sender,
+		receiver,
 	]
 
 # vim:noexpandtab:autoindent:tabstop=4:shiftwidth=4:

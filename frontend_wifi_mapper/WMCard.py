@@ -4,6 +4,7 @@ from kivy.uix.boxlayout import BoxLayout
 class WMCard(BoxLayout):
 
     def __init__(self, **kwargs):
+        self.clicked = False
         super(WMCard, self).__init__(**kwargs)
 
     def _get_nested_attr(self, value):
@@ -24,3 +25,22 @@ class WMCard(BoxLayout):
             print(s, **kwargs)
         else:
             print(s, **kwargs)
+ 
+    def on_pressed(self, instance, pos):
+        self._say("pressed at {pos}".format(pos=pos))
+
+    def on_touch_up(self, touch):
+        if self.collide_point(*touch.pos) and hasattr(touch, "button")\
+                and touch.button == "left":
+            self._say("touched ! " + touch.button)
+            self.pressed = touch.pos
+            self.clicked = not self.clicked
+            self.draw_background(self, self.pos)
+            #TODO open a tab with ap card infos screen
+            #screen = CardInfoScreen(name=self.key)
+            #App.get_running_app().add_header(self.key, screen)
+            return True
+        return super(WMCard, self).on_touch_up(touch)
+
+    def draw_background(self, widget, prop):
+        pass

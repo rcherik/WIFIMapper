@@ -11,8 +11,7 @@
 	essid: essid
 	security_box: security_box
 	data_box: data_box
-	signal_box: signal_box
-	seen: seen
+
 
 	BoxLayout:
 		size_hint: (1, 0.2)
@@ -50,16 +49,16 @@
 		rcv: rcv
 		sent: sent
 		beacons: beacons
-		connected: connected
+		signal: signal
 		BoxLayout:
 			orientation: 'vertical'
 			size_hint: (0.5, 1)
 			Label:
-				id: rcv
+				id: sent
 				size_hint: (1, 0.5)
 				markup: True
 			Label:
-				id: sent
+				id: rcv
 				size_hint: (1, 0.5)
 				markup: True
 		BoxLayout:
@@ -70,32 +69,6 @@
 				size_hint: (1, 0.5)
 				markup: True
 			Label:
-				id: connected
+				id: signal
 				size_hint: (1, 0.5)
 				markup: True
-	BoxLayout:
-		id: signal_box
-		size_hint: (1, 0.1)
-		orientation: 'horizontal'
-		min_sig: min_sig
-		avg_sig: avg_sig
-		max_sig: max_sig
-		Label:
-			id: min_sig
-			size_hint: (0.33, 1)
-			markup: True
-		Label:
-			id: avg_sig
-			size_hint: (0.33, 1)
-			markup: True
-		Label:
-			id: max_sig
-			size_hint: (0.33, 1)
-			markup: True
-	Label:
-		id: seen
-		size_hint_y: None
-		text_size: self.width, None
-		height: self.texture_size[1]
-		halign: 'center'
-		markup: True

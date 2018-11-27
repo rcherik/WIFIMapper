@@ -136,12 +136,12 @@ class CardListScreen(WMScreen.WMScreen):
         if self.show_ap:
             self._add_sort_value('bssid', 'ap.bssid', False)
             #TODO change sort: separate those with sig and those with not, sort them and
-            self._add_sort_value('signal', 'traffic.avg_sig', False)
-            self._add_sort_value('crypto', 'ap.crypto', True)
+            self._add_sort_value('signal', 'ap.rssi', True)
+            self._add_sort_value('crypto', 'ap.security', True)
             self._add_sort_value('sent', 'traffic.sent', True)
             self._add_sort_value('recv', 'traffic.recv', True)
             self._add_sort_value('beacons', 'ap.beacons', True)
-            self._add_sort_value('probe resp', 'ap.proberesp', True)
+            #self._add_sort_value('probe resp', 'ap.proberesp', True)
         if self.show_station:
             #TODO change after card station
             self._add_sort_value('bssid', 'station.bssid', False)

@@ -20,7 +20,7 @@ from scapy.error import Scapy_Exception
 import wpa_scapy
 import wifi_mapper_ds
 from wifi_mapper_ds import WM_DS_SRC, WM_DS_TRANS, WM_DS_RCV, WM_DS_DST,\
-		WM_DS_AP, WM_DS_STATION, WM_DS_SENT, WM_DS_FROM, WM_DS_TO
+		WM_DS_AP, WM_DS_STATION, WM_DS_SENDER, WM_DS_RECEIVER
 from wifi_mapper_classes import AccessPoint, Station, Traffic,\
 		WM_TRA_SENT, WM_TRA_RECV,\
 		WM_TRA_ALL, WM_TRA_MNG, WM_TRA_CTRL, WM_TRA_DATA
@@ -197,8 +197,8 @@ def parse_pkt(pkt, dic, channel=None):
 	#get the sender and the destination
 	#Note: ap or sta will be None if broadcast
 	ds = wifi_mapper_ds.get_addrs(pkt)
-	src = ds[WM_DS_SRC]
-	dst = ds[WM_DS_DST]
+	src = ds[WM_DS_SENDER]
+	dst = ds[WM_DS_RECEIVER]
 	if src == '58:7f:57:1d:c0:28':
 		print(dst)
 		pkt.show()
@@ -210,14 +210,25 @@ def parse_pkt(pkt, dic, channel=None):
 		#TODO FIX WEIRD MULTICAST 
 		return
 
+	"""
+	if not ap:
+		print("NO AP: %s" % pkt.summary())
+		print("SRC: %s" % src)
+		print("DST: %s" % dst)
+	if not sta:
+		print("NO STATION: %s" % pkt.summary())
+		print("SRC: %s" % src)
+		print("DST: %s" % dst)
+	"""
+
 	#start by parsing what is in every packets: RSSI and traffic
-	try:
-		if src == ds[WM_DS_AP]:
-			ap.set_rssi(pkt.dBm_AntSignal)
-		else:
-			sta.set_rssi(pkt.dBm_AntSignal)
-	except Exception, e:
-		print(e)
+	#try:
+	if ap and src == ds[WM_DS_AP]:
+		ap.set_rssi(pkt.dBm_AntSignal)
+	elif sta:
+		sta.set_rssi(pkt.dBm_AntSignal)
+	#except Exception, e:
+	#	print(e)
 	handle_traffic(pkt, dic, src, dst)
 
 	#keep on with parsing specified packets
@@ -235,9 +246,13 @@ def parse_pkt(pkt, dic, channel=None):
 		parse_assocResp(pkt, dic, sta, ap)
 	elif pkt.haslayer(Dot11ReassoResp):
 		parse_assocResp(pkt, dic, sta, ap)
-#	elif pkt.haslayer(Dot11Disas):
-#	elif pkt.haslayer(Dot11Deauth):
-#	elif is_data(pkt) and not is_broadcast(ds[WM_DS_DST]):
+	elif pkt.haslayer(Dot11Disas):
+		sta.set_connected(None) #TODO
+	elif pkt.haslayer(Dot11Deauth):
+		sta.set_connected(None) #TODO
+	elif is_data(pkt) and not is_broadcast(ds[WM_DS_SENDER]):
+		if sta: #if rcv not broadcast (see from ds)
+			sta.set_connected(ap.bssid) #TODO
 
 def start_parsing_pkt(dic, pkt, channel=None):
 	if pkt.haslayer(RadioTap):

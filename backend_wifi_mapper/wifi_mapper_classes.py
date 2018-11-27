@@ -154,13 +154,34 @@ class Station():
 		if bssid not in dic[WM_TRAFFIC]:
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
 
+	def set_connected(self, ap_bssid):
+		if ap_bssid and ap_bssid != self.ap_bssid:
+			self.new_data = True
+			self.connected = True
+			self.ap_bssid = ap_bssid
+			#TODO meh
+			if not self.ap_bssid in self.dic[WM_AP]:
+				self.dic[WM_AP][self.ap_bssid] = AccessPoint(self.dic, self.ap_bssid)
+			self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
+		elif not ap_bssid and self.connected:
+			self.new_data = True
+			self.connected = False
+			#TODO meh
+			if self.ap_bssid:
+				if not self.ap_bssid in self.dic[WM_AP]:
+					self.dic[WM_AP][self.ap_bssid] = AccessPoint(self.dic, self.ap_bssid)
+				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
+
+			self.ap_bssid = None
+
 	def set_rssi(self, rssi):
-		self.new_data = True
-		self.rssi = rssi
+		if self.rssi != rssi:
+			self.new_data = True
+			self.rssi = rssi
 	
 	def add_ap_probed(self, ssid):
-		self.new_data = True
 		if ssid not in self.ap_probed:
+			self.new_data = True
 			self.ap_probed.append(ssid)
 
 	def set_probeReq(self, probe_req):
@@ -200,43 +221,46 @@ class AccessPoint():
 		self.security = None
 		self.known = False
 		self.wps = None
-		self.client_co = set()
 		self.beacons = 0
 		self.proberesp = 0
 		self.new_data = True
 		self.rssi = 0
+		self.client_co = set()
 		self.client_hist_co = []
 
 		if bssid not in dic[WM_TRAFFIC]:
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
 
 	def set_rssi(self, rssi):
-		self.rssi = rssi
-		self.new_data = True
+		if rssi != self.rssi:
+			self.rssi = rssi
+			self.new_data = True
 	
 	def set_ssid(self, ssid):
-		self.ssid = ssid
-		self.new_data = True
+		if ssid != self.ssid:
+			self.ssid = ssid
+			self.new_data = True
 	
 	def set_channel(self, channel):
-		self.channel = str(ord(channel))
-		self.new_data = True
+		if self.channel != channel:
+			self.channel = str(ord(channel))
+			self.new_data = True
 	
 	def set_known(self, known):
-		self.known = known
-		self.new_data = True
+		if self.known != known:
+			self.known = known
+			self.new_data = True
 
 	def set_security(self, pkt):
-		self.new_data = True
 		elem = pkt[Dot11Elt]
 		security = None
 		while isinstance(elem, Dot11Elt):
-				if elem.ID == 48:
-					security = "WPA2"
-				elif elem.ID == 221 and hasattr(elem, "info") and\
-					elem.info.startswith('\x00P\xf2\x01\x01\x00'):
-					security = "WPA"
-				elem = elem.payload
+			if elem.ID == 48:
+				security = "WPA2"
+			elif elem.ID == 221 and hasattr(elem, "info") and\
+				elem.info.startswith('\x00P\xf2\x01\x01\x00'):
+				security = "WPA"
+			elem = elem.payload
 		if not security:
 			capabilities = pkt.sprintf("{Dot11Beacon:%Dot11Beacon.cap%}"\
 				"{Dot11ProbeResp:%Dot11ProbeResp.cap%}").split('+')
@@ -244,7 +268,9 @@ class AccessPoint():
 				security = "WEP"
 			else:
 				security = "OPN"
-		self.security = security
+		if security != self.security:
+			self.new_data = True
+			self.security = security
 	
 	def set_wps(self, elem):
 		self.new_data = True
@@ -271,22 +297,20 @@ class AccessPoint():
 
 	def add_beacon(self):
 		self.new_data = True
-		self.new_data = True
 		self.beacons += 1
 		self.known = True
 
 	def client_connected(self, bssid):
-		self.new_data = True
-		self.client_co.add(bssid)
-		self.client_hist_co.append(bssid)
-		self.new_data = True
+		if bssid not in self.client_co:
+			self.new_data = True
+			self.client_co.add(bssid)
+			self.client_hist_co.append(bssid)
 
 	def client_disconnected(self, bssid):
 		self.new_data = True
 		if bssid in self.client_co:
 			self.client_co.remove(bssid)
 		self.client_deco.append(bssid)
-		self.new_data = True
 
 	def __getitem__(self, key):
 		return self.__dict__[key]
@@ -301,13 +325,5 @@ class AccessPoint():
 		if self.ssid is not None and len(self.ssid) > 0:
 			s = "{} (probed: {})".format(s, self.ssid)
 		return s
-
-	def is_full(self):
-		#Return true or false if all important infos are set
-		if self.ssid is not None and\
-			self.channel is not None and\
-			self.crypto is not None:
-			return True
-		return False
 
 # vim:noexpandtab:autoindent:tabstop=4:shiftwidth=4:

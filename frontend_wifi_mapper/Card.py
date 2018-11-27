@@ -103,9 +103,9 @@ class Card(WMCard.WMCard):
         self.update_label("station", s)
         s = "ap: " + (self.station.ap_bssid or "")
         self.update_label("bssid", s)
-        s = "probes: " + self.station.get_probes()
+        s = "probes: " + self.station.get_ap_probed()
         self.update_label("probes", s)
-        self.update_label("vendor", self.station.vendor)
+        self.update_label("oui", self.station.oui)
 
     def update_text(self):
         infos = self.text.split(';')

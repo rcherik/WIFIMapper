@@ -38,7 +38,13 @@ def is_data(packet):
 
 def is_broadcast(addr):
 	"""
-		Check strongest byte's strongest bit to see if mac addr is broadcast
+		Broadcasts:
+			00:00:00:00:00:00
+			ff:ff:ff:ff:ff:ff
+		IPV4 mcast:
+			01:00
+		IPV6 mcast:
+			33:33
 
 		:param addr: str mac addr
 		:return: True if mac addr is broadcast else False
@@ -46,7 +52,9 @@ def is_broadcast(addr):
 	"""
 	if not isinstance(addr, str):
 		return True
-	if addr == "00:00:00:00:00:00" or addr == "ff:ff:ff:ff:ff:ff" or addr.startswith("33:33"):
+	if addr == "00:00:00:00:00:00" or addr == "ff:ff:ff:ff:ff:ff"\
+		or addr.startswith("33:33")\
+		or addr.startswith("01:00"):
 		return True
 	return False
 

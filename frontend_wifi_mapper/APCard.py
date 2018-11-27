@@ -52,8 +52,6 @@ class APCard(WMCard.WMCard):
         self._set_essid()
         self._set_security()
         self._set_data()
-        self._set_signal()
-        self._set_seen()
         self._check_width_changed()
         self._check_known()
         return self.has_changed
@@ -119,60 +117,27 @@ class APCard(WMCard.WMCard):
         self._check_width(len(crypto) + self.space + len(wps))
 
     def _set_data(self):
-        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
         sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
+        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
         beacons = "beacons: %d" % self.ap.beacons
-        connected = "prsp: %d" % self.ap.proberesp
+        signal = "sig: %d" % self.ap.rssi or 0
         self._set_label(self.data_box.rcv, rcv)
         self._set_label(self.data_box.sent, sent)
         self._set_label(self.data_box.beacons, beacons)
-        self._set_label(self.data_box.connected, connected)
+        self._set_label(self.data_box.signal, signal)
         len1 = len(rcv) + len(beacons)
-        len2 = len(sent) + len(connected)
+        len2 = len(sent) + len(signal)
         self._check_width(len1 if len1 > len2 else len2)
-
-    def _set_signal(self):
-        min_sig = "min: %d" % (self.traffic.min_sig\
-                if self.traffic else 0)
-        avg_sig = "avg: %0.1f" % (self.traffic.avg_sig\
-                if self.traffic else 0)
-        max_sig = "max: %d" % (self.traffic.max_sig\
-                if self.traffic else 0)
-        self._set_label(self.signal_box.min_sig, min_sig)
-        self._set_label(self.signal_box.avg_sig, avg_sig)
-        self._set_label(self.signal_box.max_sig, max_sig)
-        self._check_width(len(min_sig) + len(avg_sig) + len(max_sig))
-
-    def _set_seen(self):
-        if self.ap.known:
-            s = ""
-        else:
-            s = self.ap.get_seen()
-        self._set_label(self.seen, s)
-        self._check_width(len(s))
 
     def get_obj(self):
         return self.ap
-    
-    def on_touch_up(self, touch):
-        """ Create a tab with card info when touched """
-        if self.collide_point(*touch.pos) and hasattr(touch, "button")\
-                and touch.button == "left":
-            self._say("touched ! " + touch.button)
-            self.pressed = touch.pos
-            screen = CardInfoScreen(name=self.key)
-            App.get_running_app().add_header(self.key, screen)
-            #TODO open a tab with ap card infos screen
-            return True
-        return super(APCard, self).on_touch_up(touch)
-
-    def on_pressed(self, instance, pos):
-        self._say("pressed at {pos}".format(pos=pos))
-
+   
     def draw_background(self, widget, prop):
         self.canvas.before.clear()
 	with self.canvas.before:
-            if self.ap.known:
+            if self.clicked:
+	        Color(0, 0, 1, 0.25)
+            elif self.ap.known:
 	        Color(1, 1, 1, 0.25)
             else:
 	        Color(1, 0, 0, 0.25)
