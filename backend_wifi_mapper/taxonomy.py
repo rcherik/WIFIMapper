@@ -4,6 +4,7 @@ import hashlib
 import subprocess
 #import dhcp
 
+TAXONOMY_C_FILE = "backend_wifi_mapper/C_Utilities/create_signature.c"
 
 # Associated with each signature is a tuple:
 # Field #1 = Genus = a human-recognizeable name for the device. If the device
@@ -2230,11 +2231,11 @@ def identify_wifi_device(bssid, probeReq, assocReq, oui):
 		If the signature is not known, return None
 	"""
 	try:
-		process = ['./backend_wifi_mapper/create_signature', probeReq, assocReq]
-		signature = subprocess.check_output(process)
-	except Exception, e:
-		print(e)
-		return None
+                process = ['./%s' % (TAXONOMY_C_FILE[:-2]), probeReq, assocReq]
+                signature = subprocess.check_output(process)
+        except Exception, e:
+                print(e)
+                return None
 	sig = signature.strip()
 #	opersys = dhcp.LookupOperatingSystem(mac)
 	suffixes = []

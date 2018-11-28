@@ -96,6 +96,9 @@ class CardListScreen(WMScreen.WMScreen):
         self.label_curr_page.text = "Page %d" % self.current_page
         self._create_sort_by()
         #self.action_previous.on_release = self.pause_input
+        Clock.schedule_once(self._is_ready)
+
+    def _is_ready(self, *args):
         self.ready = True
 
     def _update_rect(self, instance, value):

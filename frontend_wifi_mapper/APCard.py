@@ -134,16 +134,21 @@ class APCard(WMCard.WMCard):
     def _set_security(self):
         crypto = ""
         if self.ap.security:
-            crypto = "[i]%s[/i]" % (self.ap.security or "")
+            crypto = "[i]%s[/i]" % (self.ap.get_security())
+        connected = "co: %d" % self.ap.n_clients
+        """
         wps_str = "has wps" if self.ap.wps is True else ""
         if self.ap.wps is None:
             wps_str = ""
         wps = "[i]%s[/i]" % (wps_str)
+        """
         self._set_label(self.security_box.security, crypto)
-        self._set_label(self.security_box.wps, wps)
+        self._set_label(self.security_box.co, connected)
+        #self._set_label(self.security_box.wps, wps)
         min_len = 0.5 * self.width
         fun = self._get_min_len
-        self._check_width(len(crypto) + self.space + len(wps))
+        self._check_width(len(crypto) + self.space + len(connected))
+        #self._check_width(len(crypto) + self.space + len(wps))
 
     def _set_data(self):
         sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)

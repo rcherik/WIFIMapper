@@ -167,7 +167,9 @@ class Station():
 			self.connected = True
 			self.ap_bssid = ap_bssid
 			self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
-		elif not ap_bssid and self.connected:
+
+	def set_disconnected(self):
+		if self.ap_bssid and self.connected:
 			self.new_data = True
 			self.connected = False
 			if self.ap_bssid:
@@ -196,7 +198,8 @@ class Station():
 		self.probe_req = probe_req
 		#We have the probe_req, the assoc_req and the oui and we never
 		#tried to guess the model: try it.
-		if self.assoc_req is not None and self.model == None and self.oui is not None:
+		if self.assoc_req is not None and self.model == None\
+				and self.oui is not None:
 			self.set_model(self.bssid, self.probe_req, \
 				self.assoc_req, self.oui.lower())
 			self.new_data = True
@@ -205,7 +208,8 @@ class Station():
 		self.assoc_req = assoc_req
 		#We have the probe_req, the assoc_req and the oui and we never
 		#tried to guess the model: try it.
-		if self.probe_req is not None and self.model == None and self.oui is not None:
+		if self.probe_req is not None and self.model == None\
+				and self.oui is not None:
 			self.set_model(self.bssid, self.probe_req, \
 				self.assoc_req, self.oui.lower())
 			self.new_data = True
@@ -237,6 +241,7 @@ class AccessPoint():
 		self.rssi = 0
 		self.client_co = set()
 		self.client_hist_co = []
+		self.n_clients = 0
 
 		if bssid not in dic[WM_TRAFFIC]:
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
@@ -288,6 +293,16 @@ class AccessPoint():
 			self.new_data = True
 			self.security = security
 	
+	def get_security(self):
+		wps_str = "has wps" if self.wps is True else "no wps"
+		if not self.security and not self.wps:
+			return ""
+		if self.security is None and isinstance(self.wps, bool):
+			return wps_str
+		if self.wps is None and self.security:
+			return self.security
+		return "%s | %s" % (self.security, wps_str)
+
 	def set_wps(self, elem):
 		self.new_data = True
 		"""
@@ -311,6 +326,7 @@ class AccessPoint():
 			return None
 		self.wps = int(decoded[6]) == 0x2
 
+
 	def add_beacon(self):
 		self.new_data = True
 		self.beacons += 1
@@ -321,12 +337,15 @@ class AccessPoint():
 			self.new_data = True
 			self.client_co.add(bssid)
 			self.client_hist_co.append(bssid)
+			self.n_clients += 1
 
 	def client_disconnected(self, bssid):
 		self.new_data = True
 		if bssid in self.client_co:
+			self.n_clients -= 1
 			self.client_co.remove(bssid)
-	#	self.client_deco.append(bssid)
+		#TODO
+		self.client_hist_co.append(bssid)
 
 	def __getitem__(self, key):
 		return self.__dict__[key]

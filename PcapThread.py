@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import threading
+import subprocess
 """ Scapy """
 import scapy
 import scapy.config
@@ -15,6 +16,7 @@ from backend_wifi_mapper.find_iface import find_iface
 from backend_wifi_mapper.wifi_mapper import start_parsing_pkt
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
+from backend_wifi_mapper.taxonomy import TAXONOMY_C_FILE
 
 DEFAULT_READ_TIME = 0.0005
 DEFAULT_RELOAD_BY_PKT = 10
@@ -40,6 +42,23 @@ class PcapThread(threading.Thread):
             self.read_update = float(args.read_update) / 1000
         self.update_count = 0
         self.live_update = args.live_update or DEFAULT_RELOAD_BY_PKT
+        self._compile_c_file(TAXONOMY_C_FILE)
+
+    def _compile_c_file(self, name):
+        self._say("Compiling %s file to %s" % (name, name[:-2]))
+        try:
+            dn = open(os.devnull, 'w')
+        except IOError:
+            dn = None
+        try:
+            ipr = subprocess.Popen(['/usr/bin/gcc', name, '-o', name[:-2]],
+                    stdout=dn, stderr=dn)
+            if dn:
+                dn.close()
+        except Exception as e:
+            if dn and not dn.closed:
+                dn.close()
+            self._say("Could not compile file %s: %s" % (name, e.message))
 
     def _get_mac_list(self):
         try:
@@ -100,7 +119,6 @@ class PcapThread(threading.Thread):
             print(s, **kwargs)
 
     def _sniff(self):
-        self._wait_for_gui()
         if self.channelthread:
             self.channelthread.start()
         while not self.stop:
@@ -176,6 +194,7 @@ class PcapThread(threading.Thread):
         """ Thread either sniff or waits """
         self.started = True
         self._say("using scapy (%s)" % scapy.config.conf.version)
+        self._wait_for_gui()
         if not self.pcap_file:
             self._sniff()
         else:

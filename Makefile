@@ -1,11 +1,31 @@
 NAME=application.py
-#INTERFACE=$(shell /sbin/ip route | awk 'NR==1{print $$5}')
-#INTERFACE=$(shell /sbin/ifconfig | /bin/grep '^wl.*Link*.'\
-	| /usr/bin/awk '{print $$1}')
+
+#Get wifi interface off for monitoring first
 INTERFACE=$(shell /sbin/iwconfig 2>&- |\
-		  /bin/grep 'IEEE 802.11' |\
-		  /usr/bin/awk '{print $$1}' |\
-		  head -1)
+	  /bin/grep 'IEEE 802.11  Mode:Monitor' |\
+	  /usr/bin/awk '{print $$1}' |\
+	  head -1)
+
+#Get fallback wifi interface 2 if possible
+ifeq ($(INTERFACE),)
+    INTERFACE=$(shell /sbin/iwconfig 2>&- |\
+	  /bin/grep 'IEEE 802.11  ESSID:off' |\
+	  /usr/bin/awk '{print $$1}' |\
+	  head -1)
+endif
+
+#Get fallback wifi interface
+ifeq ($(INTERFACE),)
+    INTERFACE=$(shell /sbin/iwconfig 2>&- |\
+	  /bin/grep 'IEEE 802.11' |\
+	  /usr/bin/awk '{print $$1}' |\
+	  head -1)
+endif
+
+ifeq ($(INTERFACE),)
+    $(info WARNING $$INTERFACE interface [${INTERFACE}])
+endif
+
 PYTHON=/usr/bin/python
 SUDO=/usr/bin/sudo
 APP=application.py

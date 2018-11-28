@@ -238,9 +238,9 @@ def parse_pkt(pkt, dic, channel=None):
 	elif pkt.haslayer(Dot11ReassoResp):
 		parse_assocResp(pkt, dic, sta, ap)
 	elif pkt.haslayer(Dot11Disas):
-		sta.set_connected(None) #TODO
+		sta.set_disconnected() #TODO
 	elif pkt.haslayer(Dot11Deauth):
-		sta.set_connected(None) #TODO
+		sta.set_disconnected() #TODO
 	elif is_data(pkt) and not is_broadcast(ds[WM_DS_SENDER]):
 		if sta: #if rcv not broadcast (see from ds)
 			sta.set_connected(ap.bssid) #TODO

@@ -16,6 +16,7 @@
 
         BoxLayout:
                 id: main_layout
+                size_hint: (1, 1)
                 orientation: 'vertical'
 
                 BoxLayout:
@@ -38,13 +39,13 @@
                         size_hint: (1, 0.1)
                         orientation: 'horizontal'
                         security: security
-                        wps: wps
+                        co: co
                         Label:
                                 id: security
                                 size_hint: (0.5, 1)
                                 markup: True
                         Label:
-                                id: wps
+                                id: co
                                 size_hint: (0.5, 1)
                                 markup: True
                 BoxLayout:
@@ -78,11 +79,16 @@
                                         size_hint: (1, 0.5)
                                         markup: True
 
-                FloatLayout:
+                #FloatLayout:
+                        #size_hint: (1, 0.2)
+                BoxLayout:
                         size_hint: (1, 0.2)
+                        Widget:
                         WMImageLink:
                                 id: open_link
                                 source: 'Static/images/open2.png'
-                                pos_hint: {'y': 0, 'right': 1}
-                                size_hint: (0.2, 1)
-                                color: (1, 0, 0, 0.5)
+                                #pos_hint: {'y': 0, 'right': 1}
+                                allow_stretch: True
+                                size_hint: (None, 1)
+                                width: 40
+                                color: (1, 1, 1, 0.5)
