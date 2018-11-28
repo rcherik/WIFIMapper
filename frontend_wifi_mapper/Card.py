@@ -74,7 +74,7 @@ class Card(WMCard.WMCard):
         self.add_label("bssid", s, self.max_height)
         s = "probes: " + self.station.get_ap_probed()
         self.add_label("probes", s, self.max_height)
-        self.add_label("oui", self.station.oui, self.max_height)
+        self.add_label("oui", self.station.oui if self.station.model == None else self.station.model, self.max_height)
 
     def create_text(self):
         infos = self.text.split(';')
@@ -105,7 +105,7 @@ class Card(WMCard.WMCard):
         self.update_label("bssid", s)
         s = "probes: " + self.station.get_ap_probed()
         self.update_label("probes", s)
-        self.update_label("oui", self.station.oui)
+        self.update_label("oui", self.station.oui if self.station.model == None else self.station.model)
 
     def update_text(self):
         infos = self.text.split(';')

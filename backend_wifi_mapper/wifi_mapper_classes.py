@@ -6,6 +6,7 @@ from wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
 from scapy.all import Dot11Elt
 import struct
+from taxonomy import identify_wifi_device
 
 """
 	Classes used in dictionnary from pcap_paser.parse method
@@ -183,21 +184,31 @@ class Station():
 			self.new_data = True
 			self.ap_probed.append(ssid)
 
+	def set_model(self, bssid, probe_req, assoc_req, oui):
+		print('taxo ATTEMPLT:', oui)
+		self.model = identify_wifi_device(bssid, probe_req, assoc_req, \
+			oui)
+			#failed to get the model, just put the bssid
+		if self.model == None:
+			self.model = self.bssid
+
 	def set_probeReq(self, probe_req):
 		self.probe_req = probe_req
-		#We have both the probe_req and the assoc_req and we never
+		#We have the probe_req, the assoc_req and the oui and we never
 		#tried to guess the model: try it.
-#		if self.assoc_req is not None and self.model == None:
-#			self.model = taxonomy(self.probe_req, self.assoc_req)
-		#	self.new_data = True
+		if self.assoc_req is not None and self.model == None and self.oui is not None:
+			self.set_model(self.bssid, self.probe_req, \
+				self.assoc_req, self.oui.lower())
+			self.new_data = True
 
 	def set_assocReq(self, assoc_req):
 		self.assoc_req = assoc_req
-		#We have both the probe_req and the assoc_req and we never
+		#We have the probe_req, the assoc_req and the oui and we never
 		#tried to guess the model: try it.
-#		if self.probe_req is not None and self.model == None:
-#			self.model = taxonomy(self.probe_req, self.assoc_req)
-			#self.new_data = True
+		if self.probe_req is not None and self.model == None and self.oui is not None:
+			self.set_model(self.bssid, self.probe_req, \
+				self.assoc_req, self.oui.lower())
+			self.new_data = True
 
 	def __getitem__(self, key):
 		return self.__dict__[key]
@@ -240,10 +251,13 @@ class AccessPoint():
 			self.ssid = ssid
 			self.new_data = True
 	
-	def set_channel(self, channel):
+	def set_channel(self, channel, pkt):
 		if self.channel != channel:
-			self.channel = str(ord(channel))
-			self.new_data = True
+			try:
+				self.channel = int(channel.encode('hex'), 16)
+				self.new_data = True
+			except Exception, e:
+				print('set_channel failed: ', e)
 	
 	def set_known(self, known):
 		if self.known != known:
@@ -312,7 +326,7 @@ class AccessPoint():
 		self.new_data = True
 		if bssid in self.client_co:
 			self.client_co.remove(bssid)
-		self.client_deco.append(bssid)
+	#	self.client_deco.append(bssid)
 
 	def __getitem__(self, key):
 		return self.__dict__[key]

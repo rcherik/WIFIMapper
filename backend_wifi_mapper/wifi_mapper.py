@@ -17,7 +17,6 @@ except ImportError:
 	Dot11FCS = None
 
 from scapy.error import Scapy_Exception
-import wpa_scapy
 import wifi_mapper_ds
 from wifi_mapper_ds import WM_DS_SRC, WM_DS_TRANS, WM_DS_RCV, WM_DS_DST,\
 		WM_DS_AP, WM_DS_STATION, WM_DS_SENDER, WM_DS_RECEIVER
@@ -103,7 +102,7 @@ def parse_beacon(pkt, dic, ap):
 		if elem.ID == ID_SSID:
 			ap.set_ssid(elem.info)
 		elif elem.ID == ID_CHANNEL:
-			ap.set_channel(elem.info)
+			ap.set_channel(elem.info, pkt)
 		elif elem.ID == ID_VENDOR:
 			if hasattr(elem, "oui") and elem.oui == 0x50f2 \
 			and hasattr(elem, "info") and elem.info.startswith('\x04'):
