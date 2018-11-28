@@ -25,6 +25,7 @@ import WMPageToggleButton
 import WMCardScrollView
 import WMActionPauseToggleButton
 import WMActionInput
+import WMActionGroupPause
 
 Builder.load_file("Static/cardlistscreen.kv")
 
@@ -52,6 +53,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.sort_by_key = None
         self.sort_values = {}
         self.cmp_reverse = False
+        self.paused = False
         if self.show_ap:
             self.toggle_val = 'known'
             self.toggle_check = False
@@ -95,6 +97,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.toggle.screen = self
         self.label_curr_page.text = "Page %d" % self.current_page
         self._create_sort_by()
+        self.dropdown_group.screen = self
         #self.action_previous.on_release = self.pause_input
         Clock.schedule_once(self._is_ready)
 
@@ -203,7 +206,7 @@ class CardListScreen(WMScreen.WMScreen):
     def _add_card(self, card):
         if self.n_card >= self.max_cards:
             return False
-        if self.current_screen:
+        if self.current_screen and not self.paused:
             self.stack_layout.add_widget(card)
         self.n_card += 1
         self.has_to_sort = True
@@ -275,11 +278,16 @@ class CardListScreen(WMScreen.WMScreen):
             self.cards.append(self.card_dic[mac])
         self.card_dic[mac].update(id=mac, station=station)
 
+    def set_paused(self):
+        self.paused = True
+
+    def set_unpaused(self):
+        self.paused = False
+        self.reload_gui(current=False)
+
     def update_gui(self, dic, current=True):
         """ Update GUI """
         self.current_screen = current
-        #if self.loading:
-            #self.current_screen = False
         self.event = None
         if self.show_ap:
             ap = dic[WM_AP]
@@ -296,12 +304,13 @@ class CardListScreen(WMScreen.WMScreen):
                     self._set_station_card(key, value)
                     self.has_to_sort = True
                 value.new_data = False
-        self._make_pages()
-        self._sort_cards()
-        self._update_header()
+        if not self.paused:
+            self._make_pages()
+            self._sort_cards()
+            self._update_header()
 
     def reload_gui(self, current=True):
-        if self.loading:
+        if self.loading or self.paused:
             return
         self.current_screen = current
         self.loading = True

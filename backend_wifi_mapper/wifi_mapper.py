@@ -237,12 +237,12 @@ def parse_pkt(pkt, dic, channel=None):
 		parse_assocResp(pkt, dic, sta, ap)
 	elif pkt.haslayer(Dot11ReassoResp):
 		parse_assocResp(pkt, dic, sta, ap)
-	elif pkt.haslayer(Dot11Disas):
+	elif pkt.haslayer(Dot11Disas) and sta:
 		sta.set_disconnected() #TODO
-	elif pkt.haslayer(Dot11Deauth):
+	elif pkt.haslayer(Dot11Deauth) and sta:
 		sta.set_disconnected() #TODO
 	elif is_data(pkt) and not is_broadcast(ds[WM_DS_SENDER]):
-		if sta: #if rcv not broadcast (see from ds)
+		if sta and ap: #if rcv not broadcast (see from ds)
 			sta.set_connected(ap.bssid) #TODO
 		else:
 			dic[WM_TRA][ap.bssid].add_sent(None) #TODO
