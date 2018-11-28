@@ -15,14 +15,41 @@ from CardInfoScreen import CardInfoScreen
 
 Builder.load_file("Static/apcard.kv")
 
+from kivy.properties import StringProperty
+from kivy.uix.image import Image
+
+class WMImageLink(Image):
+
+    key = StringProperty(None)
+    card = ObjectProperty(None)
+
+    def __init__(self, **kwargs):
+        super(WMImageLink, self).__init__(**kwargs)
+
+    def on_touch_up(self, touch):
+        if self.collide_point(*touch.pos) and hasattr(touch, "button")\
+                and touch.button == "left":
+            print("touched ! " + touch.button)
+            self.pressed = touch.pos
+            screen = CardInfoScreen(name=self.key)
+            self.card.clicked = not self.card.clicked #TODO
+            self.card.draw_background(self, self.pos)
+            App.get_running_app().add_header(self.key, screen)
+            return True
+        return super(WMImageLink, self).on_touch_up(touch)
+
+    def on_pressed(self, instance, pos):
+        self._say("pressed at {pos}".format(pos=pos))
+
 class APCard(WMCard.WMCard):
 
-    mac = ObjectProperty(None)
-    essid = ObjectProperty(None)
+    bssid = ObjectProperty(None)
+    ssid = ObjectProperty(None)
     security_box = ObjectProperty(None)
     data_box = ObjectProperty(None)
     seen = ObjectProperty(None)
     vendor_label = ObjectProperty(None)
+    open_link = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(APCard, self).__init__(**kwargs)
@@ -41,6 +68,8 @@ class APCard(WMCard.WMCard):
 
     def _create_view(self, *args):
         self.update(self.ap, self.traffic)
+        self.open_link.key = self.key #TODO
+        self.open_link.card = self
 
     def update(self, ap, traffic):
         self.final_width = 0
@@ -48,8 +77,8 @@ class APCard(WMCard.WMCard):
         if traffic:
             self.traffic = traffic
         self.has_changed = False
-        self._set_mac()
-        self._set_essid()
+        self._set_bssid()
+        self._set_ssid()
         self._set_security()
         self._set_data()
         self._check_width_changed()
@@ -86,20 +115,20 @@ class APCard(WMCard.WMCard):
             self.has_changed = True
             label.text = string
 
-    def _set_mac(self):
+    def _set_bssid(self):
         s = "[b]%s[/b]" % self.ap.bssid
         if self.ap.oui:
             s += " (%s)" % self.ap.oui
-        self._set_label(self.mac, s)
+        self._set_label(self.bssid, s)
         self._check_width(len(s))
 
-    def _set_essid(self):
+    def _set_ssid(self):
         s = ""
         if self.ap.ssid:
             s = "[b][i]%s[/i][/b]" % (self.ap.ssid)
         if self.ap.channel:
             s += " (%s)" % self.ap.channel
-        self._set_label(self.essid, s)
+        self._set_label(self.ssid, s)
         self._check_width(len(s))
 
     def _set_security(self):
@@ -120,7 +149,7 @@ class APCard(WMCard.WMCard):
         sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
         rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
         beacons = "beacons: %d" % self.ap.beacons
-        signal = "sig: %d" % self.ap.rssi or 0
+        signal = "sig: %d" % (self.ap.rssi if self.ap.rssi else 0)
         self._set_label(self.data_box.rcv, rcv)
         self._set_label(self.data_box.sent, sent)
         self._set_label(self.data_box.beacons, beacons)

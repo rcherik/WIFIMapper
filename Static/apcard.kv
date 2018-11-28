@@ -1,74 +1,88 @@
 #:kivy 1.9.0
 
 <APCard>:
-	height: 150
-	width: 200
-	minimum_width: 200
-	size_hint: (None, None)
-	orientation: 'vertical'
+        height: 150
+        width: 200
+        minimum_width: 200
+        size_hint: (None, None)
+        orientation: 'vertical'
 
-	mac: mac
-	essid: essid
-	security_box: security_box
-	data_box: data_box
+        main_layout: main_layout
+        bssid: bssid
+        ssid: ssid
+        security_box: security_box
+        data_box: data_box
+        open_link: open_link
 
+        BoxLayout:
+                id: main_layout
+                orientation: 'vertical'
 
-	BoxLayout:
-		size_hint: (1, 0.2)
-		orientation: 'vertical'
-		Label:
-			id: mac
-			size_hint: (1, 0.5)
-			text_size: self.size
-			markup: True
-			halign: 'center'
-		Label:
-			id: essid
-			size_hint: (1, 0.5)
-			text_size: self.size
-			markup: True
-			halign: 'center'
-	BoxLayout:
-		id: security_box
-		size_hint: (1, 0.1)
-		orientation: 'horizontal'
-		security: security
-		wps: wps
-		Label:
-			id: security
-			size_hint: (0.5, 1)
-			markup: True
-		Label:
-			id: wps
-			size_hint: (0.5, 1)
-			markup: True
-	BoxLayout:
-		id: data_box
-		size_hint: (1, 0.2)
-		orientation: 'horizontal'
-		rcv: rcv
-		sent: sent
-		beacons: beacons
-		signal: signal
-		BoxLayout:
-			orientation: 'vertical'
-			size_hint: (0.5, 1)
-			Label:
-				id: sent
-				size_hint: (1, 0.5)
-				markup: True
-			Label:
-				id: rcv
-				size_hint: (1, 0.5)
-				markup: True
-		BoxLayout:
-			orientation: 'vertical'
-			size_hint: (0.5, 1)
-			Label:
-				id: beacons
-				size_hint: (1, 0.5)
-				markup: True
-			Label:
-				id: signal
-				size_hint: (1, 0.5)
-				markup: True
+                BoxLayout:
+                        size_hint: (1, 0.2)
+                        orientation: 'vertical'
+                        Label:
+                                id: bssid
+                                size_hint: (1, 0.5)
+                                text_size: self.size
+                                markup: True
+                                halign: 'center'
+                        Label:
+                                id: ssid
+                                size_hint: (1, 0.5)
+                                text_size: self.size
+                                markup: True
+                                halign: 'center'
+                BoxLayout:
+                        id: security_box
+                        size_hint: (1, 0.1)
+                        orientation: 'horizontal'
+                        security: security
+                        wps: wps
+                        Label:
+                                id: security
+                                size_hint: (0.5, 1)
+                                markup: True
+                        Label:
+                                id: wps
+                                size_hint: (0.5, 1)
+                                markup: True
+                BoxLayout:
+                        id: data_box
+                        size_hint: (1, 0.2)
+                        orientation: 'horizontal'
+                        rcv: rcv
+                        sent: sent
+                        beacons: beacons
+                        signal: signal
+                        BoxLayout:
+                                orientation: 'vertical'
+                                size_hint: (0.5, 1)
+                                Label:
+                                        id: sent
+                                        size_hint: (1, 0.5)
+                                        markup: True
+                                Label:
+                                        id: rcv
+                                        size_hint: (1, 0.5)
+                                        markup: True
+                        BoxLayout:
+                                orientation: 'vertical'
+                                size_hint: (0.5, 1)
+                                Label:
+                                        id: beacons
+                                        size_hint: (1, 0.5)
+                                        markup: True
+                                Label:
+                                        id: signal
+                                        size_hint: (1, 0.5)
+                                        markup: True
+
+                FloatLayout:
+                        size_hint: (1, 0.2)
+                        WMImageLink:
+                                id: open_link
+                                source: 'Static/images/open2.png'
+                                pos_hint: {'y': 0, 'right': 1}
+                                size_hint: (0.2, 1)
+                                color: (1, 0, 0, 0.5)

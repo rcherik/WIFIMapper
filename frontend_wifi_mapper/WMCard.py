@@ -39,7 +39,7 @@ class WMCard(BoxLayout):
             #TODO open a tab with ap card infos screen
             #screen = CardInfoScreen(name=self.key)
             #App.get_running_app().add_header(self.key, screen)
-            return True
+            #return True
         return super(WMCard, self).on_touch_up(touch)
 
     def draw_background(self, widget, prop):

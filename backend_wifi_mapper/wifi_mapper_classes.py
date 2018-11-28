@@ -72,6 +72,10 @@ class Traffic():
 
 	def add_sent(self, addr, which=None):
 		self.sent += 1
+		if not addr: #TODO
+			return
+		if self.bssid in self.dic[WM_AP]:
+			self.dic[WM_AP][self.bssid].set_new_data()
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
 			self.traffic[addr]['sent']['all'] = 1
@@ -89,6 +93,8 @@ class Traffic():
 
 	def add_recv(self, addr, which=None):
 		self.recv += 1
+		if self.bssid in self.dic[WM_AP]:
+			self.dic[WM_AP][self.bssid].set_new_data()
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
 			self.traffic[addr]['recv']['all'] = 1
@@ -250,6 +256,9 @@ class AccessPoint():
 		if self.known != known:
 			self.known = known
 			self.new_data = True
+
+	def set_new_data(self):
+		self.new_data = True
 
 	def set_security(self, pkt):
 		elem = pkt[Dot11Elt]

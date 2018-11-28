@@ -253,6 +253,8 @@ def parse_pkt(pkt, dic, channel=None):
 	elif is_data(pkt) and not is_broadcast(ds[WM_DS_SENDER]):
 		if sta: #if rcv not broadcast (see from ds)
 			sta.set_connected(ap.bssid) #TODO
+		else:
+			dic[WM_TRA][ap.bssid].add_sent(None) #TODO
 
 def start_parsing_pkt(dic, pkt, channel=None):
 	if pkt.haslayer(RadioTap):

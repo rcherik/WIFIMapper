@@ -61,6 +61,7 @@ class WifiMapper(App):
             self.channelthread.set_application(self)
         """ Keyboard """
         self.shift = False
+        self.alt = False
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self._keyboard.bind(on_key_up=self._on_keyboard_up)
@@ -106,10 +107,12 @@ class WifiMapper(App):
     def _on_keyboard_up(self, keyboard, keycode):
         if keycode[1] == 'shift':
             self.shift = False
+        if keycode[1] == 'alt':
+            self.alt = False
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         ret = False
-        if keycode[1] == 'tab':
+        if not self.alt and keycode[1] == 'tab':
             found = False
             direction = -1 if not self.shift else 1
             loop = -1 if direction == -1 else 0
@@ -127,6 +130,9 @@ class WifiMapper(App):
             return True
         if keycode[1] == 'shift':
             self.shift = True
+            return True
+        if keycode[1] == 'alt':
+            self.alt = True
             return True
         ret = self.manager.keyboard_down(keyboard, keycode, text, modifiers)
         return ret

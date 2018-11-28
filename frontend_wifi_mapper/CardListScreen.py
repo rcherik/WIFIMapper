@@ -72,6 +72,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.current_screen = False
         self.event = None
         self.browsing_card = False
+        self.first_sort = 'bssid' if self.show_ap else 'bssid'
         """ Pages """
         self.n_card = 0
         self.max_cards = 20
@@ -128,7 +129,7 @@ class CardListScreen(WMScreen.WMScreen):
                 key=key,
                 group="ap" if self.show_ap else "station",
                 allow_no_selection=False,
-                state="down" if key == 'bssid' else "normal",
+                state="down" if key == self.first_sort else "normal",
                 screen=self)
         self.dropdown_group.add_widget(btn)
 

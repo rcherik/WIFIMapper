@@ -10,6 +10,7 @@ from kivy.uix.button import Button
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.clock import Clock
+from kivy.uix.image import Image
 """ Our stuff """
 from CardListScreen import CardListScreen
 
@@ -31,6 +32,8 @@ class WMScreenManager(ScreenManager):
         for screen in self.to_init_screens:
             self.add_widget(screen)
         del self.to_init_screens
+        self.open = Image(source="Static/images/open.png")
+        self.open2 = Image(source="Static/images/open2.png")
 	Clock.schedule_once(self._manager_ready)
 
     def _manager_ready(self, *args):
