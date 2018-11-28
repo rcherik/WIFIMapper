@@ -102,7 +102,7 @@ def parse_beacon(pkt, dic, ap):
 		if elem.ID == ID_SSID:
 			ap.set_ssid(elem.info)
 		elif elem.ID == ID_CHANNEL:
-			ap.set_channel(elem.info, pkt)
+			ap.set_channel(elem.info)
 		elif elem.ID == ID_VENDOR:
 			if hasattr(elem, "oui") and elem.oui == 0x50f2 \
 			and hasattr(elem, "info") and elem.info.startswith('\x04'):
@@ -122,6 +122,7 @@ def parse_probeReq(pkt, dic, sta, ap):
 				pass
 			else:
 				sta.add_ap_probed(elem.info)
+			break
 		elem = elem.payload
 	sta.set_probeReq(str(pkt[Dot11ProbeReq]).encode('hex'))
 
@@ -196,6 +197,7 @@ def parse_pkt(pkt, dic, channel=None):
 	ds = wifi_mapper_ds.get_addrs(pkt)
 	src = ds[WM_DS_SENDER]
 	dst = ds[WM_DS_RECEIVER]
+
 	if src == ds[WM_DS_AP]:
 		ap, sta = ap_sender(pkt, dic, src, dst)
 	elif src == ds[WM_DS_STATION]:
@@ -237,10 +239,12 @@ def parse_pkt(pkt, dic, channel=None):
 		parse_assocResp(pkt, dic, sta, ap)
 	elif pkt.haslayer(Dot11ReassoResp):
 		parse_assocResp(pkt, dic, sta, ap)
-	elif pkt.haslayer(Dot11Disas) and sta:
-		sta.set_disconnected() #TODO
-	elif pkt.haslayer(Dot11Deauth) and sta:
-		sta.set_disconnected() #TODO
+	elif pkt.haslayer(Dot11Disas):
+		if sta:
+			sta.set_disconnected() #TODO
+	elif pkt.haslayer(Dot11Deauth):
+		if sta:
+			sta.set_disconnected() #TODO
 	elif is_data(pkt) and not is_broadcast(ds[WM_DS_SENDER]):
 		if sta and ap: #if rcv not broadcast (see from ds)
 			sta.set_connected(ap.bssid) #TODO

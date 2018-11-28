@@ -32,8 +32,8 @@ class WMImageLink(Image):
             print("touched ! " + touch.button)
             self.pressed = touch.pos
             screen = CardInfoScreen(name=self.key)
-            self.card.clicked = not self.card.clicked #TODO
-            self.card.draw_background(self, self.pos)
+            #self.card.clicked = not self.card.clicked #TODO
+            #self.card.draw_background(self, self.pos)
             App.get_running_app().add_header(self.key, screen)
             return True
         return super(WMImageLink, self).on_touch_up(touch)

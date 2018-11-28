@@ -30,7 +30,9 @@ class WMCard(BoxLayout):
         self._say("pressed at {pos}".format(pos=pos))
 
     def on_touch_up(self, touch):
-        if self.collide_point(*touch.pos) and hasattr(touch, "button")\
+        ret = super(WMCard, self).on_touch_up(touch)
+        if not ret and self.collide_point(*touch.pos)\
+                and hasattr(touch, "button")\
                 and touch.button == "left":
             self._say("touched ! " + touch.button)
             self.pressed = touch.pos
@@ -40,7 +42,7 @@ class WMCard(BoxLayout):
             #screen = CardInfoScreen(name=self.key)
             #App.get_running_app().add_header(self.key, screen)
             #return True
-        return super(WMCard, self).on_touch_up(touch)
+        return ret
 
     def draw_background(self, widget, prop):
         pass

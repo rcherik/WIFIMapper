@@ -16,7 +16,7 @@ from kivy.config import Config
 Config.set('graphics', 'width', '1280')
 Config.set('graphics', 'height', '800')
 """ Removes right clicks dots on gui """
-Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+Config.set('input', 'mouse', 'mouse,disable_multitouch')
 
 from kivy.clock import Clock
 Clock.max_iteration = 20
@@ -53,6 +53,7 @@ class WifiMapper(App):
         self.panel = None
         self.args = args
         self.manager = None
+        self.paused = False
         """ Thread """
         self.pcapthread = kwargs['pcapthread']
         self.pcapthread.set_application(self)
@@ -111,6 +112,8 @@ class WifiMapper(App):
             self.alt = False
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        if self.paused:
+            return
         ret = False
         if not self.alt and keycode[1] == 'tab':
             found = False
@@ -143,6 +146,12 @@ class WifiMapper(App):
             print(s, **kwargs)
         else:
             print(s, **kwargs)
+
+    def on_pause(self):
+        self.paused = True
+
+    def on_resume(self):
+        self.paused = False
 
     def onstop(self):
         self._say("leaving app - stopping threads")

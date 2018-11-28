@@ -187,7 +187,6 @@ class Station():
 			self.ap_probed.append(ssid)
 
 	def set_model(self, bssid, probe_req, assoc_req, oui):
-		print('taxo ATTEMPLT:', oui)
 		self.model = identify_wifi_device(bssid, probe_req, assoc_req, \
 			oui)
 			#failed to get the model, just put the bssid
@@ -256,7 +255,7 @@ class AccessPoint():
 			self.ssid = ssid
 			self.new_data = True
 	
-	def set_channel(self, channel, pkt):
+	def set_channel(self, channel):
 		if self.channel != channel:
 			try:
 				self.channel = int(channel.encode('hex'), 16)

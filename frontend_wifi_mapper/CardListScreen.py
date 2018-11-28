@@ -148,7 +148,8 @@ class CardListScreen(WMScreen.WMScreen):
             self._add_sort_value('sent', 'traffic.sent', True)
             self._add_sort_value('recv', 'traffic.recv', True)
             self._add_sort_value('beacons', 'ap.beacons', True)
-            #self._add_sort_value('probe resp', 'ap.proberesp', True)
+            self._add_sort_value('stations', 'ap.n_clients', True)
+            self._add_sort_value('wps', 'ap.wps', True)
         if self.show_station:
             #TODO change after card station
             self._add_sort_value('bssid', 'station.bssid', False)
@@ -187,6 +188,8 @@ class CardListScreen(WMScreen.WMScreen):
         self.label_curr_page.text = "Page %d" % self.current_page
 
     def _remove_card(self, key):
+        if self.paused:
+            return
         card = self.card_dic[key]
         if self.current_screen\
                 and card in self.stack_layout.children:
@@ -206,7 +209,7 @@ class CardListScreen(WMScreen.WMScreen):
     def _add_card(self, card):
         if self.n_card >= self.max_cards:
             return False
-        if self.current_screen and not self.paused:
+        if self.current_screen:
             self.stack_layout.add_widget(card)
         self.n_card += 1
         self.has_to_sort = True
@@ -239,7 +242,8 @@ class CardListScreen(WMScreen.WMScreen):
 
     def _insert_card(self, new_card):
         """ Check where to insert new card in stack """
-        if not self._should_remove(new_card.id, new_card.get_obj()):
+        if not self.paused\
+                and not self._should_remove(new_card.id, new_card.get_obj()):
             self.cards.append(new_card)
             self._add_card(new_card)
 

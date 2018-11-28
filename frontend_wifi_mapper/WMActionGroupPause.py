@@ -8,11 +8,13 @@ class WMActionGroupPause(ActionGroup):
 
     def __init__(self, **kwargs):
         super(WMActionGroupPause, self).__init__(**kwargs)
-        self._dropdown.on_dissmiss = lambda x: print "lol"
+        self._dropdown.bind(on_dismiss=self.dismissed)
+        self._dropdown.auto_dismiss = False
 
     def on_press(self):
-        print("LOL")
-        self.screen.set_paused()
+        #self.screen.set_paused()
+        pass
 
-    def dismissed(self):
-        print("LOL")
+    def dismissed(self, widget):
+        #self.screen.set_unpaused()
+        pass

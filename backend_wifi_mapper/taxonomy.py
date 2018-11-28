@@ -2234,7 +2234,7 @@ def identify_wifi_device(bssid, probeReq, assocReq, oui):
                 process = ['./%s' % (TAXONOMY_C_FILE[:-2]), probeReq, assocReq]
                 signature = subprocess.check_output(process)
         except Exception, e:
-                print(e)
+		print("taxo failed: ", e)
                 return None
 	sig = signature.strip()
 #	opersys = dhcp.LookupOperatingSystem(mac)
