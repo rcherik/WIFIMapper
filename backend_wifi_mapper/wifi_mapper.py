@@ -102,7 +102,7 @@ def parse_beacon(pkt, dic, ap):
 		if elem.ID == ID_SSID:
 			ap.set_ssid(elem.info)
 		elif elem.ID == ID_CHANNEL:
-			ap.set_channel(elem.info, pkt)
+			ap.set_channel(elem.info)
 		elif elem.ID == ID_VENDOR:
 			if hasattr(elem, "oui") and elem.oui == 0x50f2 \
 			and hasattr(elem, "info") and elem.info.startswith('\x04'):
@@ -122,6 +122,7 @@ def parse_probeReq(pkt, dic, sta, ap):
 				pass
 			else:
 				sta.add_ap_probed(elem.info)
+			break
 		elem = elem.payload
 	sta.set_probeReq(str(pkt[Dot11ProbeReq]).encode('hex'))
 

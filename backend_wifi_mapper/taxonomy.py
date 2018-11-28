@@ -2233,7 +2233,7 @@ def identify_wifi_device(bssid, probeReq, assocReq, oui):
 		process = ['./backend_wifi_mapper/create_signature', probeReq, assocReq]
 		signature = subprocess.check_output(process)
 	except Exception, e:
-		print(e)
+		print("taxo failed: ", e)
 		return None
 	sig = signature.strip()
 #	opersys = dhcp.LookupOperatingSystem(mac)
