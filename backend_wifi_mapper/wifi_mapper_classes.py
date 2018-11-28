@@ -165,19 +165,12 @@ class Station():
 			self.new_data = True
 			self.connected = True
 			self.ap_bssid = ap_bssid
-			#TODO meh
-			if not self.ap_bssid in self.dic[WM_AP]:
-				self.dic[WM_AP][self.ap_bssid] = AccessPoint(self.dic, self.ap_bssid)
 			self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
 		elif not ap_bssid and self.connected:
 			self.new_data = True
 			self.connected = False
-			#TODO meh
 			if self.ap_bssid:
-				if not self.ap_bssid in self.dic[WM_AP]:
-					self.dic[WM_AP][self.ap_bssid] = AccessPoint(self.dic, self.ap_bssid)
 				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
-
 			self.ap_bssid = None
 
 	def set_rssi(self, rssi):

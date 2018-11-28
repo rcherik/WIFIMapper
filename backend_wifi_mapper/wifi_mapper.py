@@ -97,40 +97,6 @@ def add_station(dic, bssid):
 	else:
 		return None
 
-def ap_sender(pkt, dic, src, dst):
-	#sender is an AP, do we know it ?
-	if src in dic[WM_AP]:
-		#yes we do
-		ap = dic[WM_AP][src]
-	else:
-		#no we don't, create it
-		ap = add_ap(dic, src)
-	#sender is an AP, receiver must be an STA. Do we know it ?
-	if dst in dic[WM_STA]:
-		#yes we do
-		sta = dic[WM_STA][dst]
-	else:
-		#no we don't, create it
-		sta = add_station(dic, dst)
-	return ap, sta
-
-def sta_sender(pkt, dic, src, dst):
-	#sender is an STA, do we know it ?
-	if src in dic[WM_STA]:
-		#yes we do
-		sta = dic[WM_STA][src]
-	else:
-		#no we don't, create it
-		sta = add_station(dic, src)
-	#sender is an STA, receiver must be an AP. Do we know it ?
-	if dst in dic[WM_AP]:
-		#yes we do
-		ap = dic[WM_AP][dst]
-	else:
-		#no we don't, create it
-		ap = add_station(dic, dst)
-	return ap, sta
-
 def parse_beacon(pkt, dic, ap):
 	elem = pkt[Dot11Elt]
 	while isinstance(elem, Dot11Elt):
@@ -174,12 +140,44 @@ def handle_traffic(pkt, dic, src, dst):
 	if is_broadcast(dst) is False:
 		if src not in dic[WM_TRA]:
 			dic[WM_TRA][src] = Traffic(dic, src)
-#		if src == '58:7f:57:1d:c0:28':
-#			print(dst)
 		dic[WM_TRA][src].add_sent(dst)
 		if dst not in dic[WM_TRA]:
 			dic[WM_TRA][dst] = Traffic(dic, dst)
 		dic[WM_TRA][dst].add_recv(src)
+
+def ap_sender(pkt, dic, src, dst):
+	#sender is an AP, do we know it ?
+	if src in dic[WM_AP]:
+		#yes we do
+		ap = dic[WM_AP][src]
+	else:
+		#no we don't, create it
+		ap = add_ap(dic, src)
+	#sender is an AP, receiver must be an STA. Do we know it ?
+	if dst in dic[WM_STA]:
+		#yes we do
+		sta = dic[WM_STA][dst]
+	else:
+		#no we don't, create it
+		sta = add_station(dic, dst)
+	return ap, sta
+
+def sta_sender(pkt, dic, src, dst):
+	#sender is an STA, do we know it ?
+	if src in dic[WM_STA]:
+		#yes we do
+		sta = dic[WM_STA][src]
+	else:
+		#no we don't, create it
+		sta = add_station(dic, src)
+	#sender is an STA, receiver must be an AP. Do we know it ?
+	if dst in dic[WM_AP]:
+		#yes we do
+		ap = dic[WM_AP][dst]
+	else:
+		#no we don't, create it
+		ap = add_ap(dic, dst)
+	return ap, sta
 
 def parse_pkt(pkt, dic, channel=None):
 	"""
@@ -199,9 +197,6 @@ def parse_pkt(pkt, dic, channel=None):
 	ds = wifi_mapper_ds.get_addrs(pkt)
 	src = ds[WM_DS_SENDER]
 	dst = ds[WM_DS_RECEIVER]
-	if src == '58:7f:57:1d:c0:28':
-		print(dst)
-		pkt.show()
 	if src == ds[WM_DS_AP]:
 		ap, sta = ap_sender(pkt, dic, src, dst)
 	elif src == ds[WM_DS_STATION]:
@@ -222,13 +217,10 @@ def parse_pkt(pkt, dic, channel=None):
 	"""
 
 	#start by parsing what is in every packets: RSSI and traffic
-	#try:
 	if ap and src == ds[WM_DS_AP]:
 		ap.set_rssi(pkt.dBm_AntSignal)
 	elif sta:
 		sta.set_rssi(pkt.dBm_AntSignal)
-	#except Exception, e:
-	#	print(e)
 	handle_traffic(pkt, dic, src, dst)
 
 	#keep on with parsing specified packets
