@@ -13,6 +13,7 @@ from kivy.core.window import Window
 """ Our stuff """
 from Card import Card
 from APCard import APCard
+from StationCard import StationCard
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR
 import WMScreen
@@ -53,7 +54,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.sort_by_key = None
         self.sort_values = {}
         self.cmp_reverse = False
-        self.paused = False
+        self.ui_paused = False
         if self.show_ap:
             self.toggle_val = 'known'
             self.toggle_check = False
@@ -80,13 +81,6 @@ class CardListScreen(WMScreen.WMScreen):
         self.max_cards = 20
         self.current_page = 1
         self.pages = 0
-        
-        """ Python background color """
-        with self.canvas.before:
-            Color(0, 0, 0, 0)
-            self.rect = Rectangle(size=self.size, pos=self.pos)
-        self.bind(size=self._update_rect, pos=self._update_rect)
-
         Clock.schedule_once(self._create_view)
 
     def _create_view(self, *args):
@@ -98,7 +92,6 @@ class CardListScreen(WMScreen.WMScreen):
         self.label_curr_page.text = "Page %d" % self.current_page
         self._create_sort_by()
         self.dropdown_group.screen = self
-        #self.action_previous.on_release = self.pause_input
         Clock.schedule_once(self._is_ready)
 
     def _is_ready(self, *args):
@@ -108,14 +101,6 @@ class CardListScreen(WMScreen.WMScreen):
         """ Update background color """
         self.rect.pos = instance.pos
         self.rect.size = instance.size
-
-    def pause_input(self):
-        app = App.get_running_app()
-        return app.pause_input()
-
-    def resume_input(self):
-        app = App.get_running_app()
-        return app.resume_input()
 
     def set_sort(self, value):
         dic = self.sort_values[value]
@@ -144,16 +129,20 @@ class CardListScreen(WMScreen.WMScreen):
             self._add_sort_value('bssid', 'ap.bssid', False)
             #TODO change sort: separate those with sig and those with not, sort them and
             self._add_sort_value('signal', 'ap.rssi', True)
-            self._add_sort_value('crypto', 'ap.security', True)
             self._add_sort_value('sent', 'traffic.sent', True)
             self._add_sort_value('recv', 'traffic.recv', True)
             self._add_sort_value('beacons', 'ap.beacons', True)
             self._add_sort_value('stations', 'ap.n_clients', True)
+            self._add_sort_value('crypto', 'ap.security', True)
             self._add_sort_value('wps', 'ap.wps', True)
         if self.show_station:
             #TODO change after card station
             self._add_sort_value('bssid', 'station.bssid', False)
             self._add_sort_value('ap', 'station.ap_bssid', True)
+            self._add_sort_value('signal', 'station.rssi', True)
+            self._add_sort_value('sent', 'traffic.sent', True)
+            self._add_sort_value('recv', 'traffic.recv', True)
+            self._add_sort_value('model', 'station.model', True)
              
     def _select_page(self):
         for children in self.page_layout.children:
@@ -188,7 +177,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.label_curr_page.text = "Page %d" % self.current_page
 
     def _remove_card(self, key):
-        if self.paused:
+        if self.ui_paused:
             return
         card = self.card_dic[key]
         if self.current_screen\
@@ -215,7 +204,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.has_to_sort = True
         return True
 
-    def _should_remove(self, mac, obj):
+    def _should_remove(self, bssid, obj):
         """ If card is not in sorting, remove """
         ret = False
         if getattr(obj, self.toggle_val) == self.toggle_check\
@@ -242,52 +231,48 @@ class CardListScreen(WMScreen.WMScreen):
 
     def _insert_card(self, new_card):
         """ Check where to insert new card in stack """
-        if not self.paused\
+        if not self.ui_paused\
                 and not self._should_remove(new_card.id, new_card.get_obj()):
             self.cards.append(new_card)
             self._add_card(new_card)
 
-    def _set_ap_card(self, mac, ap, traffic):
+    def _set_ap_card(self, bssid, ap, traffic):
         """ Fill card with access point info """
-        if mac not in self.card_dic:
-            card = APCard(key=mac,
+        if bssid not in self.card_dic:
+            card = APCard(key=bssid,
                     ap=ap,
                     traffic=traffic,
                     args=self.args)
             while self.browsing_card:
                 pass
-            self.card_dic[mac] = card
+            self.card_dic[bssid] = card
             self._insert_card(card)
             return
-        if self._should_remove(mac, ap):
-            self._remove_card(mac)
+        if self._should_remove(bssid, ap):
+            self._remove_card(bssid)
             return
-        elif self.card_dic[mac] not in self.cards:
-            self.cards.append(self.card_dic[mac])
-        self.card_dic[mac].update(ap=ap, traffic=traffic)
+        elif self.card_dic[bssid] not in self.cards:
+            self.cards.append(self.card_dic[bssid])
+        self.card_dic[bssid].update(ap=ap, traffic=traffic)
 
-    def _set_station_card(self, mac, station):
+    def _set_station_card(self, bssid, station, traffic):
         """ Fill card with access point info """
-        if mac not in self.card_dic:
-            card = Card(key=mac, station=station)
+        if bssid not in self.card_dic:
+            card = StationCard(key=bssid,
+                    station=station,
+                    traffic=traffic,
+                    args=self.args)
             while self.browsing_card:
                 pass
-            self.card_dic[mac] = card
+            self.card_dic[bssid] = card
             self._insert_card(card)
             return
-        if self._should_remove(mac, station):
-            self._remove_card(mac)
+        if self._should_remove(bssid, station):
+            self._remove_card(bssid)
             return
-        elif self.card_dic[mac] not in self.cards:
-            self.cards.append(self.card_dic[mac])
-        self.card_dic[mac].update(id=mac, station=station)
-
-    def set_paused(self):
-        self.paused = True
-
-    def set_unpaused(self):
-        self.paused = False
-        self.reload_gui(current=False)
+        elif self.card_dic[bssid] not in self.cards:
+            self.cards.append(self.card_dic[bssid])
+        self.card_dic[bssid].update(station=station, traffic=traffic)
 
     def update_gui(self, dic, current=True):
         """ Update GUI """
@@ -304,17 +289,18 @@ class CardListScreen(WMScreen.WMScreen):
         if self.show_station:
             sta = dic[WM_STATION]
             for key, value in sta.iteritems():
+                traffic = dic[WM_TRAFFIC].get(key, None)
                 if value.new_data:
-                    self._set_station_card(key, value)
+                    self._set_station_card(key, value, traffic)
                     self.has_to_sort = True
                 value.new_data = False
-        if not self.paused:
+        if not self.ui_paused:
             self._make_pages()
             self._sort_cards()
             self._update_header()
 
     def reload_gui(self, current=True):
-        if self.loading or self.paused:
+        if self.loading or self.ui_paused:
             return
         self.current_screen = current
         self.loading = True
@@ -373,14 +359,33 @@ class CardListScreen(WMScreen.WMScreen):
             return True
         return False
 
+    def pause_input(self):
+        app = App.get_running_app()
+        return app.pause_input()
+
+    def resume_input(self):
+        app = App.get_running_app()
+        return app.resume_input()
+
     def set_pause(self, val):
         self.action_pause.state = 'down' if val is True else 'normal'
 
+    def set_ui_paused(self):
+        self.ui_paused = True
+
+    def set_ui_unpaused(self):
+        self.ui_paused = False
+        self.reload_gui(current=True)
+
     def on_pre_enter(self):
-        #self._say("pre enter")
         if self.ready:
-            self.reload_gui()
-        pass
+            self.set_ui_unpaused()
+
+    def on_pre_leave(self):
+        if self.ready:
+            self.set_ui_paused()
+            if self.dropdown_group._dropdown.attach_to is not None:
+                self.dropdown_group._dropdown.dismiss()
 
     def __repr__(self):
         s = "%s: showing " % (self.__class__.__name__)

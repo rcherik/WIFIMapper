@@ -5,6 +5,7 @@ from wifi_mapper_utilities import is_broadcast, is_retransmitted
 from wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
 from scapy.all import Dot11Elt
+import time
 import struct
 from taxonomy import identify_wifi_device
 
@@ -155,6 +156,7 @@ class Station():
 		self.connected = False
 		self.ap_bssid = None
 		self.new_data = True
+		self.channel = None
 
 		Station.id += 1
 		self.id = Station.id
@@ -334,8 +336,9 @@ class AccessPoint():
 	def client_connected(self, bssid):
 		if bssid not in self.client_co:
 			self.new_data = True
+			time_str = time.strftime("%H:%M:%S", time.gmtime())
 			self.client_co.add(bssid)
-			self.client_hist_co.append(bssid)
+			self.client_hist_co.append((time_str, bssid, "connected"))
 			self.n_clients += 1
 
 	def client_disconnected(self, bssid):
@@ -343,8 +346,8 @@ class AccessPoint():
 		if bssid in self.client_co:
 			self.n_clients -= 1
 			self.client_co.remove(bssid)
-		#TODO
-		self.client_hist_co.append(bssid)
+		time_str = time.strftime("%H:%M:%S", time.gmtime())
+		self.client_hist_co.append((time_str, bssid, "disconnected"))
 
 	def __getitem__(self, key):
 		return self.__dict__[key]

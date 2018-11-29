@@ -1,0 +1,39 @@
+BoxLayout:
+        orientation: 'vertical'
+        size_hint_x: 0.5
+        ScrollView:
+                id: station_hist_lst
+                box: station_hist_box
+                canvas.before:
+                        Color:
+                                rgba: (1, 1, 1, 0.33)
+                        Rectangle:
+                                pos: self.pos
+                                size: self.size
+                GridLayout:
+                        id: station_hist_box
+                        cols: 1
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: 30
+                        padding: (0, 20)
+                        Label:
+                                id: bust
+                                text: 'a string that is long ' * 10
+                                font_size: 50
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                                canvas:
+                                        Color:
+                                                rgba: (0, 1, 0, .5)
+                                        Rectangle:
+                                                size: self.size
+                                                pos: self.pos
+                        Label:
+                                text: '2 strings that are long ' * 10
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                        Button:
+                                text: 'just testing'

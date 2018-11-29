@@ -9,8 +9,6 @@ from kivy.lang import Builder
 """ Our stuff """
 import WMScreen
 
-Builder.load_file("Static/cardinfoscreen.kv")
-
 class CardInfoScreen(WMScreen.WMScreen):
 
     scroll_view = ObjectProperty(None)

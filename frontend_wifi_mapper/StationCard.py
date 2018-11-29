@@ -9,47 +9,136 @@ from kivy.properties import ObjectProperty
 from kivy.clock import Clock
 """ Our stuff """
 from CardInfoScreen import CardInfoScreen
+import WMCard
 
-Builder.load_file("Static/card.kv")
+Builder.load_file("Static/stationcard.kv")
 
-class StationCard(BoxLayout):
+class StationCard(WMCard.WMCard):
+
+    bssid = ObjectProperty(None)
+    ap_bssid = ObjectProperty(None)
+    model = ObjectProperty(None)
+    probes = ObjectProperty(None)
+    data_box = ObjectProperty(None)
+    open_link = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(StationCard, self).__init__(**kwargs)
         self.key = kwargs['key']
         self.station = kwargs.get('station', None)
-        self.vendor = kwargs.get('vendor', None)
+        self.args = kwargs.get('args', None)
+        self.traffic = kwargs.get('traffic', None)
+        self.width_mult = 8
+        self.final_width = 0
+        self.space = 2
+        self.known_bg = False
+        self.has_changed = False
         self.bind(size=self.draw_background)
         self.bind(pos=self.draw_background)
-        self.connected = False
-        self.draw_background(self, self.pos)
+        self.ready = False
+	Clock.schedule_once(self._create_view)
 
-    def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos):
-            print("StationCard: Touched !")
-            self.pressed = touch.pos
-            screen = CardInfoScreen(name=self.id)
-            App.get_running_app().add_header(self.id, screen)
-            #TODO open a tab with station card infos screen
-            return True
-        return super(StationCard, self).on_touch_down(touch)
+    def _create_view(self, *args):
+        self.update(self.station, self.traffic)
+        self.ready = True
+        self.open_link.key = self.key #TODO
+        self.open_link.card = self
 
-    def on_pressed(self, instance, pos):
-        print('StationCard: pressed at {pos}'.format(pos=pos))
+    def update(self, station, traffic):
+        self.final_width = 0
+        self.station = station
+        if traffic:
+            self.traffic = traffic
+        self.has_changed = False
+        self._set_bssid()
+        self._set_ap_bssid()
+        self._set_model()
+        self._set_probes()
+        self._set_data()
+        self._check_width_changed()
+        self._check_known()
+        return self.has_changed
 
-    def is_connected(self):
-        if not self.connected and self.station.bssid:
-            self.connected = True
+    def _check_known(self):
+        if not self.known_bg and self.station.connected:
+            self.known_bg = True
             self.draw_background(self, self.pos)
-        elif self.connected and self.station.bssid:
-            self.connected = False
+        elif self.known_bg and not self.station.connected:
+            self.known_bg = False
             self.draw_background(self, self.pos)
 
+    def _check_width(self, l):
+        new_width = l * self.width_mult
+        if new_width > self.final_width:
+            self.final_width = new_width
+
+    def _check_width_changed(self):
+        if self.final_width < self.minimum_width\
+            and self.width != self.minimum_width:
+            self.width = self.minimum_width
+        elif self.final_width > self.minimum_width and\
+                self.width != self.final_width:
+            self.width = self.final_width
+
+    def _get_min_len(self, string, min_len):
+        l = len(string) * self.width_mult
+        return l if l > min_len else min_len
+
+    def _set_label(self, label, string):
+        if string != label.text:
+            self.has_changed = True
+            label.text = string
+
+    def _set_bssid(self):
+        s = "[b]%s[/b]" % self.station.bssid
+        if self.station.oui:
+            s += " (%s)" % self.station.oui
+        self._set_label(self.bssid, s)
+        self._check_width(len(s))
+
+    def _set_ap_bssid(self):
+        s = ""
+        if self.station.ap_bssid:
+            s = "[i]AP:[/i] [b]%s[/b]" % (self.station.ap_bssid)
+        if self.station.channel:
+            s += " (%s)" % self.station.channel
+        self._set_label(self.ap_bssid, s)
+        self._check_width(len(s))
+
+    def _set_probes(self):
+        s = ""
+        if self.station.ap_probed:
+            s = "[i]probed: %s[/i]" % (self.station.get_ap_probed())
+        self._set_label(self.probes, s)
+        #self._check_width(len(s))
+
+    def _set_model(self):
+        s = ""
+        if self.station.model:
+            s = "[b][i]%s[/i][/b]" % (self.station.model)
+        self._set_label(self.model, s)
+        self._check_width(len(s))
+
+    def _set_data(self):
+        sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
+        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
+        sig = "sig: %d" % (self.station.rssi if self.station.rssi else 0)
+        self._set_label(self.data_box.rcv, rcv)
+        self._set_label(self.data_box.sent, sent)
+        self._set_label(self.data_box.sig, sig)
+        size = len(sent) + len(rcv) + len(sig)
+        self._check_width(size)
+
+    def get_obj(self):
+        return self.station
+   
     def draw_background(self, widget, prop):
         self.canvas.before.clear()
 	with self.canvas.before:
-            if self.connected:
+            if self.clicked:
+	        Color(0, 0, 1, 0.25)
+            elif self.station.connected:
 	        Color(0, 1, 0, 0.25)
             else:
-	        Color(1, 1, 1, 0.1)
+	        Color(1, 1, 1, 0.25)
 	    Rectangle(pos=self.pos, size=self.size)

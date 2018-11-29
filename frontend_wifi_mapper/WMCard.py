@@ -19,6 +19,9 @@ class WMCard(BoxLayout):
     def get_obj(self):
         pass
 
+    def get_info_screen(self):
+        return None
+
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)

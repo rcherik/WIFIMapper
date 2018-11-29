@@ -11,35 +11,10 @@ from kivy.uix.screenmanager import Screen
 from operator import attrgetter
 """ Our stuff """
 import WMCard
-from CardInfoScreen import CardInfoScreen
+import WMImageLink
+from APCardInfoScreen import APCardInfoScreen
 
 Builder.load_file("Static/apcard.kv")
-
-from kivy.properties import StringProperty
-from kivy.uix.image import Image
-
-class WMImageLink(Image):
-
-    key = StringProperty(None)
-    card = ObjectProperty(None)
-
-    def __init__(self, **kwargs):
-        super(WMImageLink, self).__init__(**kwargs)
-
-    def on_touch_up(self, touch):
-        if self.collide_point(*touch.pos) and hasattr(touch, "button")\
-                and touch.button == "left":
-            print("touched ! " + touch.button)
-            self.pressed = touch.pos
-            screen = CardInfoScreen(name=self.key)
-            #self.card.clicked = not self.card.clicked #TODO
-            #self.card.draw_background(self, self.pos)
-            App.get_running_app().add_header(self.key, screen)
-            return True
-        return super(WMImageLink, self).on_touch_up(touch)
-
-    def on_pressed(self, instance, pos):
-        self._say("pressed at {pos}".format(pos=pos))
 
 class APCard(WMCard.WMCard):
 
@@ -47,8 +22,6 @@ class APCard(WMCard.WMCard):
     ssid = ObjectProperty(None)
     security_box = ObjectProperty(None)
     data_box = ObjectProperty(None)
-    seen = ObjectProperty(None)
-    vendor_label = ObjectProperty(None)
     open_link = ObjectProperty(None)
 
     def __init__(self, **kwargs):
@@ -68,7 +41,6 @@ class APCard(WMCard.WMCard):
 
     def _create_view(self, *args):
         self.update(self.ap, self.traffic)
-        self.open_link.key = self.key #TODO
         self.open_link.card = self
 
     def update(self, ap, traffic):
@@ -136,19 +108,11 @@ class APCard(WMCard.WMCard):
         if self.ap.security:
             crypto = "[i]%s[/i]" % (self.ap.get_security())
         connected = "co: %d" % self.ap.n_clients
-        """
-        wps_str = "has wps" if self.ap.wps is True else ""
-        if self.ap.wps is None:
-            wps_str = ""
-        wps = "[i]%s[/i]" % (wps_str)
-        """
         self._set_label(self.security_box.security, crypto)
         self._set_label(self.security_box.co, connected)
-        #self._set_label(self.security_box.wps, wps)
         min_len = 0.5 * self.width
         fun = self._get_min_len
         self._check_width(len(crypto) + self.space + len(connected))
-        #self._check_width(len(crypto) + self.space + len(wps))
 
     def _set_data(self):
         sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
@@ -165,6 +129,13 @@ class APCard(WMCard.WMCard):
 
     def get_obj(self):
         return self.ap
+
+    def get_info_screen(self):
+        screen = APCardInfoScreen(
+                name=self.ap.bssid,
+                ap=self.ap,
+                traffic=self.traffic)
+        return screen
    
     def draw_background(self, widget, prop):
         self.canvas.before.clear()

@@ -1,101 +1,88 @@
 #:kivy 1.9.0
 
-<APCard>:
-	height: 150
-	width: 200
-	minimum_width: 200
-	size_hint: (None, None)
-	orientation: 'vertical'
+<StationCard>:
+        height: 150
+        width: 200
+        minimum_width: 200
+        size_hint: (None, None)
+        orientation: 'vertical'
 
-	mac: mac
-	essid: essid
-	security_box: security_box
-	data_box: data_box
-	signal_box: signal_box
-	seen: seen
+        main_layout: main_layout
+        bssid: bssid
+        ap_bssid: ap_bssid
+        probes: probes
+        open_link: open_link
+        model: model
+        data_box: data_box
 
-	BoxLayout:
-		size_hint: (1, 0.2)
-		orientation: 'vertical'
-		Label:
-			id: mac
-			size_hint: (1, 0.5)
-			text_size: self.size
-			markup: True
-			halign: 'center'
-		Label:
-			id: essid
-			size_hint: (1, 0.5)
-			text_size: self.size
-			markup: True
-			halign: 'center'
-	BoxLayout:
-		id: security_box
-		size_hint: (1, 0.1)
-		orientation: 'horizontal'
-		security: security
-		wps: wps
-		Label:
-			id: security
-			size_hint: (0.5, 1)
-			markup: True
-		Label:
-			id: wps
-			size_hint: (0.5, 1)
-			markup: True
-	BoxLayout:
-		id: data_box
-		size_hint: (1, 0.2)
-		orientation: 'horizontal'
-		rcv: rcv
-		sent: sent
-		beacons: beacons
-		connected: connected
-		BoxLayout:
-			orientation: 'vertical'
-			size_hint: (0.5, 1)
-			Label:
-				id: rcv
-				size_hint: (1, 0.5)
-				markup: True
-			Label:
-				id: sent
-				size_hint: (1, 0.5)
-				markup: True
-		BoxLayout:
-			orientation: 'vertical'
-			size_hint: (0.5, 1)
-			Label:
-				id: beacons
-				size_hint: (1, 0.5)
-				markup: True
-			Label:
-				id: connected
-				size_hint: (1, 0.5)
-				markup: True
-	BoxLayout:
-		id: signal_box
-		size_hint: (1, 0.1)
-		orientation: 'horizontal'
-		min_sig: min_sig
-		avg_sig: avg_sig
-		max_sig: max_sig
-		Label:
-			id: min_sig
-			size_hint: (0.33, 1)
-			markup: True
-		Label:
-			id: avg_sig
-			size_hint: (0.33, 1)
-			markup: True
-		Label:
-			id: max_sig
-			size_hint: (0.33, 1)
-			markup: True
-	Label:
-		id: seen
-		size_hint_y: None
-		text_size: self.width, None
-		height: self.texture_size[1]
-		halign: 'center'
-		markup: True
+        BoxLayout:
+                id: main_layout
+                size_hint: (1, 1)
+                orientation: 'vertical'
+
+                BoxLayout:
+                        size_hint: (1, 0.2)
+                        orientation: 'vertical'
+                        Label:
+                                id: bssid
+                                size_hint: (1, 0.5)
+                                text_size: self.size
+                                markup: True
+                                halign: 'center'
+                        Label:
+                                id: ap_bssid
+                                size_hint: (1, 0.5)
+                                text_size: self.size
+                                markup: True
+                                halign: 'center'
+                                markup: True
+
+                BoxLayout:
+                        id: data_box
+                        size_hint: (1, 0.1)
+                        orientation: 'horizontal'
+                        rcv: rcv
+                        sent: sent
+                        sig: sig
+                        Label:
+                                id: sent
+                                size_hint: (0.33, 1)
+                                markup: True
+                        Label:
+                                id: rcv
+                                size_hint: (0.33, 1)
+                                markup: True
+                        Label:
+                                id: sig
+                                size_hint: (0.33, 1)
+                                markup: True
+
+                BoxLayout:
+                        size_hint: (1, 0.1)
+                        orientation: 'horizontal'
+                        Label:
+                                id: probes
+                                size_hint: (1, 1)
+                                text_size: self.size
+                                halign: 'center'
+                                valign: 'middle'
+                                markup: True
+
+                BoxLayout:
+                        size_hint: (1, 0.1)
+                        orientation: 'horizontal'
+                        Label:
+                                id: model
+                                size_hint: (1, 0.5)
+                                markup: True
+
+                BoxLayout:
+                        size_hint: (1, 0.2)
+                        Widget:
+                        WMImageLink:
+                                id: open_link
+                                source: 'Static/images/open2.png'
+                                allow_stretch: True
+                                size_hint: (None, 1)
+                                width: 40
+                                color: (1, 1, 1, 0.5)

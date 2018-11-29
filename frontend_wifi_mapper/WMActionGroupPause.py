@@ -12,9 +12,7 @@ class WMActionGroupPause(ActionGroup):
         self._dropdown.auto_dismiss = False
 
     def on_press(self):
-        #self.screen.set_paused()
         pass
 
     def dismissed(self, widget):
-        #self.screen.set_unpaused()
         pass
