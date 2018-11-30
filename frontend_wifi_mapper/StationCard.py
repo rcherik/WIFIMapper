@@ -41,7 +41,6 @@ class StationCard(WMCard.WMCard):
     def _create_view(self, *args):
         self.update(self.station, self.traffic)
         self.ready = True
-        self.open_link.key = self.key #TODO
         self.open_link.card = self
 
     def update(self, station, traffic):
@@ -131,6 +130,10 @@ class StationCard(WMCard.WMCard):
 
     def get_obj(self):
         return self.station
+
+    def get_info_screen(self):
+        #TODO
+        return None
    
     def draw_background(self, widget, prop):
         self.canvas.before.clear()

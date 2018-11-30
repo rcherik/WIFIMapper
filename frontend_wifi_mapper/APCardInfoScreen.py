@@ -38,6 +38,9 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
        	self.ready = True
         self.update_gui(None, current=True)
 
+    def reload_gui(self, current=True):
+        self.update_gui(self, current)
+
     def update_gui(self, dic, current=True):
         if not current or not self.ready or self.ui_paused:
             return

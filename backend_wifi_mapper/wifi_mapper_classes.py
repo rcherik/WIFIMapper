@@ -164,7 +164,9 @@ class Station():
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
 
 	def set_connected(self, ap_bssid):
-		if ap_bssid and ap_bssid != self.ap_bssid:
+		if ap_bssid:
+			if ap_bssid != self.ap_bssid:
+				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
 			self.new_data = True
 			self.connected = True
 			self.ap_bssid = ap_bssid

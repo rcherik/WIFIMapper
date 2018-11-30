@@ -14,6 +14,7 @@ INTERFACE=$(shell /sbin/iwconfig 2>&- |\
 	  $(GREP) 'IEEE 802.11  Mode:Monitor' |\
 	  /usr/bin/awk '{print $$1}' |\
 	  head -1)
+TYPE="already_monitored"
 
 #Get fallback wifi interface 2 if possible
 ifeq ($(INTERFACE),)
@@ -21,6 +22,7 @@ ifeq ($(INTERFACE),)
 	  $(GREP) 'IEEE 802.11  ESSID:off' |\
 	  /usr/bin/awk '{print $$1}' |\
 	  head -1)
+    TYPE="two_iface"
 endif
 
 #Get fallback wifi interface
@@ -29,6 +31,7 @@ ifeq ($(INTERFACE),)
 	  $(GREP) 'IEEE 802.11' |\
 	  /usr/bin/awk '{print $$1}' |\
 	  head -1)
+    TYPE="one_iface"
 endif
 
 NAME=application.py
@@ -94,6 +97,9 @@ monitor:
 	$(SUDO) /sbin/ifconfig $(INTERFACE) down &&\
 	$(SUDO) /sbin/iwconfig $(INTERFACE) mode monitor &&\
 	$(SUDO) /sbin/ifconfig $(INTERFACE) up
+	if [ "$(TYPE)" == "two_ifaces" ]; then \
+	    $(SUDO) /etc/init.d/network-manager start ; \
+	fi
 
 interface:
 	@echo "using interface: $(INTERFACE)"
@@ -106,4 +112,5 @@ clean:
 
 .PHONY: managed monitor interface read read_1 read_2 clean sniff test install
 .IGNORE:
-.SILENT:
+.SILENT: clean
+
