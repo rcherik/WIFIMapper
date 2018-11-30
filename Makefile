@@ -1,15 +1,23 @@
-NAME=application.py
+OS := $(shell uname)
+ifeq ($(OS),Linux)
+	SHELL := /bin/bash
+	GREP := /bin/grep
+else
+	SHELL := /bin/sh
+	GREP := /usr/bin/grep
+endif
+
 
 #Get wifi interface off for monitoring first
 INTERFACE=$(shell /sbin/iwconfig 2>&- |\
-	  /bin/grep 'IEEE 802.11  Mode:Monitor' |\
+	  $(GREP) 'IEEE 802.11  Mode:Monitor' |\
 	  /usr/bin/awk '{print $$1}' |\
 	  head -1)
 
 #Get fallback wifi interface 2 if possible
 ifeq ($(INTERFACE),)
     INTERFACE=$(shell /sbin/iwconfig 2>&- |\
-	  /bin/grep 'IEEE 802.11  ESSID:off' |\
+	  $(GREP) 'IEEE 802.11  ESSID:off' |\
 	  /usr/bin/awk '{print $$1}' |\
 	  head -1)
 endif
@@ -17,7 +25,7 @@ endif
 #Get fallback wifi interface
 ifeq ($(INTERFACE),)
     INTERFACE=$(shell /sbin/iwconfig 2>&- |\
-	  /bin/grep 'IEEE 802.11' |\
+	  $(GREP) 'IEEE 802.11' |\
 	  /usr/bin/awk '{print $$1}' |\
 	  head -1)
 endif
@@ -26,12 +34,27 @@ ifeq ($(INTERFACE),)
     $(info WARNING $$INTERFACE interface [${INTERFACE}])
 endif
 
+NAME=application.py
+INSTALL_FOLDER=Install_Folder
 PYTHON=/usr/bin/python
 SUDO=/usr/bin/sudo
 APP=application.py
 APP_DEBUG=$(APP) --debug
 
 all: sniff
+
+install:
+	$(SUDO) /usr/bin/apt install git gcc python-kivy
+	if [ -d "$(INSTALL_FOLDER)" || $(shell type scapy) ]; then \
+		@echo "Scapy already installed"
+	else \
+		/bin/mkdir -p $(INSTALL_FOLDER) &&\
+		/usr/bin/git clone https://github.com/secdev/scapy.git $(INSTALL_FOLDER)/scapy &&\
+		cd $(INSTALL_FOLDER)/scapy &&\
+		$(PYTHON) setup.py buid &&\
+		$(SUDO) $(PYTHON) setup.py install --record files.txt &&\
+		cd - \
+	fi
 
 sniff:
 	$(SUDO) $(PYTHON) $(APP_DEBUG) --interface $(INTERFACE)

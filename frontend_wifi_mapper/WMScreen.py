@@ -5,7 +5,6 @@ class WMScreen(Screen):
 
     def __init__(self, **kwargs):
         super(WMScreen, self).__init__(**kwargs)
-        #TODO
 
     def update_gui(self, dic, **kwargs):
         pass

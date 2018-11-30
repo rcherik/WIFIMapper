@@ -63,7 +63,8 @@ class WifiMapper(App):
         """ Keyboard """
         self.shift = False
         self.alt = False
-        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard = Window.request_keyboard(self._keyboard_closed,
+                self.root)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self._keyboard.bind(on_key_up=self._on_keyboard_up)
 
