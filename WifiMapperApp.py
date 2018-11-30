@@ -23,6 +23,9 @@ Clock.max_iteration = 20
 
 from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.core.window import Window
+if not Window:
+    sys.exit("Please get an interface")
+
 """ Our stuff """
 from frontend_wifi_mapper.Card import Card
 from frontend_wifi_mapper.CardListScreen import CardListScreen

@@ -8,14 +8,13 @@ import sys
 import signal
 import os
 """ Our Stuff """
+from backend_wifi_mapper.find_iface import find_iface
 from PcapThread import PcapThread
 from ChannelHopThread import ChannelHopThread
-from backend_wifi_mapper.find_iface import find_iface
 
 def parse_args():
     """ Create arguments """
-    parser = argparse.ArgumentParser(prog='WifiMapper',
-            usage='%(prog)s [options]')
+    parser = argparse.ArgumentParser(prog='WifiMapper')
     parser.add_argument("-i", "--interface",
             type=str,
             help="Choose an interface")

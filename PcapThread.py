@@ -37,12 +37,23 @@ class PcapThread(threading.Thread):
         self.channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
         self.pkt_dic = [{}, {}, {}, {}, {}] #AP - Station - Traffic - Handshake - Vendor
         self._get_mac_list()
+        #Options
         self.read_update = DEFAULT_READ_TIME
         if args.read_update:
             self.read_update = float(args.read_update) / 1000
         self.update_count = 0
         self.live_update = args.live_update or DEFAULT_RELOAD_BY_PKT
+
+    def run(self):
+        """ Thread either sniff or waits """
+        self.started = True
         self._compile_c_file(TAXONOMY_C_FILE)
+        self._say("using scapy (%s)" % scapy.config.conf.version)
+        self._wait_for_gui()
+        if not self.pcap_file:
+            self._sniff()
+        else:
+            self._read_pcap()
 
     def _compile_c_file(self, name):
         self._say("Compiling %s file to %s" % (name, name[:-2]))
@@ -188,18 +199,7 @@ class PcapThread(threading.Thread):
         read_time = time.time()
         self._say("took {0:.3f} seconds to read and parse"\
                 .format(read_time - start_time))
-
-
-    def run(self):
-        """ Thread either sniff or waits """
-        self.started = True
-        self._say("using scapy (%s)" % scapy.config.conf.version)
-        self._wait_for_gui()
-        if not self.pcap_file:
-            self._sniff()
-        else:
-            self._read_pcap()
-
+        
     def set_application(self, app):
         """ To be able to call Kivy from thread """
         self.app = app
