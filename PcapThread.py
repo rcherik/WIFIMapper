@@ -15,11 +15,11 @@ from scapy.error import Scapy_Exception
 from backend_wifi_mapper.find_iface import find_iface
 from backend_wifi_mapper.wifi_mapper import start_parsing_pkt
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
-        WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
+        WM_TRAFFIC, WM_VENDOR, WM_CHANGES, get_wm_list
 from backend_wifi_mapper.taxonomy import TAXONOMY_C_FILE
 
 DEFAULT_READ_TIME = 0.0005
-DEFAULT_RELOAD_BY_PKT = 10
+DEFAULT_RELOAD_BY_PKT = 1
 
 class PcapThread(threading.Thread):
     def __init__(self, args, **kwargs):
@@ -35,7 +35,7 @@ class PcapThread(threading.Thread):
         self.pcap_file = args.pcap or None
         self.iface = args.interface or (find_iface() if not args.pcap else None)
         self.channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-        self.pkt_dic = [{}, {}, {}, {}, {}] #AP - Station - Traffic - Handshake - Vendor
+        self.pkt_dic = get_wm_list()
         self._get_mac_list()
         #Options
         self.read_update = DEFAULT_READ_TIME

@@ -10,6 +10,8 @@ from kivy.lang import Builder
 """ Our stuff """
 import WMScreen
 import CardInfoScreen
+from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
+        WM_TRAFFIC, WM_VENDOR, WM_CHANGES
 
 Builder.load_file("Static/apcardinfoscreen.kv")
 
@@ -39,13 +41,23 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
         self.update_gui(None, current=True)
 
     def reload_gui(self, current=True):
-        self.update_gui(self, current)
+        self.update_gui(None, current)
 
     def update_gui(self, dic, current=True):
-        if not current or not self.ready or self.ui_paused:
+        if not current\
+                or not self.ready\
+                or self.ui_paused:
             return
-        self.info_box.bssid.text = self.ap.bssid
-        self.info_box.ssid.text = self.ap.ssid
+        if dic and (self.ap.bssid not in dic[WM_CHANGES][WM_AP]):
+            return
+        s = self.ap.bssid
+        if self.ap.oui:
+            s += " (%s)" % self.ap.oui
+        self.info_box.bssid.text = s
+        s = self.ap.ssid
+        if self.ap.channel:
+            s += " (%s)" % self.ap.channel
+        self.info_box.ssid.text = s
         self.security_box.co.text = "co: %d" % self.ap.n_clients
         self.security_box.security.text = self.ap.get_security()
         sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)

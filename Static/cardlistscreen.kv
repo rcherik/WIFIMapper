@@ -4,14 +4,16 @@
 <CardListScreen>:
         scroll_view: scroll_view
         stack_layout: stack_layout
+        page_layout: page_layout
+
         action_bar: action_bar
         action_previous: action_previous
         action_pause: action_pause
         label_curr_page: label_curr_page
         label_curr_sort: label_curr_sort
-        toggle: toggle
-        dropdown_group: dropdown_group
-        page_layout: page_layout
+        hide_toggle: hide_toggle
+        sort_dropdown: sort_dropdown
+        search_input: search_input
 
         BoxLayout:
                 orientation: 'vertical'
@@ -47,23 +49,23 @@
                                         width: 150
                                         size_hint: (None, 1)
                                 WMActionToggleButton:
-                                        id: toggle
+                                        id: hide_toggle
                                         text: 'Hide'
                                         state: 'down'
                                 ActionGroup:
-                                        id: dropdown_group
+                                        id: sort_dropdown
                                         text: "Actions"
                                         WMActionPauseToggleButton:
                                                 id: action_pause
                                                 text: "Pause"
                                 WMActionInput:
-                                        id: input
-                                        hint_text: "Sort..."
+                                        id: search_input
+                                        hint_text: "Search..."
                                         width: 200
                                         size_hint: (None, 1)
                                         multiline: False
                                 WMActionGroupPause:
-                                        id: dropdown_group
+                                        id: sort_dropdown
                                         text: "Sort by"
                                         mode: 'spinner'
 

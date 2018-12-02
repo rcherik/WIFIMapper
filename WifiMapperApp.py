@@ -66,10 +66,7 @@ class WifiMapper(App):
         """ Keyboard """
         self.shift = False
         self.alt = False
-        self._keyboard = Window.request_keyboard(self._keyboard_closed,
-                self.root)
-        self._keyboard.bind(on_key_down=self._on_keyboard_down)
-        self._keyboard.bind(on_key_up=self._on_keyboard_up)
+        self.get_focus()
 
     def change_header(self, key, txt):
         self.panel.change_header(key, txt)
@@ -105,8 +102,15 @@ class WifiMapper(App):
                 default_tab=ap_tab)
         return self.panel
 
+    def get_focus(self):
+        self._keyboard = Window.request_keyboard(self._keyboard_closed,
+                self.root)
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+        self._keyboard.bind(on_key_up=self._on_keyboard_up)
+
     def _keyboard_closed(self):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard.unbind(on_key_up=self._on_keyboard_up)
         self._keyboard = None
 
     def _on_keyboard_up(self, keyboard, keycode):

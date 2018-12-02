@@ -24,7 +24,7 @@ from wifi_mapper_classes import AccessPoint, Station, Traffic,\
 		WM_TRA_SENT, WM_TRA_RECV,\
 		WM_TRA_ALL, WM_TRA_MNG, WM_TRA_CTRL, WM_TRA_DATA
 from wifi_mapper_utilities import is_broadcast, is_retransmitted, is_control, is_data,\
-			WM_AP, WM_STATION, WM_TRA, WM_HDSHK, WM_VENDOR, WM_STA
+			WM_AP, WM_STATION, WM_TRA, WM_CHANGES, WM_VENDOR, WM_STA
 import time
 
 #Macro for ID field in Dot11Elt
@@ -33,33 +33,6 @@ ID_CHANNEL = 3  #Direct Spectrum/Channel
 ID_RSN = 48  #Robust Security Network/WPA2
 ID_VENDOR = 221  #potentially WPA
 
-def get_broadcast(addr):
-	"""
-		Sent to web interface to visualise broadcast in client detail
-
-		:param addr: str mac addr
-		:return: addr if it is not broadcast else return broadcast + addr
-		:rtype: str
-
-	"""
-	if is_broadcast(addr):
-		return "< %s - Broadcast >" % addr
-	return addr
-
-def get_client_probe(packet, dic, station):
-	"""
-		Get device specific probes
-
-		Parse Dot11 elements from probe request to retrieve ssid probes
-	"""
-	if not packet.haslayer(Dot11Elt):
-		return
-	elem = packet[Dot11Elt]
-	while isinstance(elem, Dot11Elt):
-		if elem.ID == ID_SSID:
-			sta = dic[WM_STATION][station].add_probe(elem.info)
-		elem = elem.payload
-
 def add_traffic(dic, addr):
 	if not is_broadcast(addr) and isinstance(addr, str):
 		if addr not in dic[WM_TRA]:
@@ -67,11 +40,6 @@ def add_traffic(dic, addr):
 
 
 def add_ap(dic, bssid):
-	"""
-		Adds an access point out of beacon/probeRes layers
-
-		:param seen: str, seen from which layer, used in web interface
-	"""
 	if not is_broadcast(bssid):
 		if bssid not in dic[WM_AP]:
 			dic[WM_AP][bssid] = AccessPoint(dic, bssid, oui_dict=dic[WM_VENDOR])
@@ -82,16 +50,11 @@ def add_ap(dic, bssid):
 		return None
 
 def add_station(dic, bssid):
-	"""
-		Adds bssid in Station key from parse() dictionnary
-
-		:param dic: dict from parse()
-		:param bssid: str mac addr
-		::seealso:: parse()
-	"""
 	if not is_broadcast(bssid) and isinstance(bssid, str):
 		if bssid not in dic[WM_STATION]:
 			dic[WM_STATION][bssid] = Station(dic, bssid, oui_dict=dic[WM_VENDOR])
+			return dic[WM_STATION][bssid]
+		else:
 			return dic[WM_STATION][bssid]
 	else:
 		return None
@@ -180,32 +143,24 @@ def sta_sender(pkt, dic, src, dst):
 	return ap, sta
 
 def parse_pkt(pkt, dic, channel=None):
-	"""
-		:param packet: scapy packet
-		:param dic: dictionnary from parse function
-
-		::seealso:: parse()
-	"""
 	#ignore control frames
 	if is_control(pkt):
 		return
 
-	#check if we know both devices, create them if we don't
-
 	#get the sender and the destination
-	#Note: ap or sta will be None if broadcast
 	ds = wifi_mapper_ds.get_addrs(pkt)
 	src = ds[WM_DS_SENDER]
 	dst = ds[WM_DS_RECEIVER]
 
+	#check if we know both devices, create them if we don't
+	#Note: ap or sta will be None if broadcast
 	if src == ds[WM_DS_AP]:
 		ap, sta = ap_sender(pkt, dic, src, dst)
 	elif src == ds[WM_DS_STATION]:
 		ap, sta = sta_sender(pkt, dic, src, dst)
 	else:
-		#TODO FIX WEIRD MULTICAST 
+		#TODO FIX WEIRD MULTICAST
 		return
-
 	"""
 	if not ap:
 		print("NO AP: %s" % pkt.summary())
@@ -222,6 +177,12 @@ def parse_pkt(pkt, dic, channel=None):
 		ap.set_rssi(pkt.dBm_AntSignal)
 	elif sta:
 		sta.set_rssi(pkt.dBm_AntSignal)
+	#add to changes list
+	if ap:
+		dic[WM_CHANGES][WM_AP].append(ap.bssid)
+	if sta:
+		dic[WM_CHANGES][WM_STATION].append(sta.bssid)
+	#add traffic
 	handle_traffic(pkt, dic, src, dst)
 
 	#keep on with parsing specified packets
@@ -248,10 +209,9 @@ def parse_pkt(pkt, dic, channel=None):
 	elif is_data(pkt) and not is_broadcast(ds[WM_DS_SENDER]):
 		if sta and ap: #if rcv not broadcast (see from ds)
 			sta.set_connected(ap.bssid) #TODO
-		else:
-			dic[WM_TRA][ap.bssid].add_sent(None) #TODO
 
 def start_parsing_pkt(dic, pkt, channel=None):
+	dic[WM_CHANGES] = [[], []]
 	if pkt.haslayer(RadioTap):
 		parse_pkt(pkt, dic, channel=channel)
 	else:
@@ -261,47 +221,5 @@ def start_parsing_pkt(dic, pkt, channel=None):
 		if key in dic[WM_STATION]:
 			dic[WM_STATION].pop(key, None)
 	return True
-
-def parse_file(name):
-	"""
-		Read a pcap file and parse its packet containing a RadioTap header
-
-		:param name: a pcap file path
-		:return: a dictionnary with keys: AP, Station, Traffic
-			containing mac addresses keys giving access to AccessPoint, Station
-			and Traffic class
-		:rtype: dict
-
-	"""
-	print("Reading file {}".format(name))
-	start_time = time.time()
-	try:
-		packets = rdpcap(name)
-	except (IOError, Scapy_Exception) as err:
-		print("Pcap parser error: {}".format(err),
-			file=sys.stderr)
-		return None
-	#Scapy exception in a file of scapy is not included
-	#when reading wrong pcap magic number in file
-	except NameError as err:
-		print("Pcap parser error: not a pcap file ({})".format(err),
-			file=sys.stderr)
-		return None
-	#Prevents massive output when quitting while rdpcap reads
-	except KeyboardInterrupt:
-		sys.exit(1)
-	read_time = time.time()
-	print("Took {0:.3f} seconds".format(read_time - start_time))
-	dic =[{}, {}, {}]
-	for packet in packets:
-		if packet.haslayer(RadioTap):
-			get_packet_infos(packet, dic)
-	dic[WM_HDSHK] = check_for_handshakes(dic)
-	#Sometimes things like printer are both station and AP
-	for key, value in dic[WM_AP].iteritems():
-		if key in dic[WM_STATION]:
-			dic[WM_STATION].pop(key, None)
-	print("Parsed in {0:.3f} seconds".format(time.time() - read_time))
-	return dic
 
 # vim:noexpandtab:autoindent:tabstop=4:shiftwidth=4:

@@ -15,7 +15,7 @@ from Card import Card
 from APCard import APCard
 from StationCard import StationCard
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
-        WM_TRAFFIC, WM_VENDOR
+        WM_TRAFFIC, WM_VENDOR, WM_CHANGES
 import WMScreen
 import WMActionDropDown
 import WMActionSpinner
@@ -39,10 +39,11 @@ class CardListScreen(WMScreen.WMScreen):
     action_bar = ObjectProperty(None)
     action_previous = ObjectProperty(None)
     action_pause = ObjectProperty(None)
-    toggle = ObjectProperty(None)
-    dropdown_group = ObjectProperty(None)
+    hide_toggle = ObjectProperty(None)
+    sort_dropdown = ObjectProperty(None)
     page_layout = ObjectProperty(None)
 
+    search_input = ObjectProperty(None)
     label_curr_sort = ObjectProperty(None)
     label_curr_page = ObjectProperty(None)
 
@@ -58,9 +59,11 @@ class CardListScreen(WMScreen.WMScreen):
         if self.show_ap:
             self.toggle_val = 'known'
             self.toggle_check = False
+            self.to_search_fields = ['bssid', 'ssid', 'oui']
         elif self.show_station:
             self.toggle_val = 'connected'
             self.toggle_check = False
+            self.to_search_fields = ['bssid', 'ap_bssid', 'oui']
 
     def __init__(self, **kwargs):
         """ Delays view creation because some views are init in kv langage """
@@ -74,8 +77,10 @@ class CardListScreen(WMScreen.WMScreen):
         self.has_to_sort = False
         self.current_screen = False
         self.event = None
-        self.browsing_card = False
+        self.to_search = None
         self.first_sort = 'bssid' if self.show_ap else 'bssid'
+        """ Important """
+        self.browsing_card = False
         """ Pages """
         self.n_card = 0
         self.max_cards = 20
@@ -87,12 +92,19 @@ class CardListScreen(WMScreen.WMScreen):
         """ Create layout """
         self.stack_layout.bind(
                 minimum_height=self.stack_layout.setter('height'))
-        self.action_pause.screen = self
-        self.toggle.screen = self
-        self.label_curr_page.text = "Page %d" % self.current_page
         self._create_sort_by()
-        self.dropdown_group.screen = self
+        self.sort_dropdown.screen = self
+        self.action_pause.screen = self
+        self.hide_toggle.screen = self
+        self.search_input.bind(on_text_validate=self.on_input_enter)
+        self.label_curr_page.text = "Page %d" % self.current_page
         Clock.schedule_once(self._is_ready)
+
+    def on_input_enter(self, value):
+        print("Searching " + value.text)
+        self.to_search = value.text
+        App.get_running_app().get_focus()
+        self.reload_gui(current=True)
 
     def _is_ready(self, *args):
         self.ready = True
@@ -122,7 +134,7 @@ class CardListScreen(WMScreen.WMScreen):
                 allow_no_selection=False,
                 state="down" if key == self.first_sort else "normal",
                 screen=self)
-        self.dropdown_group.add_widget(btn)
+        self.sort_dropdown.add_widget(btn)
 
     def _create_sort_by(self):
         if self.show_ap:
@@ -180,8 +192,7 @@ class CardListScreen(WMScreen.WMScreen):
         if self.ui_paused:
             return
         card = self.card_dic[key]
-        if self.current_screen\
-                and card in self.stack_layout.children:
+        if self.current_screen and card.parent:
             self.stack_layout.remove_widget(card)
         if card in self.cards:
             self.cards.remove(card)
@@ -198,7 +209,7 @@ class CardListScreen(WMScreen.WMScreen):
     def _add_card(self, card):
         if self.n_card >= self.max_cards:
             return False
-        if self.current_screen:
+        if self.current_screen and not card.parent:
             self.stack_layout.add_widget(card)
         self.n_card += 1
         self.has_to_sort = True
@@ -208,8 +219,15 @@ class CardListScreen(WMScreen.WMScreen):
         """ If card is not in sorting, remove """
         ret = False
         if getattr(obj, self.toggle_val) == self.toggle_check\
-                and self.toggle.state == 'down':
+                and self.hide_toggle.state == 'down':
             ret = True
+        if self.to_search and not ret:
+            for field in self.to_search_fields:
+                value = attrgetter(field)(obj)
+                if isinstance(value, str):
+                    if value.lower().find(self.to_search.lower()) != -1:
+                        return False
+            return True
         return ret
 
     def _sort_cards(self, add=False):
@@ -280,20 +298,21 @@ class CardListScreen(WMScreen.WMScreen):
         self.event = None
         if self.show_ap:
             ap = dic[WM_AP]
-            for key, value in ap.iteritems():
+            #for key, value in ap.iteritems():
+            for key in dic[WM_CHANGES][WM_AP]:
                 traffic = dic[WM_TRAFFIC].get(key, None)
-                if value.new_data:
-                    self._set_ap_card(key, value, traffic)
-                    self.has_to_sort = True
-                value.new_data = False
+                self._set_ap_card(key, ap[key], traffic)
+                self.has_to_sort = True
         if self.show_station:
             sta = dic[WM_STATION]
-            for key, value in sta.iteritems():
+            #for key, value in sta.iteritems():
+            for key in dic[WM_CHANGES][WM_STATION]:
                 traffic = dic[WM_TRAFFIC].get(key, None)
-                if value.new_data:
-                    self._set_station_card(key, value, traffic)
-                    self.has_to_sort = True
-                value.new_data = False
+                if key not in sta:
+                    print("wtf: " + key)
+                    continue
+                self._set_station_card(key, sta[key], traffic)
+                self.has_to_sort = True
         if not self.ui_paused:
             self._make_pages()
             self._sort_cards()
@@ -354,8 +373,8 @@ class CardListScreen(WMScreen.WMScreen):
                 self.pause_input()
             return True
         if keycode[1] == 'spacebar':
-            self.toggle.state = 'down'\
-                    if self.toggle.state == 'normal' else 'normal'
+            self.hide_toggle.state = 'down'\
+                    if self.hide_toggle.state == 'normal' else 'normal'
             return True
         return False
 
@@ -384,8 +403,8 @@ class CardListScreen(WMScreen.WMScreen):
     def on_pre_leave(self):
         if self.ready:
             self.set_ui_paused()
-            if self.dropdown_group._dropdown.attach_to is not None:
-                self.dropdown_group._dropdown.dismiss()
+            if self.sort_dropdown._dropdown.attach_to is not None:
+                self.sort_dropdown._dropdown.dismiss()
 
     def __repr__(self):
         s = "%s: showing " % (self.__class__.__name__)

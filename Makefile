@@ -97,7 +97,7 @@ monitor:
 	$(SUDO) /sbin/ifconfig $(INTERFACE) down &&\
 	$(SUDO) /sbin/iwconfig $(INTERFACE) mode monitor &&\
 	$(SUDO) /sbin/ifconfig $(INTERFACE) up
-	if [ "$(TYPE)" == "two_ifaces" ]; then \
+	#if [ "$(TYPE)" == "two_ifaces" ]; then \
 	    $(SUDO) /etc/init.d/network-manager start ; \
 	fi
 

@@ -35,6 +35,7 @@ class APCard(WMCard.WMCard):
         self.space = 2
         self.known_bg = False
         self.has_changed = False
+        self.init_background()
         self.bind(size=self.draw_background)
         self.bind(pos=self.draw_background)
 	Clock.schedule_once(self._create_view)
@@ -136,14 +137,27 @@ class APCard(WMCard.WMCard):
                 ap=self.ap,
                 traffic=self.traffic)
         return screen
-   
-    def draw_background(self, widget, prop):
-        self.canvas.before.clear()
+  
+    def init_background(self):
 	with self.canvas.before:
             if self.clicked:
-	        Color(0, 0, 1, 0.25)
+	        self._color = Color(0, 0, 1, 0.25)
             elif self.ap.known:
-	        Color(1, 1, 1, 0.25)
+	        self._color = Color(1, 1, 1, 0.25)
             else:
-	        Color(1, 0, 0, 0.25)
-	    Rectangle(pos=self.pos, size=self.size)
+	        self._color = Color(1, 0, 0, 0.25)
+	    self._rectangle = Rectangle(pos=self.pos, size=self.size)
+
+    def draw_background(self, widget, prop):
+        self._rectangle.pos = self.pos
+        self._rectangle.size = self.size
+        if self.clicked:
+            self._color.rgba = (0, 0, 1, 0.25)
+        elif self.ap.known:
+            self._color.rgba = (1, 1, 1, 0.25)
+        else:
+            self._color.rgba = (1, 0, 0, 0.25)
+        if self.open_link:
+            self.open_link.y = self.y
+            self.open_link.x = self.right - self.open_link.width
+            #self.open_link.pos = self.pos

@@ -3,7 +3,7 @@
 
 from wifi_mapper_utilities import is_broadcast, is_retransmitted
 from wifi_mapper_utilities import WM_AP, WM_STATION,\
-        WM_TRAFFIC, WM_HANDSHAKES, WM_VENDOR
+        WM_TRAFFIC, WM_VENDOR
 from scapy.all import Dot11Elt
 import time
 import struct
@@ -14,7 +14,7 @@ from taxonomy import identify_wifi_device
 """
 
 """
-	Present in main dictionnary in dic['Traffic'][some_station_key]
+	Present in main dictionnary in dic[WM_TRAFFIC][some_bssid_key]
 	Used only to get station traffic
 """
 
@@ -74,37 +74,38 @@ class Traffic():
 
 	def add_sent(self, addr, which=None):
 		self.sent += 1
-		if not addr: #TODO
+		if not addr:
 			return
-		if self.bssid in self.dic[WM_AP]:
-			self.dic[WM_AP][self.bssid].set_new_data()
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
 			self.traffic[addr]['sent']['all'] = 1
 		else:
 			self.traffic[addr]['sent']['all'] += 1
+
 		if which is None:
 			self.traffic[addr]['sent']['management'] += 1
 			return
+
 		if which not in self.traffic[addr]['sent']:
 			self.traffic[addr]['sent'][which] = 1
 		else:
 			self.traffic[addr]['sent'][which] += 1
+
 		if which not in ('control', 'data'):
 			self.traffic[addr]['sent']['management'] += 1
 
 	def add_recv(self, addr, which=None):
 		self.recv += 1
-		if self.bssid in self.dic[WM_AP]:
-			self.dic[WM_AP][self.bssid].set_new_data()
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
 			self.traffic[addr]['recv']['all'] = 1
 		else:
 			self.traffic[addr]['recv']['all'] += 1
+
 		if which is None:
 			self.traffic[addr]['recv']['management'] += 1
 			return
+
 		if which not in self.traffic[addr]['recv']:
 			self.traffic[addr]['recv'][which] = 1
 		else:
@@ -118,7 +119,7 @@ class Traffic():
 		return float(self.sigs / self.n)
 
 """
-	Present in main dictionnary in dic['Station'][some_macaddr_key]
+	Present in main dictionnary in dic[WM_STATION][some_bssid_key]
 """
 
 #TODO
@@ -155,7 +156,6 @@ class Station():
 		self.model = None
 		self.connected = False
 		self.ap_bssid = None
-		self.new_data = True
 		self.channel = None
 
 		Station.id += 1
@@ -165,57 +165,52 @@ class Station():
 
 	def set_connected(self, ap_bssid):
 		if ap_bssid:
-			if ap_bssid != self.ap_bssid:
+			if ap_bssid != self.ap_bssid and self.ap_bssid in self.dic[WM_AP]:
 				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
-			self.new_data = True
 			self.connected = True
 			self.ap_bssid = ap_bssid
 			self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
 
 	def set_disconnected(self):
 		if self.ap_bssid and self.connected:
-			self.new_data = True
 			self.connected = False
-			if self.ap_bssid:
+			if self.ap_bssid and self.ap_bssid in self.dic[WM_AP]:
 				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
 			self.ap_bssid = None
 
 	def set_rssi(self, rssi):
 		if self.rssi != rssi:
-			self.new_data = True
 			self.rssi = rssi
 	
 	def add_ap_probed(self, ssid):
 		if ssid not in self.ap_probed:
-			self.new_data = True
 			self.ap_probed.append(ssid)
 
 	def set_model(self, bssid, probe_req, assoc_req, oui):
 		self.model = identify_wifi_device(bssid, probe_req, assoc_req, \
 			oui)
-			#failed to get the model, just put the bssid
-		if self.model == None:
-			self.model = self.bssid
+		if self.model is None:
+			self.model = False
 
 	def set_probeReq(self, probe_req):
 		self.probe_req = probe_req
 		#We have the probe_req, the assoc_req and the oui and we never
 		#tried to guess the model: try it.
-		if self.assoc_req is not None and self.model == None\
+		if self.assoc_req is not None\
+				and self.model == None\
 				and self.oui is not None:
 			self.set_model(self.bssid, self.probe_req, \
 				self.assoc_req, self.oui.lower())
-			self.new_data = True
 
 	def set_assocReq(self, assoc_req):
 		self.assoc_req = assoc_req
 		#We have the probe_req, the assoc_req and the oui and we never
 		#tried to guess the model: try it.
-		if self.probe_req is not None and self.model == None\
+		if self.probe_req is not None\
+				and self.model == None\
 				and self.oui is not None:
 			self.set_model(self.bssid, self.probe_req, \
 				self.assoc_req, self.oui.lower())
-			self.new_data = True
 
 	def __getitem__(self, key):
 		return self.__dict__[key]
@@ -224,7 +219,7 @@ class Station():
 		return ', '.join(self.ap_probed)
 
 """
-	Present in main dictionnary in dic['AP'][some_bssid_key]
+	Present in main dictionnary in dic[WM_AP][some_bssid_key]
 """
 class AccessPoint():
 
@@ -240,7 +235,6 @@ class AccessPoint():
 		self.wps = None
 		self.beacons = 0
 		self.proberesp = 0
-		self.new_data = True
 		self.rssi = 0
 		self.client_co = set()
 		self.client_hist_co = []
@@ -252,28 +246,25 @@ class AccessPoint():
 	def set_rssi(self, rssi):
 		if rssi != self.rssi:
 			self.rssi = rssi
-			self.new_data = True
 	
 	def set_ssid(self, ssid):
-		if ssid != self.ssid:
-			self.ssid = ssid
-			self.new_data = True
+		try:
+			utf8_ssid = ssid.decode('utf-8')
+		except UnicodeDecodeError:
+			return
+		if utf8_ssid != self.ssid:
+			self.ssid = utf8_ssid
 	
 	def set_channel(self, channel):
 		if self.channel != channel:
 			try:
 				self.channel = int(channel.encode('hex'), 16)
-				self.new_data = True
 			except Exception, e:
 				print('set_channel failed: ', e)
 	
 	def set_known(self, known):
 		if self.known != known:
 			self.known = known
-			self.new_data = True
-
-	def set_new_data(self):
-		self.new_data = True
 
 	def set_security(self, pkt):
 		elem = pkt[Dot11Elt]
@@ -293,7 +284,6 @@ class AccessPoint():
 			else:
 				security = "OPN"
 		if security != self.security:
-			self.new_data = True
 			self.security = security
 	
 	def get_security(self):
@@ -307,7 +297,6 @@ class AccessPoint():
 		return "%s | %s" % (self.security, wps_str)
 
 	def set_wps(self, elem):
-		self.new_data = True
 		"""
 		wps_format = {
 			"Type":"B", #1
@@ -319,11 +308,14 @@ class AccessPoint():
 			"WPSSetup":"B", #1
 		}
 		"""
+		if len(elem.info) < 11:
+			return None
 		data = ">BHHBHHB"
 		try:
 			decoded = struct.unpack(data, elem.info[:11])
 		except Exception as e:
 			print(e.message)
+			print([x for x in elem.info[:11]])
 			return None
 		if len(decoded) < 6:
 			return None
@@ -331,20 +323,17 @@ class AccessPoint():
 
 
 	def add_beacon(self):
-		self.new_data = True
 		self.beacons += 1
 		self.known = True
 
 	def client_connected(self, bssid):
 		if bssid not in self.client_co:
-			self.new_data = True
 			time_str = time.strftime("%H:%M:%S", time.gmtime())
 			self.client_co.add(bssid)
 			self.client_hist_co.append((time_str, bssid, "connected"))
 			self.n_clients += 1
 
 	def client_disconnected(self, bssid):
-		self.new_data = True
 		if bssid in self.client_co:
 			self.n_clients -= 1
 			self.client_co.remove(bssid)

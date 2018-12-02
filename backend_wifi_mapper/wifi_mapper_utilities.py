@@ -19,8 +19,12 @@ FC_RETRANSMIT = 0x8
 WM_AP = 0
 WM_STA = WM_STATION = 1
 WM_TRA = WM_TRAFFIC = 2
-WM_HDSHK = WM_HANDSHAKES = 3
-WM_VENDOR = 4
+WM_VENDOR = 3
+WM_CHANGES = 4
+
+def get_wm_list():
+	return [{}, {}, {}, {}, []]
+			#AP, Sta, Traf, Vendor, Changes
 
 def is_control(packet):
 	#Check if packet type is control
