@@ -211,7 +211,6 @@ def parse_pkt(pkt, dic, channel=None):
 			sta.set_connected(ap.bssid) #TODO
 
 def start_parsing_pkt(dic, pkt, channel=None):
-	dic[WM_CHANGES] = [[], []]
 	if pkt.haslayer(RadioTap):
 		parse_pkt(pkt, dic, channel=channel)
 	else:

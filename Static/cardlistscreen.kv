@@ -34,19 +34,18 @@
                                         title: 'Action Bar'
                                         with_previous: False
                                 ActionOverflow:
-                                        #icon: atlas://data/images/defaulttheme/overflow
-                                        icon: "Static/images/home.png"
+                                        icon: "atlas://data/images/defaulttheme/overflow"
                                 WMActionLabel:
                                         id: label_curr_page
                                         important: True
                                         text: 'Important'
-                                        width: 100
+                                        width: 70
                                         size_hint: (None, 1)
                                 WMActionLabel:
                                         id: label_curr_sort
                                         important: True
                                         text: 'Important'
-                                        width: 150
+                                        width: 110
                                         size_hint: (None, 1)
                                 WMActionToggleButton:
                                         id: hide_toggle
@@ -54,10 +53,10 @@
                                         state: 'down'
                                 ActionGroup:
                                         id: actions
+                                        text: "Actions"
                                         action_stop: action_stop
                                         action_pause: action_pause
                                         mode: 'normal'
-                                        text: "Actions"
                                         WMActionScreenToggleButton:
                                                 id: action_stop
                                                 text: "Stop"
@@ -72,11 +71,14 @@
                                         width: 200
                                         size_hint: (None, 1)
                                         multiline: False
+                                ImageButton:
+                                        width: 40
+                                        size_hint: (None, 1)
                                 ActionGroup:
                                         id: sort_dropdown
                                         text: "Sort by"
-                                        auto_dismiss: 'false'
                                         mode: 'spinner'
+                                        size_hint: (None, 1)
 
                 WMCardScrollView:
                         id: scroll_view

@@ -15,6 +15,9 @@ class WMScreen(Screen):
     def keyboard_down(self, keyboard, keycode, text, modifiers):
         pass
 
+    def keyboard_up(self, keyboard, keycode):
+        pass
+
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)

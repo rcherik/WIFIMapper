@@ -1,6 +1,7 @@
 """ System """
 from __future__ import print_function
 import sys
+import os
 from operator import itemgetter, attrgetter, methodcaller
 """ Kivy """
 from kivy.app import App
@@ -16,15 +17,7 @@ from StationCard import StationCard
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
 import WMScreen
-import WMActionDropDown
-import WMActionSpinner
-import WMActionLabel
-import WMActionToggleButton
-import WMSortActionToggleButton
 import WMPageToggleButton
-import WMCardScrollView
-import WMActionScreenToggleButton
-import WMActionInput
 
 Builder.load_file("Static/cardlistscreen.kv")
 
@@ -83,6 +76,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.stack_layout.bind(
                 minimum_height=self.stack_layout.setter('height'))
         self._create_sort_by()
+        self.action_bar.sort_dropdown._dropdown.auto_dismiss = False
         self.action_bar.hide_toggle.screen = self
         self.action_bar.actions.action_stop.do_down = self.stop_input
         self.action_bar.actions.action_stop.do_normal = self.resume_input
@@ -117,13 +111,14 @@ class CardListScreen(WMScreen.WMScreen):
                 "value": value,
                 "cmp": cmp_reverse
                 }
-        btn = WMSortActionToggleButton.WMSortActionToggleButton(
+        btn = WMSortActionToggleButton(
                 text=key,
                 key=key,
                 group="ap" if self.show_ap else "station",
                 allow_no_selection=False,
                 state="down" if key == self.first_sort else "normal",
                 screen=self)
+        btn.bind(on_press=self.action_bar.sort_dropdown._dropdown.dismiss)
         self.action_bar.sort_dropdown.add_widget(btn)
 
     def _create_sort_by(self):
@@ -377,7 +372,8 @@ class CardListScreen(WMScreen.WMScreen):
         if not self.ui_paused:
             self._make_pages()
         self._sort_cards(add=True)
-        if not self.ui_paused:
+        if not self.ui_paused\
+                or (self.ui_paused and current is False):
             self._update_header()
         self.loading = False
 
@@ -395,8 +391,6 @@ class CardListScreen(WMScreen.WMScreen):
         app = App.get_running_app().change_header(key, s)
 
     def keyboard_down(self, keyboard, keycode, text, modifiers):
-        """ Handles keyboard input sent by App to screen manager """
-        #self._say(keycode)
         if keycode[1] == 'left':
             if self.current_page > 1:
                 self.current_page -= 1
@@ -413,6 +407,11 @@ class CardListScreen(WMScreen.WMScreen):
         if keycode[1] == 'down':
             self.scroll_view.key_scroll_down()
             return True
+        return False
+
+    def keyboard_up(self, keyboard, keycode):
+        """ Handles keyboard input sent by App to screen manager """
+        #self._say(keycode)
         if keycode[1] == 'p':
             self.action_bar.actions.action_pause.state = 'down'\
                     if self.action_bar.actions.action_pause.state == 'normal'\
@@ -473,9 +472,25 @@ class CardListScreen(WMScreen.WMScreen):
         s += "station" if self.show_station else ""
         return s
 
-"""
-from kivy.uix.label import Label
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.image import Image
 from kivy.uix.actionbar import ActionItem
+
+class ImageButton(ButtonBehavior, Image, ActionItem):
+    def __init__(self, **kwargs):
+        super(ImageButton, self).__init__(**kwargs)
+        self.source = os.path.join('Static', 'images', 'cross32-3.png')
+        self.color = (1, 1, 1, 1)
+
+    def on_press(self):
+        self.color = (0, 0, 0, 1)
+        pass
+
+    def on_release(self):
+        self.color = (1, 1, 1, 1)
+        pass
+
+from kivy.uix.label import Label
 
 class WMActionLabel(Label, ActionItem):
     def __init__(self, **kwargs):
@@ -496,7 +511,6 @@ class WMActionToggleButton(ActionToggleButton):
 
 from kivy.uix.actionbar import ActionItem
 from kivy.uix.textinput import TextInput
-from kivy.lang import Builder
 
 class WMActionInput(TextInput, ActionItem):
     def __init__(self, **kwargs):
@@ -536,4 +550,33 @@ class WMCardScrollView(ScrollView):
 
     def on_touch_move(self, touch):
 	super(WMCardScrollView, self).on_touch_move(touch)
-"""
+
+class WMActionScreenToggleButton(ActionToggleButton):
+
+    do_down = ObjectProperty(None)
+    do_normal = ObjectProperty(None)
+    
+    def __init__(self, **kwargs):
+        super(WMActionScreenToggleButton, self).__init__(**kwargs)
+
+    def on_state(self, widget, state):
+        if self.do_down and state == 'down':
+            self.do_down()
+        if self.do_normal and state == 'normal':
+            self.do_normal()
+
+class WMSortActionToggleButton(ActionToggleButton):
+
+    def __init__(self, **kwargs):
+        self.screen = kwargs.get('screen', None)
+        self.key = kwargs.get('key', None)
+        self.no_trigger = False
+        super(WMSortActionToggleButton, self).__init__(**kwargs)
+
+    def on_state(self, widget, state):
+        if self.no_trigger:
+            self.no_trigger = False
+            return
+        if hasattr(self, 'screen') and self.screen:
+            if state == 'down':
+                self.screen.set_sort(self.key)

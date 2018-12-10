@@ -23,8 +23,8 @@ WM_VENDOR = 3
 WM_CHANGES = 4
 
 def get_wm_list():
-	return [{}, {}, {}, {}, []]
-			#AP, Sta, Traf, Vendor, Changes
+	return [{}, {}, {}, {}, [[], []]]
+			#AP, Sta, Traf, Vendor, Changes [[AP], [Station]]
 
 def is_control(packet):
 	#Check if packet type is control

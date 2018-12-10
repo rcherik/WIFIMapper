@@ -53,11 +53,17 @@ class WMScreenManager(ScreenManager):
         for screen in self.screens:
             screen.set_stop(val)
 
+    def keyboard_up(self, keyboard, keycode):
+        screen = self.get_screen(self.current)
+        if screen:
+            return screen.keyboard_up(keyboard, keycode)
+        return False
+
     def keyboard_down(self, keyboard, keycode, text, modifiers):
         screen = self.get_screen(self.current)
         if screen:
-            screen.keyboard_down(keyboard, keycode, text, modifiers)
-        return True
+            return screen.keyboard_down(keyboard, keycode, text, modifiers)
+        return False
 
     def update_gui(self, dic):
         for screen in self.screens:

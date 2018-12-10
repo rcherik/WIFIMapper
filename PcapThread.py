@@ -93,8 +93,10 @@ class PcapThread(threading.Thread):
         if self.app and hasattr(self.app, "manager"):
             if self.pcap_file:
                 self.app.manager.update_gui(self.pkt_dic)
+	        self.pkt_dic[WM_CHANGES] = [[], []]
             elif self.update_count == 0:
                 self.app.manager.update_gui(self.pkt_dic)
+	        self.pkt_dic[WM_CHANGES] = [[], []]
         self.update_count = 0 if self.update_count > self.live_update\
                 else self.update_count + 1
 

@@ -34,11 +34,11 @@ ifeq ($(INTERFACE),)
     TYPE="one_iface"
 endif
 
-NAME=application.py
+NAME=main.py
 INSTALL_FOLDER=Install_Folder
 PYTHON=/usr/bin/python
 SUDO=/usr/bin/sudo
-APP=application.py
+APP=$(NAME)
 APP_DEBUG=$(APP) --debug
 
 SCAPY := $(shell command -v scapy 2> /dev/null)

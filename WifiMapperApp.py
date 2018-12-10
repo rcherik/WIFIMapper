@@ -18,6 +18,8 @@ Config.set('graphics', 'height', '800')
 """ Removes right clicks dots on gui """
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
 
+Config.set('kivy', 'window_icon', os.path.join('Static', 'images', 'icon.png'))
+
 from kivy.clock import Clock
 Clock.max_iteration = 20
 
@@ -25,6 +27,8 @@ from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.core.window import Window
 if not Window:
     sys.exit("Please get an interface")
+Window.set_icon(os.path.join('Static', 'images', 'icon.png'))
+Window.icon = os.path.join('Static', 'images', 'icon.png')
 
 """ Our stuff """
 from frontend_wifi_mapper.CardListScreen import CardListScreen
@@ -88,6 +92,9 @@ class WifiMapper(App):
         return self.pcapthread.is_input()
 
     def build(self):
+        self.icon = os.path.join('Static', 'images', 'icon.png')
+        self.version = "0.5"
+        self.title = "Wifi Mapper (%s)" % self.version
         self.manager = WMScreenManager(app=self,
                 args=self.args,
                 pcapthread=self.pcapthread)
@@ -113,15 +120,10 @@ class WifiMapper(App):
         self._keyboard = None
 
     def _on_keyboard_up(self, keyboard, keycode):
-        if keycode[1] == 'shift':
-            self.shift = False
-        if keycode[1] == 'alt':
-            self.alt = False
-
-    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         if self.paused:
-            return
-        ret = False
+            return True
+        if self.manager.keyboard_up(keyboard, keycode):
+            return True
         if not self.alt and keycode[1] == 'tab':
             found = False
             direction = -1 if not self.shift else 1
@@ -139,13 +141,23 @@ class WifiMapper(App):
             self.stop()
             return True
         if keycode[1] == 'shift':
+            self.shift = False
+        if keycode[1] == 'alt':
+            self.alt = False
+        return True
+
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        if self.paused:
+            return True
+        if self.manager.keyboard_down(keyboard, keycode, text, modifiers):
+            return True
+        if keycode[1] == 'shift':
             self.shift = True
             return True
         if keycode[1] == 'alt':
             self.alt = True
             return True
-        ret = self.manager.keyboard_down(keyboard, keycode, text, modifiers)
-        return ret
+        return True
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
@@ -155,9 +167,12 @@ class WifiMapper(App):
             print(s, **kwargs)
 
     def on_pause(self):
+        self._say("On pause")
         self.paused = True
+        return True
 
     def on_resume(self):
+        self._say("On resume")
         self.paused = False
 
     def onstop(self):
