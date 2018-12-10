@@ -43,32 +43,35 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
     def reload_gui(self, current=True):
         self.update_gui(None, current)
 
-    def update_gui(self, dic, current=True):
-        if not current\
-                or not self.ready\
-                or self.ui_paused:
-            return
-        if dic and (self.ap.bssid not in dic[WM_CHANGES][WM_AP]):
-            return
+    def set_label(self, label, text):
+        if text and label.text != text:
+            label.text = text
+
+    def set_info_box(self):
         s = self.ap.bssid
         if self.ap.oui:
             s += " (%s)" % self.ap.oui
-        self.info_box.bssid.text = s
+        self.set_label(self.info_box.bssid, s)
         s = self.ap.ssid
         if self.ap.channel:
             s += " (%s)" % self.ap.channel
-        self.info_box.ssid.text = s
-        self.security_box.co.text = "co: %d" % self.ap.n_clients
-        self.security_box.security.text = self.ap.get_security()
+        self.set_label(self.info_box.ssid, s)
+
+    def set_security_box(self):
+        self.set_label(self.security_box.co, "co: %d" % self.ap.n_clients)
+        self.set_label(self.security_box.security, self.ap.get_security())
+
+    def set_data_box(self):
         sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
         rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
         beacons = "beacons: %d" % self.ap.beacons
         signal = "sig: %d" % (self.ap.rssi if self.ap.rssi else 0)
-        self.data_box.sent.text = sent
-        self.data_box.rcv.text = rcv
-        self.data_box.beacons.text = beacons
-        self.data_box.signal.text = signal
+        self.set_label(self.data_box.sent, sent)
+        self.set_label(self.data_box.rcv, rcv)
+        self.set_label(self.data_box.beacons, beacons)
+        self.set_label(self.data_box.signal, signal)
 
+    def set_connected(self):
         if self.ap.n_clients != self.last_n_clients:
             self.station_lst.box.clear_widgets()
             for bssid in self.ap.client_co:
@@ -76,6 +79,7 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
                 self.station_lst.box.add_widget(l)
             self.last_n_clients = self.ap.n_clients
 
+    def set_history(self):
         for tupl in self.ap.client_hist_co[self.last_idx_hist:]:
             if tupl[2] == 'connected':
                 l = Label(text="[color=#00FF00]%s - %s[/color]" % (tupl[0], tupl[1]),
@@ -86,6 +90,19 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
             self.station_hist_lst.box.add_widget(l)
         self.last_idx_hist = len(self.ap.client_hist_co)
 
+    def update_gui(self, dic, current=True):
+        if not current\
+                or not self.ready\
+                or self.ui_paused:
+            return
+        if dic and (self.ap.bssid not in dic[WM_CHANGES][WM_AP]):
+            return
+        self.set_info_box()
+        self.set_security_box()
+        self.set_data_box()
+        self.set_connected()
+        self.set_history()
+        
     def set_ui_paused(self):
         self.ui_paused = True
 

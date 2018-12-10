@@ -27,7 +27,6 @@ if not Window:
     sys.exit("Please get an interface")
 
 """ Our stuff """
-from frontend_wifi_mapper.Card import Card
 from frontend_wifi_mapper.CardListScreen import CardListScreen
 from frontend_wifi_mapper.CardInfoScreen import CardInfoScreen
 from frontend_wifi_mapper.WMUtilityClasses import WMScreenManager,\
@@ -77,13 +76,13 @@ class WifiMapper(App):
     def remove_header(self, string):
         self.panel.remove_header(string)
 
-    def pause_input(self):
-        r = self.pcapthread.pause_input()
-        self.manager.set_input_pause(r)
+    def stop_input(self):
+        r = self.pcapthread.stop_input()
+        self.manager.set_input_stop(r)
 
     def resume_input(self):
         r = self.pcapthread.resume_input()
-        self.manager.set_input_pause(r)
+        self.manager.set_input_stop(r)
 
     def is_input(self):
         return self.pcapthread.is_input()

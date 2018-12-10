@@ -1,5 +1,4 @@
 #:kivy 1.9.0
-#import WMActionDropDown WMActionDropDown
 
 <CardListScreen>:
         scroll_view: scroll_view
@@ -7,19 +6,19 @@
         page_layout: page_layout
 
         action_bar: action_bar
-        action_previous: action_previous
-        action_pause: action_pause
-        label_curr_page: label_curr_page
-        label_curr_sort: label_curr_sort
-        hide_toggle: hide_toggle
-        sort_dropdown: sort_dropdown
-        search_input: search_input
 
         BoxLayout:
                 orientation: 'vertical'
 
                 ActionBar:
                         id: action_bar
+                        sort_dropdown: sort_dropdown
+                        hide_toggle: hide_toggle
+                        search_input: search_input
+                        action_previous: action_previous
+                        label_curr_page: label_curr_page
+                        label_curr_sort: label_curr_sort
+                        actions: actions
                         pos_hint: {'top': 1}
                         ActionView:
                                 spacing: 15
@@ -35,7 +34,8 @@
                                         title: 'Action Bar'
                                         with_previous: False
                                 ActionOverflow:
-                                        #add img atlas://data/images/defaulttheme/overflow
+                                        #icon: atlas://data/images/defaulttheme/overflow
+                                        icon: "Static/images/home.png"
                                 WMActionLabel:
                                         id: label_curr_page
                                         important: True
@@ -53,20 +53,29 @@
                                         text: 'Hide'
                                         state: 'down'
                                 ActionGroup:
-                                        id: sort_dropdown
+                                        id: actions
+                                        action_stop: action_stop
+                                        action_pause: action_pause
+                                        mode: 'normal'
                                         text: "Actions"
-                                        WMActionPauseToggleButton:
+                                        WMActionScreenToggleButton:
+                                                id: action_stop
+                                                text: "Stop"
+                                                state: 'normal'
+                                        WMActionScreenToggleButton:
                                                 id: action_pause
                                                 text: "Pause"
+                                                state: 'normal'
                                 WMActionInput:
                                         id: search_input
                                         hint_text: "Search..."
                                         width: 200
                                         size_hint: (None, 1)
                                         multiline: False
-                                WMActionGroupPause:
+                                ActionGroup:
                                         id: sort_dropdown
                                         text: "Sort by"
+                                        auto_dismiss: 'false'
                                         mode: 'spinner'
 
                 WMCardScrollView:
@@ -82,10 +91,8 @@
 
                 BoxLayout:
                         size_hint: (1, 0.05)
-                        AnchorLayout:
-                                anchor_x: 'left'
-                                anchor_y: 'bottom'
-                                BoxLayout:
-                                        id: page_layout
-                                        orientation: 'horizontal'
-                                        size_hint: (None, 1)
+                        pos_hint: {'top': 0}
+                        BoxLayout:
+                                id: page_layout
+                                orientation: 'horizontal'
+                                size_hint: (None, 1)

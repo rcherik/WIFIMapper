@@ -153,6 +153,7 @@ class Station():
 		self.assoc_req = None
 		self.rssi = 0
 		self.ap_probed = []
+		self.ap_probed_str = None
 		self.model = None
 		self.connected = False
 		self.ap_bssid = None
@@ -185,6 +186,7 @@ class Station():
 	def add_ap_probed(self, ssid):
 		if ssid not in self.ap_probed:
 			self.ap_probed.append(ssid)
+			self.ap_probed_str = self.get_ap_probed()
 
 	def set_model(self, bssid, probe_req, assoc_req, oui):
 		self.model = identify_wifi_device(bssid, probe_req, assoc_req, \

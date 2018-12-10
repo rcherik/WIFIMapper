@@ -1,7 +1,7 @@
 from __future__ import print_function
 import copy
 """ Kivy """
-from kivy.uix.screenmanager import ScreenManager, FadeTransition
+from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivy.uix.tabbedpanel import TabbedPanelHeader, TabbedPanel
 from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
@@ -29,11 +29,12 @@ class WMScreenManager(ScreenManager):
         self.app = kwargs.get('app', None)
         self.pcapthread = kwargs.get('pcapthread', None)
         super(WMScreenManager, self).__init__(**kwargs)
+        self.transition = SlideTransition()
         for screen in self.to_init_screens:
             self.add_widget(screen)
         del self.to_init_screens
-        self.open = Image(source="Static/images/open.png")
-        self.open2 = Image(source="Static/images/open2.png")
+        self.img_open = Image(source="Static/images/open2.png")
+        self.img_home = Image(source="Static/images/home.png")
 	Clock.schedule_once(self._manager_ready)
 
     def _manager_ready(self, *args):
@@ -48,9 +49,9 @@ class WMScreenManager(ScreenManager):
                 return False
         return True
 
-    def set_input_pause(self, val):
+    def set_input_stop(self, val):
         for screen in self.screens:
-            screen.set_pause(val)
+            screen.set_stop(val)
 
     def keyboard_down(self, keyboard, keycode, text, modifiers):
         screen = self.get_screen(self.current)
@@ -96,6 +97,21 @@ class WMScreenManager(ScreenManager):
     def __repr__(self):
         return "{c} with screens: {l}"\
                 .format(c=self.__class__.__name__, l=self.screens)
+
+    def change_screen(self, name):
+        self.transition.direction = self.get_transition_direction(name)
+        self.current = name
+
+    def get_transition_direction(self, name):
+        found = False
+        for screen in self.screens:
+            if screen.name == name:
+                found = True
+            if screen.name == self.current:
+                if found:
+                    return "right"
+                break
+        return "left"
 
 class WMTabbedPanel(TabbedPanel):
     """ One day maybe for transition """
@@ -149,11 +165,12 @@ class WMTabbedPanel(TabbedPanel):
             self.manager.remove(header.screen)
             self.remove_widget(header)
 
+
     def switch_to(self, header):
         # set the Screen manager to load  the appropriate screen
         # linked to the tab head instead of loading content
         if self.manager.screens:
-            self.manager.current = header.screen
+            self.manager.change_screen(header.screen)
         else:
             super(WMTabbedPanel, self).switch_to(header)
         # we have to replace the functionality of the original switch_to

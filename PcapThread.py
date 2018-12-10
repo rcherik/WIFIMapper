@@ -110,9 +110,9 @@ class PcapThread(threading.Thread):
     def is_input(self):
         return not self.sniff
 
-    def pause_input(self):
+    def stop_input(self):
         if self.sniff:
-            self._say("Paused")
+            self._say("Stopped")
         self.sniff = False
         return True
 

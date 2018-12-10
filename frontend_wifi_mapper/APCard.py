@@ -13,6 +13,7 @@ from operator import attrgetter
 import WMCard
 import WMImageLink
 from APCardInfoScreen import APCardInfoScreen
+import WMSelectableLabel
 
 Builder.load_file("Static/apcard.kv")
 

@@ -96,8 +96,8 @@ monitor:
 	$(SUDO) /usr/sbin/airmon-ng check kill &&\
 	$(SUDO) /sbin/ifconfig $(INTERFACE) down &&\
 	$(SUDO) /sbin/iwconfig $(INTERFACE) mode monitor &&\
-	$(SUDO) /sbin/ifconfig $(INTERFACE) up
-	#if [ "$(TYPE)" == "two_ifaces" ]; then \
+	$(SUDO) /sbin/ifconfig $(INTERFACE) up &&\
+	if [ $(TYPE) == "two_ifaces" ]; then \
 	    $(SUDO) /etc/init.d/network-manager start ; \
 	fi
 

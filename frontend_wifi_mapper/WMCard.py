@@ -37,7 +37,6 @@ class WMCard(BoxLayout):
         if not ret and self.collide_point(*touch.pos)\
                 and hasattr(touch, "button")\
                 and touch.button == "left":
-            self._say("touched ! " + touch.button)
             self.pressed = touch.pos
             self.clicked = not self.clicked
             self.draw_background(self, self.pos)
