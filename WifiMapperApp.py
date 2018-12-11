@@ -19,6 +19,8 @@ Config.set('graphics', 'height', '800')
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
 
 Config.set('kivy', 'window_icon', os.path.join('Static', 'images', 'icon.png'))
+Config.set('kivy', 'exit_on_escape', 0)
+Config.set('kivy', 'pause_on_minimize', 1)
 
 from kivy.clock import Clock
 Clock.max_iteration = 20
@@ -108,7 +110,7 @@ class WifiMapper(App):
                 default_tab=ap_tab)
         return self.panel
 
-    def get_focus(self):
+    def get_focus(self, *args):
         self._keyboard = Window.request_keyboard(self._keyboard_closed,
                 self.root)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
@@ -137,9 +139,6 @@ class WifiMapper(App):
             if found:
                 self.panel.switch_to(self.panel.tab_list[loop])
             return True
-        if keycode[1] == 'escape':
-            self.stop()
-            return True
         if keycode[1] == 'shift':
             self.shift = False
         if keycode[1] == 'alt':
@@ -156,6 +155,9 @@ class WifiMapper(App):
             return True
         if keycode[1] == 'alt':
             self.alt = True
+            return True
+        if keycode[1] == 'escape':
+            self.stop()
             return True
         return True
 

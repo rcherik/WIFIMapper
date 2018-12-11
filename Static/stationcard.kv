@@ -23,13 +23,13 @@
                 BoxLayout:
                         size_hint: (1, 0.2)
                         orientation: 'vertical'
-                        Label:
+                        WMSelectableLabel:
                                 id: bssid
                                 size_hint: (1, 0.5)
                                 text_size: self.size
                                 markup: True
                                 halign: 'center'
-                        Label:
+                        WMSelectableLabel:
                                 id: ap_bssid
                                 size_hint: (1, 0.5)
                                 text_size: self.size
@@ -60,7 +60,7 @@
                 BoxLayout:
                         size_hint: (1, 0.1)
                         orientation: 'horizontal'
-                        Label:
+                        WMSelectableLabel:
                                 id: probes
                                 size_hint: (1, 1)
                                 text_size: self.size
@@ -71,7 +71,7 @@
                 BoxLayout:
                         size_hint: (1, 0.1)
                         orientation: 'horizontal'
-                        Label:
+                        WMSelectableLabel:
                                 id: model
                                 size_hint: (1, 0.5)
                                 markup: True

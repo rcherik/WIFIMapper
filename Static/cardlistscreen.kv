@@ -19,6 +19,7 @@
                         label_curr_page: label_curr_page
                         label_curr_sort: label_curr_sort
                         actions: actions
+                        clear_button: clear_button
                         pos_hint: {'top': 1}
                         ActionView:
                                 spacing: 15
@@ -72,6 +73,7 @@
                                         size_hint: (None, 1)
                                         multiline: False
                                 ImageButton:
+                                        id: clear_button
                                         width: 40
                                         size_hint: (None, 1)
                                 ActionGroup:

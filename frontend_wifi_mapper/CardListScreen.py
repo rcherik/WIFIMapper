@@ -83,18 +83,30 @@ class CardListScreen(WMScreen.WMScreen):
         self.action_bar.actions.action_pause.do_down = self.set_ui_paused
         self.action_bar.actions.action_pause.do_normal = self.set_ui_unpaused
         self.action_bar.search_input.bind(on_text_validate=self.on_input_enter)
+        self.action_bar.search_input.bind(focus=self.on_input_focus)
         self.action_bar.label_curr_page.text = "Page %d" % self.current_page
+        self.action_bar.clear_button.bind(on_press=self._clear_input)
         Clock.schedule_once(self._is_ready)
 
     def _is_ready(self, *args):
         """ All is done by now """
         self.ready = True
 
+    def on_input_focus(self, widget, value):
+        if not value:
+            App.get_running_app().get_focus()
+
     def on_input_enter(self, value):
         """ Called when pressed enter on input action bar """
         self.to_search = value.text
         App.get_running_app().get_focus()
         self.reload_gui(current=True)
+
+    def _clear_input(self, *args):
+        inpt = self.action_bar.search_input
+        if inpt.text:
+            inpt.text = ""
+            self.on_input_enter(inpt)
 
     def set_sort(self, value):
         """ Handles current sorting value """
@@ -103,7 +115,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.sort_by = dic['value']
         self.cmp_reverse = dic['cmp']
         self.action_bar.label_curr_sort.text = "Sorting by %s" % value
-        self.reload_gui()
+        self.reload_gui(current=True)
 
     def _add_sort_value(self, key, value, cmp_reverse):
         """ Adds a sorting button """
@@ -118,7 +130,7 @@ class CardListScreen(WMScreen.WMScreen):
                 allow_no_selection=False,
                 state="down" if key == self.first_sort else "normal",
                 screen=self)
-        btn.bind(on_press=self.action_bar.sort_dropdown._dropdown.dismiss)
+        btn.bind(on_press=self.action_bar.sort_dropdown._dropdown.dismiss)#TODO
         self.action_bar.sort_dropdown.add_widget(btn)
 
     def _create_sort_by(self):
@@ -156,26 +168,27 @@ class CardListScreen(WMScreen.WMScreen):
     def _make_pages(self):
         """ Handles pagination """
         pages = ((len(self.cards) - 1) / self.max_cards) + 1
-        from_page = self.pages
-        if pages == self.pages:
-            return
-        #If new amount of pages is fewer than actual remove all
-        if pages < self.pages:
-            from_page = 0
-            if self.current_page > pages:
-                self.current_page = pages
-            self.page_layout.clear_widgets()
-        #Makes pages widget button based on old present buttons
-        for i in range(from_page + 1, pages + 1):
-            btn = WMPageToggleButton.WMPageToggleButton(
-                    text="Page %d" % i,
-                    group='page',
-                    page=i,
-                    size_hint=(None, 1),
-                    state='down' if self.current_page == i else 'normal',
-                    screen=self)
-            self.page_layout.add_widget(btn)
-        self.pages = pages
+        if pages != self.pages:
+            from_page = self.pages
+            #If new amount of pages is fewer than actual remove all
+            if pages < self.pages:
+                from_page = 0
+                if self.current_page > pages:
+                    self.current_page = pages
+                self.page_layout.clear_widgets()
+            if self.current_page == 0:
+                self.current_page = 1
+            #Makes pages widget button based on old present buttons
+            for i in range(from_page + 1, pages + 1):
+                btn = WMPageToggleButton.WMPageToggleButton(
+                        text="Page %d" % i,
+                        group='page',
+                        page=i,
+                        size_hint=(None, 1),
+                        state='down' if self.current_page == i else 'normal',
+                        screen=self)
+                self.page_layout.add_widget(btn)
+            self.pages = pages
         #Actualise label on action bar
         self.action_bar.label_curr_page.text = "Page %d" % self.current_page
 
@@ -391,6 +404,10 @@ class CardListScreen(WMScreen.WMScreen):
         app = App.get_running_app().change_header(key, s)
 
     def keyboard_down(self, keyboard, keycode, text, modifiers):
+        """
+            Handles keyboard input sent by App to screen manager
+            Always handle escape here - and spammy input
+        """
         if keycode[1] == 'left':
             if self.current_page > 1:
                 self.current_page -= 1
@@ -407,11 +424,17 @@ class CardListScreen(WMScreen.WMScreen):
         if keycode[1] == 'down':
             self.scroll_view.key_scroll_down()
             return True
+        if keycode[1] == 'escape':
+            if self.action_bar.sort_dropdown._dropdown.attach_to is not None:
+                self.action_bar.sort_dropdown._dropdown.dismiss()
+                return True
+            if self.action_bar.search_input.text:
+                self._clear_input()
+                return True
         return False
 
     def keyboard_up(self, keyboard, keycode):
         """ Handles keyboard input sent by App to screen manager """
-        #self._say(keycode)
         if keycode[1] == 'p':
             self.action_bar.actions.action_pause.state = 'down'\
                     if self.action_bar.actions.action_pause.state == 'normal'\

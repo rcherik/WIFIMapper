@@ -9,6 +9,7 @@ from kivy.properties import ObjectProperty
 from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
 from operator import attrgetter
+from kivy.utils import escape_markup
 """ Our stuff """
 import WMCard
 import WMImageLink
@@ -84,8 +85,13 @@ class APCard(WMCard.WMCard):
         l = len(string) * self.width_mult
         return l if l > min_len else min_len
 
-    def _set_label(self, label, string):
-        if string != label.text:
+    def _set_label(self, label, string, copy=""):
+        if isinstance(label, WMSelectableLabel.WMSelectableLabel):
+            if label.check_select_label_text(string):
+                self.has_changed = True
+                label.set_select_label_text(string)
+            label.set_copy(copy)
+        elif string != label.text:
             self.has_changed = True
             label.text = string
 
@@ -93,7 +99,7 @@ class APCard(WMCard.WMCard):
         s = "[b]%s[/b]" % self.ap.bssid
         if self.ap.oui:
             s += " (%s)" % self.ap.oui
-        self._set_label(self.bssid, s)
+        self._set_label(self.bssid, s, copy=self.ap.bssid)
         self._check_width(len(s))
 
     def _set_ssid(self):
@@ -102,7 +108,7 @@ class APCard(WMCard.WMCard):
             s = "[b][i]%s[/i][/b]" % (self.ap.ssid)
         if self.ap.channel:
             s += " (%s)" % self.ap.channel
-        self._set_label(self.ssid, s)
+        self._set_label(self.ssid, s, copy=self.ap.ssid)
         self._check_width(len(s))
 
     def _set_security(self):
