@@ -26,6 +26,12 @@ WM_TRA_MNG = 1
 WM_TRA_CTRL = 2
 WM_TRA_DATA = 3
 
+
+import matplotlib.pyplot as plt
+import collections
+import numpy as np
+from kivy.garden.matplotlib.backend_kivyagg import FigureCanvas
+
 class Traffic():
 
 	def __init__(self, dic, bssid):
@@ -40,6 +46,53 @@ class Traffic():
 		self.n = 0
 		self.dic = dic
 		self.traffic = {}
+		self.timeline = []
+
+	def plot(self):
+		print 'PLOTTING'
+		if len(self.timeline) < 2:
+			return None
+		if self.timeline[-1] - self.timeline[0] >= 7200:
+			div = 3600
+			time_value = 'hour'
+			step = 1
+		elif self.timeline[-1] - self.timeline[0] >= 1200:
+			div = 600
+			time_value = 'minutes'
+			step = 10
+		elif self.timeline[-1] - self.timeline[0] >= 180:
+			div = 60
+			time_value = 'minutes'
+			step = 1
+		else:
+			div = 10
+			time_value = 'seconds'
+			step = 10
+		d = collections.OrderedDict()
+		for elem in self.timeline:
+			elem = elem / div
+			if elem in d:
+				d[elem] += 1
+			else:
+				d[elem] = 1
+		keys = []
+		start = d.keys()[0]
+		for elem in d:
+			keys.append(elem - start)
+		fig, ax = plt.subplots()
+		ax.bar(list(keys), d.values())
+		ax.set_ylabel('packets')
+		ax.set_xlabel(time_value)
+		print self.timeline
+		print d
+		print keys
+		print list(np.arange(0, keys[-1] + 1, step=1))
+		print list(np.arange(0, (len(keys)) * step, step=step))
+		ax.set_xticks(np.arange(0, keys[-1] + 1, step=1))
+		ax.set_xticklabels(np.arange(0, (len(keys) + 1) * step, step=step))
+		#ax.set_xticks(list(np.arange(0, keys[-1] + 1, step=1)), np.arange(0, (len(keys)) * step, step=step))
+		return fig.canvas
+
 
 	def prepare_traffic_dict(self, addr):
 		self.traffic[addr] = {
@@ -72,8 +125,9 @@ class Traffic():
 			return self.traffic[addr]['recv'][key]
 		return 0
 
-	def add_sent(self, addr, which=None):
+	def add_sent(self, addr):
 		self.sent += 1
+		self.timeline.append(int(time.time()))
 		if not addr:
 			return
 		if addr not in self.traffic:
@@ -82,36 +136,14 @@ class Traffic():
 		else:
 			self.traffic[addr]['sent']['all'] += 1
 
-		if which is None:
-			self.traffic[addr]['sent']['management'] += 1
-			return
-
-		if which not in self.traffic[addr]['sent']:
-			self.traffic[addr]['sent'][which] = 1
-		else:
-			self.traffic[addr]['sent'][which] += 1
-
-		if which not in ('control', 'data'):
-			self.traffic[addr]['sent']['management'] += 1
-
-	def add_recv(self, addr, which=None):
+	def add_recv(self, addr):
 		self.recv += 1
+		self.timeline.append(int(time.time()))
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
 			self.traffic[addr]['recv']['all'] = 1
 		else:
 			self.traffic[addr]['recv']['all'] += 1
-
-		if which is None:
-			self.traffic[addr]['recv']['management'] += 1
-			return
-
-		if which not in self.traffic[addr]['recv']:
-			self.traffic[addr]['recv'][which] = 1
-		else:
-			self.traffic[addr]['recv'][which] += 1
-		if which not in ('control', 'data'):
-			self.traffic[addr]['recv']['management'] += 1
 
 	def get_rssi_avg(self):
 		if self.n == 0:

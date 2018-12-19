@@ -13,6 +13,11 @@ import CardInfoScreen
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
 
+from kivy.garden.matplotlib.backend_kivyagg import FigureCanvas
+import matplotlib
+matplotlib.use('module://kivy.garden.matplotlib.backend_kivy')
+import matplotlib.pyplot as plt
+
 Builder.load_file("Static/apcardinfoscreen.kv")
 
 class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
@@ -21,6 +26,8 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
     card_layout = ObjectProperty(None)
     station_lst = ObjectProperty(None)
     station_hist_lst = ObjectProperty(None)
+    btn1 = ObjectProperty(None)
+    graph = ObjectProperty(None)
     info_box = ObjectProperty(None)
     security_box = ObjectProperty(None)
     data_box = ObjectProperty(None)
@@ -38,7 +45,14 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
 
     def _create_view(self, *args): 
        	self.ready = True
+	self.btn1.bind(on_press=self.graph_callback)
         self.update_gui(None, current=True)
+
+    def graph_callback(self, widget):
+    	self.graph.clear_widgets()
+	gr = self.traffic.plot()
+	if gr is not None:
+	    	self.graph.add_widget(gr)
 
     def reload_gui(self, current=True):
         self.update_gui(None, current)

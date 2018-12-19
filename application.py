@@ -7,6 +7,13 @@ import argparse
 import sys
 import signal
 import os
+
+""" Forces kivy to not interpret args """
+os.environ['KIVY_NO_ARGS'] = "1"
+
+import matplotlib
+matplotlib.use('module://kivy.garden.matplotlib.backend_kivy')
+
 """ Our Stuff """
 from backend_wifi_mapper.find_iface import find_iface
 from PcapThread import PcapThread

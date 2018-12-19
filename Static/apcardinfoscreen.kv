@@ -6,6 +6,8 @@
         data_box: data_box
         station_lst: station_lst
         station_hist_lst: station_hist_lst
+        btn1: some_static_button
+        graph: graph
         BoxLayout:
                 id: main_layout
                 orientation: 'vertical'
@@ -182,4 +184,7 @@
                                                         text: "Attack Zone"
                                                         size_hint: (1, 0.5)
                                                         markup: True
+                                        BoxLayout:
+                                                id: graph
+                                                orientation: 'vertical'
                                         Widget:
