@@ -2,10 +2,10 @@ from __future__ import print_function
 """ Kivy """
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
+from kivy.properties import ObjectProperty
 from kivy.graphics import Color, Rectangle
 from kivy.uix.label import Label
 from kivy.uix.stacklayout import StackLayout
-from kivy.properties import ObjectProperty
 from kivy.lang import Builder
 """ Our stuff """
 import WMScreen
@@ -80,7 +80,7 @@ class APCardInfoScreen(CardInfoScreen.CardInfoScreen):
             self.last_n_clients = self.ap.n_clients
 
     def set_history(self):
-        for tupl in self.ap.client_hist_co[self.last_idx_hist:]:
+        for tupl in reversed(self.ap.client_hist_co[self.last_idx_hist:]):
             if tupl[2] == 'connected':
                 l = Label(text="[color=#00FF00]%s - %s[/color]" % (tupl[0], tupl[1]),
                         markup=True)

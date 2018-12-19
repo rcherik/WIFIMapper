@@ -41,16 +41,16 @@ def parse_args():
             help="Time between each pkts read in ms; -r <number>")
     return parser.parse_args()
 
-def application_runtime_error(pcapthread, channelthread, err):
+def application_runtime_error(pcap_thread, channel_thread, err):
     import traceback
     traceback.print_exc()
     print("RuntimeError : " + err.message)
-    WifiMapperApp.stop_threads(pcapthread, channelthread)
+    WifiMapperApp.stop_threads(pcap_thread, channel_thread)
     sys.exit(1)
 
 def signal_handler(signal, frame):
-    global g_pcapthread
-    global g_channelthread
+    global g_pcap_thread
+    global g_channel_thread
     from kivy.app import App
     app = App.get_running_app()
     app._say("CTRL+C signal")
@@ -88,14 +88,14 @@ def say(s, **kwargs):
     print("WifiMapper: %s" % s, **kwargs)
 
 if __name__ == '__main__':
+
     args = parse_args()
     if not args.pcap and os.geteuid():
         say("Please run as root")
         sys.exit(1)
+
     signal.signal(signal.SIGINT, signal_handler)
-
     wireless_lst, iface_lst = list_interfaces()
-
     args.interface = find_iface() if not args.interface else args.interface
 
     if not args.pcap and (args.interface not in iface_lst):
@@ -123,21 +123,21 @@ if __name__ == '__main__':
         sys.exit(1)
 
     """ Threads """
-    pcapthread = PcapThread(args)
-    g_pcapthread = pcapthread
-    channelthread = None
+    pcap_thread = PcapThread(args)
+    g_pcap_thread = pcap_thread
+    channel_thread = None
     if not args.pcap and not args.no_hop:
-        channelthread = ChannelHopThread(args)
-        pcapthread.set_channel_hop_thread(channelthread)
-    g_channelthread = channelthread
+        channel_thread = ChannelHopThread(args)
+        pcap_thread.set_channel_hop_thread(channel_thread)
+    g_channel_thread = channel_thread
 
     """ App """
     import  WifiMapperApp
     app = WifiMapperApp.WifiMapper(args,
-            pcapthread=pcapthread,
-            channelthread=channelthread)
+            pcap_thread=pcap_thread,
+            channel_thread=channel_thread)
     try:
         app.run()
     except Exception as err:
-        application_runtime_error(pcapthread, channelthread, err)
-    WifiMapperApp.stop_threads(pcapthread, channelthread)
+        application_runtime_error(pcap_thread, channel_thread, err)
+    WifiMapperApp.stop_threads(pcap_thread, channel_thread)

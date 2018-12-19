@@ -27,7 +27,7 @@ class WMScreenManager(ScreenManager):
         self.args = kwargs.get('args', None)
         self._init_screens(**kwargs)
         self.app = kwargs.get('app', None)
-        self.pcapthread = kwargs.get('pcapthread', None)
+        self.pcap_thread = kwargs.get('pcap_thread', None)
         super(WMScreenManager, self).__init__(**kwargs)
         self.transition = SlideTransition()
         for screen in self.to_init_screens:
@@ -39,8 +39,8 @@ class WMScreenManager(ScreenManager):
 
     def _manager_ready(self, *args):
         """ When kv loaded, may start thread """
-        if not self.pcapthread.started:
-            self.pcapthread.start()
+        if not self.pcap_thread.started:
+            self.pcap_thread.start()
 
     def is_ready(self):
         """ Called to check if all screens are init """

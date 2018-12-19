@@ -9,23 +9,23 @@ from kivy.clock import Clock
 from toast import toast
 
 Clipboard = None
-CutBuffer = None
 
 class WMSelectableLabel(Label):
 
     def __init__(self, **kwargs):
         self.hidden_text = kwargs.get('hidden_text', "")
-        self.no_color_text = ""
-        self.event_unclick = None
+        self.can_copy = kwargs.get('can_copy', True)
+	self.register_event_type('on_double_tap')
 	super(WMSelectableLabel, self).__init__(**kwargs)
 	self._touch_count = 0
         self.markup = True
-	self.register_event_type('on_double_tap')
 	if platform == 'linux':
 	    self._ensure_clipboard()
+        self.no_color_text = ""
+        self.event_unclick = None
 
     def _ensure_clipboard(self):
-	global Clipboard, CutBuffer
+	global Clipboard
 	if not Clipboard:
 	    from kivy.core.clipboard import Clipboard
 
@@ -60,24 +60,26 @@ class WMSelectableLabel(Label):
         else:
             return value != self.text
 
-    def remove_event(self):
+    def add_event(self):
         if self.event_unclick:
             Clock.unschedule(self.event_unclick)
             self.event_unclick = None
+        self.event_unclick = Clock.schedule_once(self.set_unclicked, 0.2)
 
     def on_touch_down(self, touch):
 	if self.disabled:
-	    return
+	    return False
 	if not self.collide_point(*touch.pos):
 	    return False
 	if super(WMSelectableLabel, self).on_touch_down(touch):
 	    return True
+        if not self.can_copy or (hasattr(touch, "button") and touch.button != 'left'):
+            return True
         self.set_clicked(self.text)
-        self.remove_event()
-        self.event_unclick = Clock.schedule_once(self.set_unclicked, 0.2)
+        self.add_event()
 	touch.grab(self)
 	self._touch_count += 1
-	if touch.is_double_tap:
+	if hasattr(touch, "is_double_tap") and touch.is_double_tap:
 	    self.dispatch('on_double_tap')
         return True
 

@@ -35,23 +35,24 @@ Window.icon = os.path.join('Static', 'images', 'icon.png')
 """ Our stuff """
 from frontend_wifi_mapper.CardListScreen import CardListScreen
 from frontend_wifi_mapper.CardInfoScreen import CardInfoScreen
+from frontend_wifi_mapper.WMPopup import WMConfirmPopup
 from frontend_wifi_mapper.WMUtilityClasses import WMScreenManager,\
         WMPanelHeader, WMTabbedPanel
 
-def stop_threads(pcapthread, channelthread):
+def stop_threads(pcap_thread, channel_thread):
     app = App.get_running_app()
     app._say("stopping threads")
-    if channelthread:
-        channelthread.stop = True
-        if channelthread.started:
-            channelthread.join(timeout=1)
+    if channel_thread:
+        channel_thread.stop = True
+        if channel_thread.started:
+            channel_thread.join(timeout=1)
             app._say("channel stopped")
-            os.kill(channelthread.pid, signal.SIGKILL)
-    pcapthread.stop = True
-    if pcapthread.started:
-        pcapthread.join(timeout=1)
+            os.kill(channel_thread.pid, signal.SIGKILL)
+    pcap_thread.stop = True
+    if pcap_thread.started:
+        pcap_thread.join(timeout=1)
         app._say("pcap stopped")
-        os.kill(pcapthread.pid, signal.SIGKILL)
+        os.kill(pcap_thread.pid, signal.SIGKILL)
     sys.exit(0)
 
 class WifiMapper(App):
@@ -62,12 +63,13 @@ class WifiMapper(App):
         self.args = args
         self.manager = None
         self.paused = False
+        self.popup = None
         """ Thread """
-        self.pcapthread = kwargs['pcapthread']
-        self.pcapthread.set_application(self)
-        self.channelthread = kwargs.get('channelthread', None)
-        if self.channelthread:
-            self.channelthread.set_application(self)
+        self.pcap_thread = kwargs['pcap_thread']
+        self.pcap_thread.set_application(self)
+        self.channel_thread = kwargs.get('channel_thread', None)
+        if self.channel_thread:
+            self.channel_thread.set_application(self)
         """ Keyboard """
         self.shift = False
         self.alt = False
@@ -83,15 +85,15 @@ class WifiMapper(App):
         self.panel.remove_header(string)
 
     def stop_input(self):
-        r = self.pcapthread.stop_input()
+        r = self.pcap_thread.stop_input()
         self.manager.set_input_stop(r)
 
     def resume_input(self):
-        r = self.pcapthread.resume_input()
+        r = self.pcap_thread.resume_input()
         self.manager.set_input_stop(r)
 
     def is_input(self):
-        return self.pcapthread.is_input()
+        return self.pcap_thread.is_input()
 
     def build(self):
         self.icon = os.path.join('Static', 'images', 'icon.png')
@@ -99,7 +101,7 @@ class WifiMapper(App):
         self.title = "Wifi Mapper (%s)" % self.version
         self.manager = WMScreenManager(app=self,
                 args=self.args,
-                pcapthread=self.pcapthread)
+                pcap_thread=self.pcap_thread)
         ap_tab = WMPanelHeader(text="Access Points",
                 args=self.args,
                 content=self.manager,
@@ -125,6 +127,15 @@ class WifiMapper(App):
         if self.paused:
             return True
         if self.manager.keyboard_up(keyboard, keycode):
+            return True
+        self._say("keycode: %s" % keycode[1])
+        if keycode[1] >= "1" and keycode[1] <= "9":
+            n = int(keycode[1])
+            for header in reversed(self.panel.tab_list):
+                n -= 1
+                if n == 0:
+                    self.panel.switch_to(header)
+                    return True
             return True
         if not self.alt and keycode[1] == 'tab':
             found = False
@@ -156,10 +167,23 @@ class WifiMapper(App):
         if keycode[1] == 'alt':
             self.alt = True
             return True
+        if keycode[1] == 'enter':
+            if self.popup:
+                self.popup.confirm()
         if keycode[1] == 'escape':
-            self.stop()
+            if not self.popup:
+                self.popup = WMConfirmPopup(text="Do you really want to quit ?")
+                self.popup.bind(on_dismiss=self._confirm_popup_stop)
+                self.popup.open()
+            else:
+                self.popup.dismiss()
             return True
         return True
+
+    def _confirm_popup_stop(self, widget):
+        if self.popup.confirmed():
+            self.stop()
+        self.popup = None
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
@@ -179,5 +203,5 @@ class WifiMapper(App):
 
     def onstop(self):
         self._say("leaving app - stopping threads")
-        stop_threads(self.pcapthread, self.channelthread)
+        stop_threads(self.pcap_thread, self.channel_thread)
         self._say("stopped")

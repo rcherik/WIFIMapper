@@ -47,7 +47,9 @@ all: sniff
 
 install:
 	@printf "Installing dependencies for wifi mapper\n\n"
-	$(SUDO) /usr/bin/apt install git gcc python-kivy
+	$(SUDO) /usr/bin/apt install git gcc python-kivy python-matplotlib
+	pip install kivy-garden --user
+	garden install matplotlib
 ifndef SCAPY
 	@if [ -d "$(INSTALL_FOLDER)/scapy"]; then \
 		/bin/mkdir -p $(INSTALL_FOLDER) &&\

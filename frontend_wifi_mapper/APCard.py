@@ -45,6 +45,7 @@ class APCard(WMCard.WMCard):
     def _create_view(self, *args):
         self.update(self.ap, self.traffic)
         self.open_link.card = self
+        #self.bssid.bind(on_click_right=self.open_link)
 
     def update(self, ap, traffic):
         self.final_width = 0
@@ -137,6 +138,10 @@ class APCard(WMCard.WMCard):
 
     def get_obj(self):
         return self.ap
+
+    def open_link(self):
+        screen = self.get_info_screen()
+        App.get_running_app().add_header(self.ap.bssid, screen)
 
     def get_info_screen(self):
         screen = APCardInfoScreen(

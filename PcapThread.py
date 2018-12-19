@@ -20,29 +20,38 @@ from backend_wifi_mapper.taxonomy import TAXONOMY_C_FILE
 
 DEFAULT_READ_TIME = 0.0005
 DEFAULT_RELOAD_BY_PKT = 1
+DEFAULT_UPDATE_TIME = 0.5
 
 class PcapThread(threading.Thread):
+
     def __init__(self, args, **kwargs):
         threading.Thread.__init__(self)
+        #Own values
         self.pid = os.getpid()
         self.args = args
         self.started = False
         self.stop = False
         self.sniff = True
-        self.app = None
-        self.channelthread = None
-        self.pkts = None
         self.pcap_file = args.pcap or None
-        self.iface = args.interface or (find_iface() if not args.pcap else None)
-        self.channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        self.pkts = None
+        self.pkt_list = []
         self.pkt_dic = get_wm_list()
+        self.iface = args.interface\
+                or (find_iface() if not args.pcap else None)
         self._get_mac_list()
+
         #Options
+        self.update_time = DEFAULT_UPDATE_TIME
         self.read_update = DEFAULT_READ_TIME
         if args.read_update:
             self.read_update = float(args.read_update) / 1000
         self.update_count = 0
         self.live_update = args.live_update or DEFAULT_RELOAD_BY_PKT
+
+        #Other classes
+        self.app = None
+        self.channel_thread = None
+        self.timer_thread = None
 
     def run(self):
         """ Thread either sniff or waits """
@@ -81,24 +90,39 @@ class PcapThread(threading.Thread):
         except Exception as e:
             self._say("error creating mac_list: %s " % e)
 
-    def _callback_stop(self, i):
-        """ Callback check if sniffing over """
-        return self.stop or not self.sniff
-
-    def _callback(self, pkt):
-        """ Callback when packet is sniffed """
-        current = self.channelthread.current_chan\
-                if self.channelthread else None
-        start_parsing_pkt(self.pkt_dic, pkt, channel=current)
+    def _update_gui(self):
         if self.app and hasattr(self.app, "manager"):
+            self.app.manager.update_gui(self.pkt_dic)
+            self.pkt_dic[WM_CHANGES] = [[], []]
+            """
             if self.pcap_file:
                 self.app.manager.update_gui(self.pkt_dic)
 	        self.pkt_dic[WM_CHANGES] = [[], []]
             elif self.update_count == 0:
                 self.app.manager.update_gui(self.pkt_dic)
 	        self.pkt_dic[WM_CHANGES] = [[], []]
-        self.update_count = 0 if self.update_count > self.live_update\
+        self.update_count = 0\
+                if self.update_count > self.live_update\
                 else self.update_count + 1
+            """
+
+    def _start_update_timer(self):
+        if not self.timer_thread or not self.timer_thread.isAlive():
+            self.timer_thread = threading.Timer(self.update_time,
+                                                self._update_gui)
+            self.timer_thread.start()
+
+    def _callback_stop(self, i):
+        """ Callback check if sniffing over """
+        return self.stop or not self.sniff
+
+    def _callback(self, pkt):
+        """ Callback when packet is sniffed """
+        current = self.channel_thread.current_chan\
+                if self.channel_thread else None
+        self.pkt_list.append(pkt)
+        start_parsing_pkt(self.pkt_dic, pkt, channel=current)
+        self._start_update_timer()
 
     def _wait_for_gui(self):
         """ Check if all screen are loaded """
@@ -109,31 +133,9 @@ class PcapThread(threading.Thread):
             pass
         return True
 
-    def is_input(self):
-        return not self.sniff
-
-    def stop_input(self):
-        if self.sniff:
-            self._say("Stopped")
-        self.sniff = False
-        return True
-
-    def resume_input(self):
-        if not self.sniff:
-            self._say("Resumed")
-        self.sniff = True
-        return False
-
-    def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
-            print(s, **kwargs)
-        else:
-            print(s, **kwargs)
-
     def _sniff(self):
-        if self.channelthread:
-            self.channelthread.start()
+        if self.channel_thread:
+            self.channel_thread.start()
         while not self.stop:
             self._say("starts sniffing on interface %s" % self.iface)
             sniff(iface=self.iface, prn=self._callback,
@@ -169,10 +171,12 @@ class PcapThread(threading.Thread):
         except KeyboardInterrupt:
                 self._app_shutdown()
         read_time = time.time()
-        self._say("took {0:.3f} seconds".format(read_time - start_time))
+        self._say("took {0:.3f} seconds to read {} packets"
+                .format(read_time - start_time, len(packets)))
         return packets
 
     def _read_pkts(self, reader):
+        """ Read a single pkt and callback GUI """
         while not self.stop:
             while not self.sniff:
                 pass
@@ -183,6 +187,7 @@ class PcapThread(threading.Thread):
             time.sleep(self.read_update)
 
     def _read_pcap(self):
+        """ Prepare read for updating GUI pkt per pkt """
         self._say("reading file {name}".format(name=self.pcap_file))
         start_time = time.time()
         try:
@@ -199,16 +204,38 @@ class PcapThread(threading.Thread):
                 self._app_shutdown()
         self._read_pkts(fdesc)
         read_time = time.time()
-        self._say("took {0:.3f} seconds to read and parse"\
-                .format(read_time - start_time))
+        self._say("took {0:.3f} seconds to read and parse {1:d} packets"\
+                .format(read_time - start_time, len(self.pkt_list)))
         
+    def is_input(self):
+        return not self.sniff
+
+    def stop_input(self):
+        if self.sniff:
+            self._say("Stopped")
+        self.sniff = False
+        return True
+
+    def resume_input(self):
+        if not self.sniff:
+            self._say("Resumed")
+        self.sniff = True
+        return False
+
+    def _say(self, s, **kwargs):
+        if hasattr(self, "args") and self.args.debug:
+            s = "%s: " % (self.__class__.__name__) + s
+            print(s, **kwargs)
+        else:
+            print(s, **kwargs)
+
     def set_application(self, app):
         """ To be able to call Kivy from thread """
         self.app = app
 
     def set_channel_hop_thread(self, thread):
         """ To be able to start thread from thread """
-        self.channelthread = thread
+        self.channel_thread = thread
 
     def _app_shutdown(self):
         """ Stops thread and app """
