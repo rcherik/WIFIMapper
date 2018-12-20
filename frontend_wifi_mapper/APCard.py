@@ -20,8 +20,7 @@ Builder.load_file("Static/apcard.kv")
 
 class APCard(WMCard.WMCard):
 
-    bssid = ObjectProperty(None)
-    ssid = ObjectProperty(None)
+    info_box = ObjectProperty(None)
     security_box = ObjectProperty(None)
     data_box = ObjectProperty(None)
     open_link = ObjectProperty(None)
@@ -100,7 +99,7 @@ class APCard(WMCard.WMCard):
         s = "[b]%s[/b]" % self.ap.bssid
         if self.ap.oui:
             s += " (%s)" % self.ap.oui
-        self._set_label(self.bssid, s, copy=self.ap.bssid)
+        self._set_label(self.info_box.bssid, s, copy=self.ap.bssid)
         self._check_width(len(s))
 
     def _set_ssid(self):
@@ -109,7 +108,7 @@ class APCard(WMCard.WMCard):
             s = "[b][i]%s[/i][/b]" % (self.ap.ssid)
         if self.ap.channel:
             s += " (%s)" % self.ap.channel
-        self._set_label(self.ssid, s, copy=self.ap.ssid)
+        self._set_label(self.info_box.ssid, s, copy=self.ap.ssid)
         self._check_width(len(s))
 
     def _set_security(self):

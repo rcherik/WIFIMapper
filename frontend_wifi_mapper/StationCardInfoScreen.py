@@ -14,7 +14,6 @@ from kivy.metrics import sp
 """ Our stuff """
 import WMScreen
 #import CardInfoScreen
-import WMScreen
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
 from WMUtilityClasses import WMRedCheckBox
@@ -32,23 +31,23 @@ try:
 except:
     pass
 
-Builder.load_file("Static/apcardinfoscreen.kv")
+Builder.load_file("Static/stationcardinfoscreen.kv")
 
-class APCardInfoScreen(WMScreen.WMScreen):
+class StationCardInfoScreen(WMScreen.WMScreen):
 
     main_layout = ObjectProperty(None)
     card_layout = ObjectProperty(None)
-    station_lst = ObjectProperty(None)
     station_hist_lst = ObjectProperty(None)
     graph = ObjectProperty(None)
     info_box = ObjectProperty(None)
-    security_box = ObjectProperty(None)
     data_box = ObjectProperty(None)
+    probes = ObjectProperty(None)
+    model = ObjectProperty(None)
     station_box = ObjectProperty(None)
     graph_box = ObjectProperty(None)
 
     def __init__(self, **kwargs):
-        self.ap = kwargs.get('ap', None)
+        self.station = kwargs.get('station', None)
         self.traffic = kwargs.get('traffic', None)
         self.ready = False
         self.last_n_clients = 0
@@ -57,7 +56,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.graph_btn_create = None
         self.graph_btn_cancel = None
         self.graph_btn_update = None
-	super(APCardInfoScreen, self).__init__(**kwargs)
+	super(StationCardInfoScreen, self).__init__(**kwargs)
 	Clock.schedule_once(self._create_view)
 
     def _create_view(self, *args): 
@@ -145,62 +144,49 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.update_gui(None, current)
 
     def _set_label(self, label, string, copy=""):
+        if string is None:
+            string = ""
         if isinstance(label, WMSelectableLabel.WMSelectableLabel):
             if label.check_select_label_text(string):
-                self.has_changed = True
                 label.set_select_label_text(string)
             label.set_copy(copy)
-        elif string != label.text:
-            self.has_changed = True
+        elif label and string != label.text:
             label.text = string
 
     def set_info_box(self):
-        s = self.ap.bssid
-        if self.ap.oui:
-            s += " (%s)" % self.ap.oui
-        self._set_label(self.info_box.bssid, s, copy=self.ap.bssid)
-        s = self.ap.ssid
-        if self.ap.channel:
-            s += " (%s)" % self.ap.channel
-        self._set_label(self.info_box.ssid, s, copy=self.ap.ssid)
-
-    def set_security_box(self):
-        self._set_label(self.security_box.co, "co: %d" % self.ap.n_clients)
-        self._set_label(self.security_box.security, self.ap.get_security())
+        s = self.station.bssid
+        if self.station.oui:
+            s += " (%s)" % self.station.oui
+        self._set_label(self.info_box.bssid, s, copy=self.station.bssid)
+        s = self.station.ap_bssid or ""
+        if self.station.channel:
+            s += " (%s)" % self.station.channel
+        self._set_label(self.info_box.ap_bssid, s, copy=self.station.ap_bssid)
 
     def set_data_box(self):
         sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
         rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
-        beacons = "beacons: %d" % self.ap.beacons
-        signal = "sig: %d" % (self.ap.rssi if self.ap.rssi else 0)
+        signal = "sig: %d" % (self.station.rssi if self.station.rssi else 0)
         self._set_label(self.data_box.sent, sent)
         self._set_label(self.data_box.rcv, rcv)
-        self._set_label(self.data_box.beacons, beacons)
         self._set_label(self.data_box.signal, signal)
 
-    def on_checkbox_active(self, widget, active):
-        self._say("%s %s %s" % (widget, widget.bssid, active))
+    def set_probes(self):
+        s = ""
+        probes = self.station.get_ap_probed()
+        if probes:
+            s = "[i]probed: %s[/i]" % (probes)
+        self._set_label(self.probes, s, copy=probes)
 
-    def set_connected(self):
-        if self.ap.n_clients != self.last_n_clients:
-            self.station_lst.box.clear_widgets()
-            for bssid in self.ap.client_co:
-                #box = BoxLayout(orientation='horizontal')
-                #TODO label open station
-                label = Label(text=bssid)
-                check = WMRedCheckBox(allow_stretch=True,
-                        size_hint=(None, None),
-                        size=(sp(8), sp(8)),
-                        color=[1, 0, 0, 1])
-                check.bssid = bssid
-                check.bind(active=self.on_checkbox_active)
-                #box.add_widget(check)
-                #box.add_widget(label)
-                self.station_lst.box.add_widget(check)
-                self.station_lst.box.add_widget(label)
-            self.last_n_clients = self.ap.n_clients
+    def set_model(self):
+        s = ""
+        model = self.station.model
+        if model != None:
+            s = "[b][i]%s[/i][/b]" % (model if model != False else "not found")
+        self._set_label(self.model, s, copy=model)
 
     def set_history(self):
+        """
         for tupl in reversed(self.ap.client_hist_co[self.last_idx_hist:]):
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
             #TODO label open station
@@ -209,6 +195,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
                     markup=True)
             self.station_hist_lst.box.add_widget(l)
         self.last_idx_hist = len(self.ap.client_hist_co)
+        """
 
     def update_gui(self, dic, current=True):
         self.current_screen = current
@@ -216,12 +203,12 @@ class APCardInfoScreen(WMScreen.WMScreen):
                 or not self.ready\
                 or self.ui_paused:
             return
-        if dic and (self.ap.bssid not in dic[WM_CHANGES][WM_AP]):
+        if dic and (self.station.bssid not in dic[WM_CHANGES][WM_STATION]):
             return
         self.set_info_box()
-        self.set_security_box()
         self.set_data_box()
-        self.set_connected()
+        self.set_probes()
+        self.set_model()
         self.set_history()
         
     def set_ui_paused(self):

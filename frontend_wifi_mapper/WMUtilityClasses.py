@@ -1,7 +1,6 @@
 from __future__ import print_function
 import copy
 """ Kivy """
-from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivy.uix.tabbedpanel import TabbedPanelHeader, TabbedPanel
 from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
@@ -10,114 +9,11 @@ from kivy.uix.button import Button
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.clock import Clock
-from kivy.uix.image import Image
-""" Our stuff """
-from CardListScreen import CardListScreen
 
-Builder.load_file('Static/wmpanel.kv')
-
-class WMScreenManager(ScreenManager):
-
-    ap_screen = ObjectProperty(None)
-    station_screen = ObjectProperty(None)
-
-    def __init__(self, **kwargs):
-        """ Init screens before super for WMTabbedPanel switch_to """
-        self.to_init_screens = []
-        self.args = kwargs.get('args', None)
-        self._init_screens(**kwargs)
-        self.app = kwargs.get('app', None)
-        self.pcap_thread = kwargs.get('pcap_thread', None)
-        super(WMScreenManager, self).__init__(**kwargs)
-        self.transition = SlideTransition()
-        for screen in self.to_init_screens:
-            self.add_widget(screen)
-        del self.to_init_screens
-        self.img_open = Image(source="Static/images/open2.png")
-        self.img_home = Image(source="Static/images/home.png")
-	Clock.schedule_once(self._manager_ready)
-
-    def _manager_ready(self, *args):
-        """ When kv loaded, may start thread """
-        if not self.pcap_thread.started:
-            self.pcap_thread.start()
-
-    def is_ready(self):
-        """ Called to check if all screens are init """
-        for screen in self.screens:
-            if not screen.ready:
-                return False
-        return True
-
-    def set_input_stop(self, val):
-        for screen in self.screens:
-            screen.set_stop(val)
-
-    def keyboard_up(self, keyboard, keycode):
-        screen = self.get_screen(self.current)
-        if screen:
-            return screen.keyboard_up(keyboard, keycode)
-        return False
-
-    def keyboard_down(self, keyboard, keycode, text, modifiers):
-        screen = self.get_screen(self.current)
-        if screen:
-            return screen.keyboard_down(keyboard, keycode, text, modifiers)
-        return False
-
-    def update_gui(self, dic):
-        for screen in self.screens:
-            if self.current == screen.name:
-                screen.update_gui(dic, current=True)
-            else:
-                screen.update_gui(dic, current=False)
-
-    def remove(self, screen_name):
-        widget = self.get_screen(screen_name)
-        if widget:
-            self.remove_widget(widget)
-
-    def _to_init_screen(self, **kwargs):
-        """ Create and postpone adding """
-        screen = CardListScreen(**kwargs)
-        self.to_init_screens.append(screen)
-
-    def _init_screens(self, **kwargs):
-        """ Init screens for later adding """
-        self._to_init_screen(ap=True,
-                name="ap", **kwargs)
-        self._to_init_screen(station=True,
-                name="station", **kwargs)
-
-    def add_cardlist_screen(self, **kwargs):
-        screen = CardListScreen(**kwargs)
-        self.add_widget(screen)
-
-    def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
-            s = "%s: %s" % (self.__class__.__name__, s)
-            print(s, **kwargs)
-        else:
-            print(s, **kwargs)
-
-    def __repr__(self):
-        return "{c} with screens: {l}"\
-                .format(c=self.__class__.__name__, l=self.screens)
-
-    def change_screen(self, name):
-        self.transition.direction = self.get_transition_direction(name)
-        self.current = name
-
-    def get_transition_direction(self, name):
-        found = False
-        for screen in self.screens:
-            if screen.name == name:
-                found = True
-            if screen.name == self.current:
-                if found:
-                    return "right"
-                break
-        return "left"
+Builder.load_string("""
+<WMTabbedPanel>:
+	tab_width: 150
+""")
 
 class WMTabbedPanel(TabbedPanel):
     """ One day maybe for transition """
@@ -134,6 +30,7 @@ class WMTabbedPanel(TabbedPanel):
                 text="Stations",
                 screen="station",
                 args=self.args,
+                #background_color=(80, 0, 80, 0.25),
                 content=self.manager,
                 can_remove=False)
 
@@ -226,3 +123,106 @@ class WMPanelHeader(TabbedPanelHeader):
             print(s, **kwargs)
         else:
             print(s, **kwargs)
+
+from kivy.uix.widget import Widget
+from kivy.lang import Builder
+
+Builder.load_string("""
+<WMSeparator>
+    size_hint_y: None
+    thickness: 2
+    margin: 2
+    height: self.thickness + 2 * self.margin
+    color: [47 / 255., 167 / 255., 212 / 255., 1.]
+    canvas:
+        Color:
+            rgb: self.color
+        Rectangle:
+            pos: self.x + self.margin, self.y + self.margin + 1
+            size: self.width - 2 * self.margin , self.thickness
+""")
+
+class WMSeparator(Widget):
+    pass
+
+from kivy.uix.popup import Popup
+from kivy.lang import Builder
+from kivy.clock import Clock
+from kivy.properties import ObjectProperty
+
+Builder.load_string("""
+<WMConfirmPopup>:
+    auto_dismiss: True
+    title: 'Confirm'
+    size_hint: (None, None)
+    size: (300, 200)
+    label_text: label_text
+    BoxLayout:
+        orientation: 'vertical'
+        BoxLayout:
+            size_hint_y: 0.60
+            Label:
+                id: label_text
+        WMSeparator:
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.4
+            Widget:
+                size_hint_x: None
+                width: 100
+            Button:
+                text: 'Cancel'
+                size_hint_y: None
+                height: 50
+                on_release: root.cancel()
+            Button:
+                text: 'Confirm'
+                size_hint_y: None
+                height: 50
+                on_release: root.confirm()
+""")
+
+class WMConfirmPopup(Popup):
+
+    label_text = ObjectProperty()
+
+    def __init__(self, text="Smth", **kwargs):
+        self.ret = False
+        self.text = text
+	super(WMConfirmPopup, self).__init__(**kwargs)
+	Clock.schedule_once(self._create_view)
+
+    def _create_view(self, *args): 
+        self.label_text.text = self.text
+
+    def cancel(self):
+        self.ret = False
+        self.dismiss()
+
+    def confirm(self):
+        self.ret = True
+        self.dismiss()
+
+    def confirmed(self):
+        return self.ret
+
+
+from kivy.uix.checkbox import CheckBox
+
+Builder.load_string('''
+<WMRedCheckBox@Checkbox>:
+    canvas.before:
+        Color:
+            rgb: 1,0,0
+        Rectangle:
+            pos:self.center_x-8, self.center_y-8
+            size:[16,16]
+        Color:
+            rgb: 0,0,0
+        Rectangle:
+            pos:self.center_x-7, self.center_y-7
+            size:[14,14]
+''')
+
+class WMRedCheckBox(CheckBox):
+    pass

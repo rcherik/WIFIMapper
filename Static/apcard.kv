@@ -1,5 +1,67 @@
 #:kivy 1.9.0
 
+<APCardInfoBox@BoxLayout>:
+		bssid: bssid
+		ssid: ssid
+		size_hint: (1, 0.2)
+		orientation: 'vertical'
+		WMSelectableLabel:
+				id: bssid
+				size_hint: (1, 0.5)
+				text_size: self.size
+				markup: True
+				halign: 'center'
+		WMSelectableLabel:
+				id: ssid
+				size_hint: (1, 0.5)
+				text_size: self.size
+				markup: True
+				halign: 'center'
+
+<APCardSecurityBox@BoxLayout>:
+		size_hint: (1, 0.1)
+		orientation: 'horizontal'
+		security: security
+		co: co
+		Label:
+				id: security
+				size_hint: (0.5, 1)
+				markup: True
+		Label:
+				id: co
+				size_hint: (0.5, 1)
+				markup: True
+
+<APCardDataBox@BoxLayout>:
+		size_hint: (1, 0.2)
+		orientation: 'horizontal'
+		rcv: rcv
+		sent: sent
+		beacons: beacons
+		signal: signal
+		BoxLayout:
+				orientation: 'vertical'
+				size_hint: (0.5, 1)
+				Label:
+						id: sent
+						size_hint: (1, 0.5)
+						markup: True
+				Label:
+						id: rcv
+						size_hint: (1, 0.5)
+						markup: True
+		BoxLayout:
+				orientation: 'vertical'
+				size_hint: (0.5, 1)
+				Label:
+						id: beacons
+						size_hint: (1, 0.5)
+						markup: True
+				Label:
+						id: signal
+						size_hint: (1, 0.5)
+						markup: True
+
 <APCard>:
         height: 150
         width: 200
@@ -8,8 +70,7 @@
         orientation: 'vertical'
 
         main_layout: main_layout
-        bssid: bssid
-        ssid: ssid
+		info_box: info_box
         security_box: security_box
         data_box: data_box
         open_link: open_link
@@ -19,66 +80,12 @@
                 size_hint: (1, 1)
                 orientation: 'vertical'
 
-                BoxLayout:
-                        size_hint: (1, 0.2)
-                        orientation: 'vertical'
-                        WMSelectableLabel:
-                                id: bssid
-                                size_hint: (1, 0.5)
-                                text_size: self.size
-                                markup: True
-                                halign: 'center'
-                        WMSelectableLabel:
-                                id: ssid
-                                size_hint: (1, 0.5)
-                                text_size: self.size
-                                markup: True
-                                halign: 'center'
-                BoxLayout:
+                APCardInfoBox:
+						id: info_box
+                APCardSecurityBox:
                         id: security_box
-                        size_hint: (1, 0.1)
-                        orientation: 'horizontal'
-                        security: security
-                        co: co
-                        Label:
-                                id: security
-                                size_hint: (0.5, 1)
-                                markup: True
-                        Label:
-                                id: co
-                                size_hint: (0.5, 1)
-                                markup: True
-                BoxLayout:
+                APCardDataBox:
                         id: data_box
-                        size_hint: (1, 0.2)
-                        orientation: 'horizontal'
-                        rcv: rcv
-                        sent: sent
-                        beacons: beacons
-                        signal: signal
-                        BoxLayout:
-                                orientation: 'vertical'
-                                size_hint: (0.5, 1)
-                                Label:
-                                        id: sent
-                                        size_hint: (1, 0.5)
-                                        markup: True
-                                Label:
-                                        id: rcv
-                                        size_hint: (1, 0.5)
-                                        markup: True
-                        BoxLayout:
-                                orientation: 'vertical'
-                                size_hint: (0.5, 1)
-                                Label:
-                                        id: beacons
-                                        size_hint: (1, 0.5)
-                                        markup: True
-                                Label:
-                                        id: signal
-                                        size_hint: (1, 0.5)
-                                        markup: True
-
                 BoxLayout:
                         size_hint: (1, 0.2)
                         Widget:

@@ -1,5 +1,77 @@
 #:kivy 1.9.0
 
+<WMActionBar@ActionBar>:
+		sort_dropdown: sort_dropdown
+		hide_toggle: hide_toggle
+		search_input: search_input
+		action_previous: action_previous
+		label_curr_page: label_curr_page
+		label_curr_sort: label_curr_sort
+		actions: actions
+		clear_button: clear_button
+		pos_hint: {'top': 1}
+		ActionView:
+				spacing: 15
+				canvas.before:
+						Color:
+								rgba: (0, 0.25, 0.75, 0.3)
+						Rectangle:
+								pos: self.pos
+								size: self.size
+				use_separator: False
+				ActionPrevious:
+						id: action_previous
+						title: 'Main menu'
+						with_previous: False
+				ActionOverflow:
+						icon: "atlas://data/images/defaulttheme/overflow"
+				WMActionLabel:
+						id: label_curr_page
+						important: True
+						text: 'Important'
+						width: 70
+						size_hint: (None, 1)
+				WMActionLabel:
+						id: label_curr_sort
+						important: True
+						text: 'Important'
+						width: 110
+						size_hint: (None, 1)
+				WMActionToggleButton:
+						id: hide_toggle
+						text: 'Hide'
+						state: 'down'
+				ActionGroup:
+						id: actions
+						text: "Actions"
+						action_stop: action_stop
+						action_pause: action_pause
+						mode: 'normal'
+						WMActionScreenToggleButton:
+								id: action_stop
+								text: "Stop"
+								state: 'normal'
+						WMActionScreenToggleButton:
+								id: action_pause
+								text: "Pause"
+								state: 'normal'
+				WMActionInput:
+						id: search_input
+						hint_text: "Search..."
+						width: 200
+						size_hint: (None, 1)
+						multiline: False
+				ImageButton:
+						id: clear_button
+						width: 40
+						size_hint: (None, 1)
+				ActionGroup:
+						id: sort_dropdown
+						text: "Sort by"
+						mode: 'spinner'
+						size_hint: (None, 1)
+
+
 <CardListScreen>:
         scroll_view: scroll_view
         stack_layout: stack_layout
@@ -10,77 +82,8 @@
         BoxLayout:
                 orientation: 'vertical'
 
-                ActionBar:
+                WMActionBar:
                         id: action_bar
-                        sort_dropdown: sort_dropdown
-                        hide_toggle: hide_toggle
-                        search_input: search_input
-                        action_previous: action_previous
-                        label_curr_page: label_curr_page
-                        label_curr_sort: label_curr_sort
-                        actions: actions
-                        clear_button: clear_button
-                        pos_hint: {'top': 1}
-                        ActionView:
-                                spacing: 15
-                                canvas.before:
-                                        Color:
-                                                rgba: (0, 0.25, 0.75, 0.3)
-                                        Rectangle:
-                                                pos: self.pos
-                                                size: self.size
-                                use_separator: False
-                                ActionPrevious:
-                                        id: action_previous
-                                        title: 'Action Bar'
-                                        with_previous: False
-                                ActionOverflow:
-                                        icon: "atlas://data/images/defaulttheme/overflow"
-                                WMActionLabel:
-                                        id: label_curr_page
-                                        important: True
-                                        text: 'Important'
-                                        width: 70
-                                        size_hint: (None, 1)
-                                WMActionLabel:
-                                        id: label_curr_sort
-                                        important: True
-                                        text: 'Important'
-                                        width: 110
-                                        size_hint: (None, 1)
-                                WMActionToggleButton:
-                                        id: hide_toggle
-                                        text: 'Hide'
-                                        state: 'down'
-                                ActionGroup:
-                                        id: actions
-                                        text: "Actions"
-                                        action_stop: action_stop
-                                        action_pause: action_pause
-                                        mode: 'normal'
-                                        WMActionScreenToggleButton:
-                                                id: action_stop
-                                                text: "Stop"
-                                                state: 'normal'
-                                        WMActionScreenToggleButton:
-                                                id: action_pause
-                                                text: "Pause"
-                                                state: 'normal'
-                                WMActionInput:
-                                        id: search_input
-                                        hint_text: "Search..."
-                                        width: 200
-                                        size_hint: (None, 1)
-                                        multiline: False
-                                ImageButton:
-                                        id: clear_button
-                                        width: 40
-                                        size_hint: (None, 1)
-                                ActionGroup:
-                                        id: sort_dropdown
-                                        text: "Sort by"
-                                        mode: 'spinner'
-                                        size_hint: (None, 1)
 
                 WMCardScrollView:
                         id: scroll_view
@@ -92,7 +95,6 @@
                                 padding: 10
                                 spacing: 10
                                 size_hint_y: None
-
                 BoxLayout:
                         size_hint: (1, 0.05)
                         pos_hint: {'top': 0}

@@ -1,5 +1,43 @@
 #:kivy 1.9.0
 
+<StationCardInfoBox@BoxLayout>:
+		size_hint: (1, 0.2)
+		orientation: 'vertical'
+		bssid: bssid
+		ap_bssid: ap_bssid
+		WMSelectableLabel:
+				id: bssid
+				size_hint: (1, 0.5)
+				text_size: self.size
+				markup: True
+				halign: 'center'
+		WMSelectableLabel:
+				id: ap_bssid
+				size_hint: (1, 0.5)
+				text_size: self.size
+				markup: True
+				halign: 'center'
+				markup: True
+
+<StationCardDataBox@BoxLayout>:
+		size_hint: (1, 0.1)
+		orientation: 'horizontal'
+		rcv: rcv
+		sent: sent
+		sig: sig
+		Label:
+				id: sent
+				size_hint: (0.33, 1)
+				markup: True
+		Label:
+				id: rcv
+				size_hint: (0.33, 1)
+				markup: True
+		Label:
+				id: sig
+				size_hint: (0.33, 1)
+				markup: True
+
 <StationCard>:
         height: 150
         width: 200
@@ -8,55 +46,20 @@
         orientation: 'vertical'
 
         main_layout: main_layout
-        bssid: bssid
-        ap_bssid: ap_bssid
+		info_box: info_box
+        data_box: data_box
         probes: probes
         open_link: open_link
         model: model
-        data_box: data_box
 
         BoxLayout:
                 id: main_layout
                 size_hint: (1, 1)
                 orientation: 'vertical'
-
-                BoxLayout:
-                        size_hint: (1, 0.2)
-                        orientation: 'vertical'
-                        WMSelectableLabel:
-                                id: bssid
-                                size_hint: (1, 0.5)
-                                text_size: self.size
-                                markup: True
-                                halign: 'center'
-                        WMSelectableLabel:
-                                id: ap_bssid
-                                size_hint: (1, 0.5)
-                                text_size: self.size
-                                markup: True
-                                halign: 'center'
-                                markup: True
-
-                BoxLayout:
+                StationCardInfoBox:
+                        id: info_box
+                StationCardDataBox:
                         id: data_box
-                        size_hint: (1, 0.1)
-                        orientation: 'horizontal'
-                        rcv: rcv
-                        sent: sent
-                        sig: sig
-                        Label:
-                                id: sent
-                                size_hint: (0.33, 1)
-                                markup: True
-                        Label:
-                                id: rcv
-                                size_hint: (0.33, 1)
-                                markup: True
-                        Label:
-                                id: sig
-                                size_hint: (0.33, 1)
-                                markup: True
-
                 BoxLayout:
                         size_hint: (1, 0.1)
                         orientation: 'horizontal'
@@ -67,7 +70,6 @@
                                 halign: 'center'
                                 valign: 'middle'
                                 markup: True
-
                 BoxLayout:
                         size_hint: (1, 0.1)
                         orientation: 'horizontal'
@@ -75,7 +77,6 @@
                                 id: model
                                 size_hint: (1, 0.5)
                                 markup: True
-
                 BoxLayout:
                         size_hint: (1, 0.2)
                         Widget:

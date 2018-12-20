@@ -6,51 +6,70 @@ import time
 import threading
 import subprocess
 """ Our stuff """
-from backend_wifi_mapper.find_iface import find_iface
-
-WAIT_TIME = 0.25
+import WMConfig
 
 class ChannelHopThread(threading.Thread):
-    def __init__(self, args):
+
+    def __init__(self, iface=None, args=None):
 	threading.Thread.__init__(self)  
         self.pid = os.getpid()
         self.args = args
         self.started = False
 	self.stop = False
         self.app = None
-        self.iface = args.interface or (find_iface() if not args.pcap else None)
+        self.iface = iface if iface else (args.interface if args else None)
         self.bad_channels = set()
-        self.current_chan = 0
-        if args.channels:
+        self.current_chan = -1
+        self.hop_time = WMConfig.conf.channel_hop_time
+        if args and args.channels:
             self.channels = [int(chan) for chan in args.channels.split(';')]
         else:
-            self.channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+            self.channels = WMConfig.conf.channels
+
+    def reset_channels(self):
+        self.set_channel(WMConfig.conf.channels)
+
+    def set_channel(self, chan):
+        self.stop = 1
+        if isinstance(chan, int):
+            self.channels = list(chan)
+        elif isinstance(chan, (list, tuple)):
+            self.channels = chan
+        timer_thread = threading.Timer(self.WAIT_TIME, self.run)
+        timer_thread.start()
+
+    def change_channel(self, channel):
+        if self.current_chan == channel:
+            return False
+        try:
+            ret = subprocess.call([
+                '/sbin/iwconfig',
+                self.iface,
+                'channel',
+                str(channel)
+                ])
+        except Exception as e:
+            self._say("exception sniffing: " + e.message)
+            return False
+        if ret != 0 and channel not in self.bad_channels:
+            self._say("bad channel {chan} - ret: {ret}"\
+                    .format(ret=ret, chan=channel))
+            self.bad_channels.add(channel)
+        else:
+            #self._say("hopped to %s" % channel)
+            self.current_chan = channel
+        return True
 
     def run(self):
+        self.stop = False
         self.started = True
         self._say("starting to chan hop on interface %s" % self.iface)
         while not self.stop:
             for channel in self.channels:
                 if self.stop:
                     return
-                try:
-                    ret = subprocess.call([
-                        '/sbin/iwconfig',
-                        self.iface,
-                        'channel',
-                        str(channel)
-                        ])
-                except Exception as e:
-                    self._say("exception sniffing: " + e.message)
-                    continue
-                if ret != 0 and channel not in self.bad_channels:
-                    self._say("bad channel {chan} - ret: {ret}"\
-                            .format(ret=ret, chan=channel))
-                    self.bad_channels.add(channel)
-                else:
-                    #self._say("hopped to %s" % channel)
-                    self.current_chan = channel
-                time.sleep(WAIT_TIME)
+                self.change_channel(channel)
+                time.sleep(self.hop_time)
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:

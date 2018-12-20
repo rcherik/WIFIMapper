@@ -1,17 +1,14 @@
 #! /usr/bin/python
-# -*- coding: utf-8 -*-
-
-from wifi_mapper_utilities import is_broadcast, is_retransmitted
-from wifi_mapper_utilities import WM_AP, WM_STATION,\
-        WM_TRAFFIC, WM_VENDOR
+#coding: utf-8
+from __future__ import print_function
 from scapy.all import Dot11Elt
 import time
 import struct
+""" Our stuff """
+from wifi_mapper_utilities import is_broadcast, is_retransmitted
+from wifi_mapper_utilities import WM_AP, WM_STATION,\
+        WM_TRAFFIC, WM_VENDOR
 from taxonomy import identify_wifi_device
-
-"""
-	Classes used in dictionnary from pcap_paser.parse method
-"""
 
 """
 	Present in main dictionnary in dic[WM_TRAFFIC][some_bssid_key]
@@ -40,6 +37,10 @@ class Traffic():
 		self.n = 0
 		self.dic = dic
 		self.traffic = {}
+		self.timeline = []
+
+	def plot(self):
+		pass
 
 	def prepare_traffic_dict(self, addr):
 		self.traffic[addr] = {
@@ -72,8 +73,9 @@ class Traffic():
 			return self.traffic[addr]['recv'][key]
 		return 0
 
-	def add_sent(self, addr, which=None):
+	def add_sent(self, addr):
 		self.sent += 1
+		self.timeline.append(int(time.time()))
 		if not addr:
 			return
 		if addr not in self.traffic:
@@ -82,36 +84,14 @@ class Traffic():
 		else:
 			self.traffic[addr]['sent']['all'] += 1
 
-		if which is None:
-			self.traffic[addr]['sent']['management'] += 1
-			return
-
-		if which not in self.traffic[addr]['sent']:
-			self.traffic[addr]['sent'][which] = 1
-		else:
-			self.traffic[addr]['sent'][which] += 1
-
-		if which not in ('control', 'data'):
-			self.traffic[addr]['sent']['management'] += 1
-
-	def add_recv(self, addr, which=None):
+	def add_recv(self, addr):
 		self.recv += 1
+		self.timeline.append(int(time.time()))
 		if addr not in self.traffic:
 			self.prepare_traffic_dict(addr)
 			self.traffic[addr]['recv']['all'] = 1
 		else:
 			self.traffic[addr]['recv']['all'] += 1
-
-		if which is None:
-			self.traffic[addr]['recv']['management'] += 1
-			return
-
-		if which not in self.traffic[addr]['recv']:
-			self.traffic[addr]['recv'][which] = 1
-		else:
-			self.traffic[addr]['recv'][which] += 1
-		if which not in ('control', 'data'):
-			self.traffic[addr]['recv']['management'] += 1
 
 	def get_rssi_avg(self):
 		if self.n == 0:

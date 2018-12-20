@@ -3,8 +3,9 @@
 import hashlib
 import subprocess
 #import dhcp
+import WMConfig
 
-TAXONOMY_C_FILE = "backend_wifi_mapper/C_Utilities/create_signature.c"
+TAXONOMY_C_FILE = WMConfig.conf.taxo_file
 
 # Associated with each signature is a tuple:
 # Field #1 = Genus = a human-recognizeable name for the device. If the device

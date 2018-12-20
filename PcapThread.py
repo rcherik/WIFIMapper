@@ -12,15 +12,12 @@ from scapy.sendrecv import sniff
 from scapy.utils import rdpcap, PcapReader
 from scapy.error import Scapy_Exception
 """ Our Stuff """
-from backend_wifi_mapper.find_iface import find_iface
+import interface_utilities
 from backend_wifi_mapper.wifi_mapper import start_parsing_pkt
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES, get_wm_list
 from backend_wifi_mapper.taxonomy import TAXONOMY_C_FILE
-
-DEFAULT_READ_TIME = 0.0005
-DEFAULT_RELOAD_BY_PKT = 1
-DEFAULT_UPDATE_TIME = 0.5
+import WMConfig
 
 class PcapThread(threading.Thread):
 
@@ -29,24 +26,24 @@ class PcapThread(threading.Thread):
         #Own values
         self.pid = os.getpid()
         self.args = args
+        self.pcap_file = args.pcap or None
+        self.ifaces = None
+        if not args.pcap:
+            if args.interface:
+                self.ifaces = [iface for iface in args.interface.split(';')]
+            else:
+                self.ifaces = interface_utilities.find_iface()
         self.started = False
         self.stop = False
-        self.sniff = True
-        self.pcap_file = args.pcap or None
+        self.get_input = True
         self.pkts = None
         self.pkt_list = []
         self.pkt_dic = get_wm_list()
-        self.iface = args.interface\
-                or (find_iface() if not args.pcap else None)
         self._get_mac_list()
+        self.pkt_stats = {}
 
         #Options
-        self.update_time = DEFAULT_UPDATE_TIME
-        self.read_update = DEFAULT_READ_TIME
-        if args.read_update:
-            self.read_update = float(args.read_update) / 1000
-        self.update_count = 0
-        self.live_update = args.live_update or DEFAULT_RELOAD_BY_PKT
+        self.update_time = WMConfig.conf.gui_update_time
 
         #Other classes
         self.app = None
@@ -65,6 +62,7 @@ class PcapThread(threading.Thread):
             self._read_pcap()
 
     def _compile_c_file(self, name):
+        """ Compile a c file for later use """
         self._say("Compiling %s file to %s" % (name, name[:-2]))
         try:
             dn = open(os.devnull, 'w')
@@ -81,8 +79,9 @@ class PcapThread(threading.Thread):
             self._say("Could not compile file %s: %s" % (name, e.message))
 
     def _get_mac_list(self):
+        """ Get list to match bssid with vendor """
         try:
-            with open('mac_list') as f:
+            with open(WMConfig.conf.mac_list_file) as f:
                 lines = f.readlines()
                 for l in lines:
                     t = l.split('\t')
@@ -91,22 +90,13 @@ class PcapThread(threading.Thread):
             self._say("error creating mac_list: %s " % e)
 
     def _update_gui(self):
+        """ Update gui with pkts """
         if self.app and hasattr(self.app, "manager"):
             self.app.manager.update_gui(self.pkt_dic)
             self.pkt_dic[WM_CHANGES] = [[], []]
-            """
-            if self.pcap_file:
-                self.app.manager.update_gui(self.pkt_dic)
-	        self.pkt_dic[WM_CHANGES] = [[], []]
-            elif self.update_count == 0:
-                self.app.manager.update_gui(self.pkt_dic)
-	        self.pkt_dic[WM_CHANGES] = [[], []]
-        self.update_count = 0\
-                if self.update_count > self.live_update\
-                else self.update_count + 1
-            """
 
     def _start_update_timer(self):
+        """ Update gui on timer """
         if not self.timer_thread or not self.timer_thread.isAlive():
             self.timer_thread = threading.Timer(self.update_time,
                                                 self._update_gui)
@@ -114,13 +104,16 @@ class PcapThread(threading.Thread):
 
     def _callback_stop(self, i):
         """ Callback check if sniffing over """
-        return self.stop or not self.sniff
+        return self.stop or not self.get_input
 
     def _callback(self, pkt):
         """ Callback when packet is sniffed """
-        current = self.channel_thread.current_chan\
-                if self.channel_thread else None
+        current = None
+        if self.channel_thread:
+            current = self.channel_thread.current_chan
         self.pkt_list.append(pkt)
+        if current:
+            self.pkt_stats[current] = self.pkt_stats.get(current, 0) + 1
         start_parsing_pkt(self.pkt_dic, pkt, channel=current)
         self._start_update_timer()
 
@@ -134,24 +127,32 @@ class PcapThread(threading.Thread):
         return True
 
     def _sniff(self):
+        """ Sniff on interfaces while channel hopping """
         if self.channel_thread:
             self.channel_thread.start()
         while not self.stop:
-            self._say("starts sniffing on interface %s" % self.iface)
-            sniff(iface=self.iface, prn=self._callback,
+            self._say("starts sniffing on %s %s"\
+                    % ("interface" if len(self.ifaces) == 1 else "interfaces",
+                        self.ifaces))
+            sniff(iface=self.ifaces, prn=self._callback,
                     stop_filter=self._callback_stop, store=False)
-            while not self.sniff:
+            while not self.get_input:
                 pass
 
     def _read_all_pcap(self):
+        """ Read all pcap at once """
         self.pkts = self._read_all_pkts()
         self._wait_for_gui()
         self._say("starts parsing")
+        i = 0
         for pkt in self.pkts:
             if self.stop:
                 return
             self._callback(pkt)
-            time.sleep(self.read_update)
+            if i == WMConfig.conf.pcap_read_pkts_pause:
+                i = -1
+                time.sleep(WMConfig.conf.pcap_read_pause)
+            i += 1
         self._say("has finished reading")
 
     def _read_all_pkts(self):
@@ -177,14 +178,18 @@ class PcapThread(threading.Thread):
 
     def _read_pkts(self, reader):
         """ Read a single pkt and callback GUI """
+        i = 0
         while not self.stop:
-            while not self.sniff:
+            while not self.get_input:
                 pass
             pkt = reader.read_packet()
             if pkt is None:
                 break
             self._callback(pkt)
-            time.sleep(self.read_update)
+            if i == WMConfig.conf.pcap_read_pkts_pause:
+                i = -1
+                time.sleep(WMConfig.conf.pcap_read_pause)
+            i += 1
 
     def _read_pcap(self):
         """ Prepare read for updating GUI pkt per pkt """
@@ -208,18 +213,18 @@ class PcapThread(threading.Thread):
                 .format(read_time - start_time, len(self.pkt_list)))
         
     def is_input(self):
-        return not self.sniff
+        return not self.get_input
 
     def stop_input(self):
-        if self.sniff:
+        if self.get_input:
             self._say("Stopped")
-        self.sniff = False
+        self.get_input = False
         return True
 
     def resume_input(self):
-        if not self.sniff:
+        if not self.get_input:
             self._say("Resumed")
-        self.sniff = True
+        self.get_input = True
         return False
 
     def _say(self, s, **kwargs):

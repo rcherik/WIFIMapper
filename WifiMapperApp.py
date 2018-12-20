@@ -7,17 +7,18 @@ import signal
 import gi
 gi.require_version('Gtk', '3.0')
 
-""" Forces kivy to not interpret args """
-os.environ['KIVY_NO_ARGS'] = "1"
-
 """ Kivy """
+import kivy
 from kivy.app import App
+if kivy.__version__ >= "1.9.1":
+    import matplotlib
+    matplotlib.use('module://kivy.garden.matplotlib.backend_kivy')
+
 from kivy.config import Config
 Config.set('graphics', 'width', '1280')
 Config.set('graphics', 'height', '800')
 """ Removes right clicks dots on gui """
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
-
 Config.set('kivy', 'window_icon', os.path.join('Static', 'images', 'icon.png'))
 Config.set('kivy', 'exit_on_escape', 0)
 Config.set('kivy', 'pause_on_minimize', 1)
@@ -33,26 +34,20 @@ Window.set_icon(os.path.join('Static', 'images', 'icon.png'))
 Window.icon = os.path.join('Static', 'images', 'icon.png')
 
 """ Our stuff """
+import WMConfig
+from PcapThread import PcapThread
+from ChannelHopThread import ChannelHopThread
 from frontend_wifi_mapper.CardListScreen import CardListScreen
-from frontend_wifi_mapper.CardInfoScreen import CardInfoScreen
-from frontend_wifi_mapper.WMPopup import WMConfirmPopup
-from frontend_wifi_mapper.WMUtilityClasses import WMScreenManager,\
-        WMPanelHeader, WMTabbedPanel
+#from frontend_wifi_mapper.CardInfoScreen import CardInfoScreen
+from frontend_wifi_mapper.WMScreenManager import WMScreenManager
+from frontend_wifi_mapper.WMUtilityClasses import \
+        WMPanelHeader, WMTabbedPanel, WMConfirmPopup
 
-def stop_threads(pcap_thread, channel_thread):
+def stop_threads():
     app = App.get_running_app()
     app._say("stopping threads")
-    if channel_thread:
-        channel_thread.stop = True
-        if channel_thread.started:
-            channel_thread.join(timeout=1)
-            app._say("channel stopped")
-            os.kill(channel_thread.pid, signal.SIGKILL)
-    pcap_thread.stop = True
-    if pcap_thread.started:
-        pcap_thread.join(timeout=1)
-        app._say("pcap stopped")
-        os.kill(pcap_thread.pid, signal.SIGKILL)
+    app.stop_pcap_thread()
+    app.stop_channel_thread()
     sys.exit(0)
 
 class WifiMapper(App):
@@ -65,11 +60,13 @@ class WifiMapper(App):
         self.paused = False
         self.popup = None
         """ Thread """
-        self.pcap_thread = kwargs['pcap_thread']
+        self.pcap_thread = PcapThread(args)
         self.pcap_thread.set_application(self)
-        self.channel_thread = kwargs.get('channel_thread', None)
-        if self.channel_thread:
+        self.channel_thread = None
+        if not args.pcap and not args.no_hop:
+            self.channel_thread = ChannelHopThread(args=args)
             self.channel_thread.set_application(self)
+            self.pcap_thread.set_channel_hop_thread(self.channel_thread)
         """ Keyboard """
         self.shift = False
         self.alt = False
@@ -96,8 +93,8 @@ class WifiMapper(App):
         return self.pcap_thread.is_input()
 
     def build(self):
-        self.icon = os.path.join('Static', 'images', 'icon.png')
-        self.version = "0.5"
+        self.icon = WMConfig.conf.app_icon 
+        self.version = WMConfig.conf.version
         self.title = "Wifi Mapper (%s)" % self.version
         self.manager = WMScreenManager(app=self,
                 args=self.args,
@@ -105,6 +102,7 @@ class WifiMapper(App):
         ap_tab = WMPanelHeader(text="Access Points",
                 args=self.args,
                 content=self.manager,
+                #background_color=(0, 128, 128, 0.25),
                 screen="ap",
                 can_remove=False)
         self.panel = WMTabbedPanel(manager=self.manager,
@@ -126,9 +124,15 @@ class WifiMapper(App):
     def _on_keyboard_up(self, keyboard, keycode):
         if self.paused:
             return True
+        self._say("keycode: %s" % keycode[1])
+        if keycode[1] == 'shift':
+            self.shift = False
+        if keycode[1] == 'alt':
+            self.alt = False
+        if self.popup:
+            return True
         if self.manager.keyboard_up(keyboard, keycode):
             return True
-        self._say("keycode: %s" % keycode[1])
         if keycode[1] >= "1" and keycode[1] <= "9":
             n = int(keycode[1])
             for header in reversed(self.panel.tab_list):
@@ -150,16 +154,13 @@ class WifiMapper(App):
             if found:
                 self.panel.switch_to(self.panel.tab_list[loop])
             return True
-        if keycode[1] == 'shift':
-            self.shift = False
-        if keycode[1] == 'alt':
-            self.alt = False
         return True
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         if self.paused:
             return True
-        if self.manager.keyboard_down(keyboard, keycode, text, modifiers):
+        if not self.popup\
+            and self.manager.keyboard_down(keyboard, keycode, text, modifiers):
             return True
         if keycode[1] == 'shift':
             self.shift = True
@@ -170,6 +171,7 @@ class WifiMapper(App):
         if keycode[1] == 'enter':
             if self.popup:
                 self.popup.confirm()
+            return True
         if keycode[1] == 'escape':
             if not self.popup:
                 self.popup = WMConfirmPopup(text="Do you really want to quit ?")
@@ -205,3 +207,19 @@ class WifiMapper(App):
         self._say("leaving app - stopping threads")
         stop_threads(self.pcap_thread, self.channel_thread)
         self._say("stopped")
+
+    def stop_pcap_thread(self):
+        self.pcap_thread.stop = True
+        if self.pcap_thread.started:
+            self.pcap_thread.join(timeout=1)
+            self._say("Pcap thread stopped")
+            os.kill(self.pcap_thread.pid, signal.SIGKILL)
+
+    def stop_channel_thread(self):
+        if not self.channel_thread:
+            return
+        self.channel_thread.stop = True
+        if self.channel_thread.started:
+            self.channel_thread.join(timeout=1)
+            self._say("Channel thread stopped")
+            os.kill(self.channel_thread.pid, signal.SIGKILL)

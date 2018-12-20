@@ -7,17 +7,19 @@ import argparse
 import sys
 import signal
 import os
+
+""" Forces kivy to not interpret args """
+os.environ['KIVY_NO_ARGS'] = "1"
+
 """ Our Stuff """
-from backend_wifi_mapper.find_iface import find_iface
-from PcapThread import PcapThread
-from ChannelHopThread import ChannelHopThread
+import interface_utilities
 
 def parse_args():
     """ Create arguments """
     parser = argparse.ArgumentParser(prog='WifiMapper')
     parser.add_argument("-i", "--interface",
             type=str,
-            help="Choose an interface")
+            help="Choose interfaces to sniff on; -i <iface1;iface2;...>")
     parser.add_argument("-p", "--pcap",
             type=str,
             help="Parse info from a pcap file; -p <pcapfilename>")
@@ -33,56 +35,20 @@ def parse_args():
     parser.add_argument("-t", "--test",
             action='store_true',
             help="Print packets for your monitoring then quits")
-    parser.add_argument("-l", "--live-update",
-            type=int,
-            help="Packets sniffed before gui update; -l <number>")
-    parser.add_argument("-r", "--read-update",
-            type=int,
-            help="Time between each pkts read in ms; -r <number>")
     return parser.parse_args()
 
-def application_runtime_error(pcap_thread, channel_thread, err):
+def application_runtime_error(err):
     import traceback
     traceback.print_exc()
     print("RuntimeError : " + err.message)
-    WifiMapperApp.stop_threads(pcap_thread, channel_thread)
+    WifiMapperApp.stop_threads()
     sys.exit(1)
 
 def signal_handler(signal, frame):
-    global g_pcap_thread
-    global g_channel_thread
     from kivy.app import App
     app = App.get_running_app()
     app._say("CTRL+C signal")
     app.stop()
-
-def is_interface_up(iface):
-    """
-        http://lxr.free-electrons.com/source/include/uapi/linux/if_arp.h
-
-        Managed Mode: Type = 1 (ARPHRD_ETHER)
-        Monitor Mode: Type = 803 (ARPHRD_IEEE80211_RADIOTAP)
-    """
-    if os.name == 'posix':
-        with open('/sys/class/net/%s/type' % iface, 'r') as f:
-            t = int(f.read())
-            if t == 1:
-                return False
-            elif t == 803:
-                return True
-        return False
-    return False
-
-def list_interfaces():
-    lst = []
-    wireless_lst = []
-    if os.name == 'posix':
-        for dir in os.listdir('/sys/class/net'):
-            lst.append(dir)
-        for iface in lst:
-            if os.path.isdir('/sys/class/net/%s/wireless' % iface):
-                wireless_lst.append(iface)
-    return wireless_lst, lst
 
 def say(s, **kwargs):
     print("WifiMapper: %s" % s, **kwargs)
@@ -95,8 +61,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     signal.signal(signal.SIGINT, signal_handler)
-    wireless_lst, iface_lst = list_interfaces()
-    args.interface = find_iface() if not args.interface else args.interface
+    wireless_lst, iface_lst = interface_utilities.list_interfaces()
+    args.interface = interface_utilities.find_iface()\
+            if not args.interface else args.interface
 
     if not args.pcap and (args.interface not in iface_lst):
         say("Interface%s not found"\
@@ -111,7 +78,8 @@ if __name__ == '__main__':
         import pkts_test
         pkts_test.test(args.interface)
 
-    if not args.pcap and not is_interface_up(args.interface):
+    if not args.pcap\
+            and not interface_utilities.is_interface_up(args.interface):
         say("Interface %s not monitoring" % args.interface)
         say("to monitor: make monitor")
         say("to rollback: make managed")
@@ -122,22 +90,11 @@ if __name__ == '__main__':
         say("Wireless interfaces: %s" % wireless_lst)
         sys.exit(1)
 
-    """ Threads """
-    pcap_thread = PcapThread(args)
-    g_pcap_thread = pcap_thread
-    channel_thread = None
-    if not args.pcap and not args.no_hop:
-        channel_thread = ChannelHopThread(args)
-        pcap_thread.set_channel_hop_thread(channel_thread)
-    g_channel_thread = channel_thread
-
     """ App """
     import  WifiMapperApp
-    app = WifiMapperApp.WifiMapper(args,
-            pcap_thread=pcap_thread,
-            channel_thread=channel_thread)
+    app = WifiMapperApp.WifiMapper(args)
     try:
         app.run()
     except Exception as err:
-        application_runtime_error(pcap_thread, channel_thread, err)
-    WifiMapperApp.stop_threads(pcap_thread, channel_thread)
+        application_runtime_error(err)
+    WifiMapperApp.stop_threads()

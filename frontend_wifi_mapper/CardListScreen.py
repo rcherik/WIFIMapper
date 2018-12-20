@@ -58,10 +58,9 @@ class CardListScreen(WMScreen.WMScreen):
         self.cards = []
         self.loading = False
         self.has_to_sort = False
-        self.current_screen = False
         self.event = None
         self.to_search = None
-        self.first_sort = 'bssid' if self.show_ap else 'bssid'
+        self.first_sort = 'clients' if self.show_ap else 'bssid'
         """ Important """
         self.browsing_card = False
         """ Pages """
@@ -138,9 +137,10 @@ class CardListScreen(WMScreen.WMScreen):
         if self.show_ap:
             #TODO change sort: separate those with sig and those with not, sort them and
             self._add_sort_value('bssid', 'ap.bssid', False)
+            self._add_sort_value('oui', 'ap.oui', True)
             self._add_sort_value('signal', 'ap.rssi', True)
             self._add_sort_value('clients', 'ap.n_clients', True)
-            self._add_sort_value('oui', 'ap.oui', True)
+            self._add_sort_value('channels', 'ap.channel', False)
             self._add_sort_value('sent', 'traffic.sent', True)
             self._add_sort_value('recv', 'traffic.recv', True)
             self._add_sort_value('beacons', 'ap.beacons', True)
@@ -408,6 +408,8 @@ class CardListScreen(WMScreen.WMScreen):
             Handles keyboard input sent by App to screen manager
             Always handle escape here - and spammy input
         """
+        if not self.current_screen:
+            return False
         if keycode[1] == 'left':
             if self.current_page > 1:
                 self.current_page -= 1
@@ -435,6 +437,8 @@ class CardListScreen(WMScreen.WMScreen):
 
     def keyboard_up(self, keyboard, keycode):
         """ Handles keyboard input sent by App to screen manager """
+        if not self.current_screen:
+            return False
         if keycode[1] == 'p':
             self.action_bar.actions.action_pause.state = 'down'\
                     if self.action_bar.actions.action_pause.state == 'normal'\

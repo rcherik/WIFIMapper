@@ -1,60 +1,35 @@
-<APCardInfoInfoBox@BoxLayout>:
+<StationCardInfoInfoBox@BoxLayout>:
 		orientation: 'vertical'
 		bssid: bssid
-		ssid: ssid
+		ap_bssid: ap_bssid
 		size_hint: (1, 0.2)
 		WMSelectableLabel:
 				id: bssid
 				markup: True
 		WMSelectableLabel:
-				id: ssid
+				id: ap_bssid
 				markup: True
 
-<APCardInfoSecurityBox@BoxLayout>:
+<StationCardInfoDataBox@BoxLayout>:
 		size_hint: (1, 0.1)
-		orientation: 'horizontal'
-		security: security
-		co: co
-		Label:
-				id: security
-				size_hint: (0.5, 1)
-				markup: True
-		Label:
-				id: co
-				size_hint: (0.5, 1)
-				markup: True
-
-<APCardInfoDataBox@BoxLayout>:
-		size_hint: (1, 0.2)
 		orientation: 'horizontal'
 		rcv: rcv
 		sent: sent
-		beacons: beacons
 		signal: signal
-		BoxLayout:
-				orientation: 'vertical'
-				size_hint: (0.5, 1)
-				Label:
-						id: sent
-						size_hint: (1, 0.5)
-						markup: True
-				Label:
-						id: rcv
-						size_hint: (1, 0.5)
-						markup: True
-		BoxLayout:
-				orientation: 'vertical'
-				size_hint: (0.5, 1)
-				Label:
-						id: beacons
-						size_hint: (1, 0.5)
-						markup: True
-				Label:
-						id: signal
-						size_hint: (1, 0.5)
-						markup: True
+		Label:
+				id: sent
+				size_hint: (0.33, 1)
+				markup: True
+		Label:
+				id: rcv
+				size_hint: (0.33, 1)
+				markup: True
+		Label:
+				id: signal
+				size_hint: (0.33, 1)
+				markup: True
 
-<APCardInfoSeparator@Widget>:
+<StationCardInfoSeparator@Widget>:
 		id: separator
 		size_hint_y: None
 		height: 6
@@ -65,10 +40,10 @@
 						pos: separator.x, separator.center_y
 						size: separator.width, 2
 
-<APCardInfoClientConnectedBox@BoxLayout>:
-		box: station_box
+<StationCardInfoHistoryBox@BoxLayout>:
+		box: hist_box
 		orientation: 'vertical'
-		size_hint_x: 0.4
+		size_hint_x: 1
 		ScrollView:
 				canvas.before:
 						Color:
@@ -77,33 +52,14 @@
 								pos: self.pos
 								size: self.size
 				GridLayout:
-						id: station_box
-						cols: 2
-						size_hint_y: None
-						height: self.minimum_height
-						spacing: (0, 30)
-						padding: (20, 20)
-
-<APCardInfoClientHistoryBox@BoxLayout>:
-		box: station_hist_box
-		orientation: 'vertical'
-		size_hint_x: 0.6
-		ScrollView:
-				canvas.before:
-						Color:
-								rgba: (1, 1, 1, 0.33)
-						Rectangle:
-								pos: self.pos
-								size: self.size
-				GridLayout:
-						id: station_hist_box
+						id: hist_box
 						cols: 1
 						size_hint_y: None
 						height: self.minimum_height
 						spacing: (0, 30)
 						padding: (0, 20)
 
-<APCardInfoAttackBox@BoxLayout>:
+<StationCardInfoAttackBox@BoxLayout>:
 		orientation: 'vertical'
 		canvas.before:
 				Color:
@@ -120,7 +76,7 @@
 						markup: True
 		Widget:
 
-<APCardInfoGraphBox@BoxLayout>:
+<StationCardInfoGraphBox@BoxLayout>:
 		graph_buttons: graph_buttons
 		graph: graph
 		orientation: 'vertical'
@@ -152,13 +108,13 @@
 				id: graph
 				orientation: 'vertical'
 
-<APCardInfoScreen>:
+<StationCardInfoScreen>:
         main_layout: main_layout
         card_layout: card_layout
         info_box: info_box
-        security_box: security_box
         data_box: data_box
-        station_lst: station_lst
+		probes: probes
+		model: model
         station_hist_lst: station_hist_lst
 		graph_box: graph_box
         BoxLayout:
@@ -183,29 +139,40 @@
                                                 Rectangle:
                                                         pos: self.pos
                                                         size: self.size
-										APCardInfoInfoBox:
+										StationCardInfoInfoBox:
 												id: info_box
-                                        APCardInfoSecurityBox:
-                                                id: security_box
-                                        APCardInfoSeparator:
-                                        APCardInfoDataBox:
+                                        StationCardInfoSeparator:
+                                        StationCardInfoDataBox:
                                                 id: data_box
-                                        APCardInfoSeparator:
+                                        StationCardInfoSeparator:
+										BoxLayout:
+												size_hint: (1, 0.1)
+												orientation: 'horizontal'
+												padding: (10, 0)
+												WMSelectableLabel:
+														id: probes
+														size_hint: (1, 1)
+														text_size: self.size
+														halign: 'center'
+														valign: 'middle'
+														markup: True
+										BoxLayout:
+												size_hint: (1, 0.1)
+												orientation: 'horizontal'
+												WMSelectableLabel:
+														id: model
+														size_hint: (1, 0.5)
+														markup: True
                                         BoxLayout:
                                                 orientation: 'horizontal'
                                                 size_hint: (1, 0.1)
                                                 Label:
-                                                        text: "Connected"
-                                                        size_hint: (0.5, 1)
-                                                Label:
                                                         text: "History"
-                                                        size_hint: (0.5, 1)
+                                                        size_hint: (1, 1)
 										#Second part - Lists
                                         BoxLayout:
                                                 orientation: 'horizontal'
-                                                APCardInfoClientConnectedBox:
-														id: station_lst
-                                                APCardInfoClientHistoryBox:
+                                                StationCardInfoHistoryBox:
                                                         id: station_hist_lst
 
 						#Second box - Graph and attack zone
@@ -215,7 +182,7 @@
                                 spacing: 10
                                 size_hint: (None, 1)
                                 width: 500
-                                APCardInfoAttackBox:
+                                StationCardInfoAttackBox:
 										id: attack_box
-                                APCardInfoGraphBox:
+                                StationCardInfoGraphBox:
 										id: graph_box

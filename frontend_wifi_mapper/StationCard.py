@@ -8,7 +8,7 @@ from kivy.app import App
 from kivy.properties import ObjectProperty
 from kivy.clock import Clock
 """ Our stuff """
-from CardInfoScreen import CardInfoScreen
+from StationCardInfoScreen import StationCardInfoScreen
 import WMCard
 import WMSelectableLabel
 
@@ -16,11 +16,10 @@ Builder.load_file("Static/stationcard.kv")
 
 class StationCard(WMCard.WMCard):
 
-    bssid = ObjectProperty(None)
-    ap_bssid = ObjectProperty(None)
+    info_box = ObjectProperty(None)
+    data_box = ObjectProperty(None)
     model = ObjectProperty(None)
     probes = ObjectProperty(None)
-    data_box = ObjectProperty(None)
     open_link = ObjectProperty(None)
 
     def __init__(self, **kwargs):
@@ -99,7 +98,7 @@ class StationCard(WMCard.WMCard):
         s = "[b]%s[/b]" % self.station.bssid
         if self.station.oui:
             s += " (%s)" % self.station.oui
-        self._set_label(self.bssid, s, copy=self.station.bssid)
+        self._set_label(self.info_box.bssid, s, copy=self.station.bssid)
         self._check_width(len(s))
 
     def _set_ap_bssid(self):
@@ -108,7 +107,7 @@ class StationCard(WMCard.WMCard):
             s = "[i]AP:[/i] [b]%s[/b]" % (self.station.ap_bssid)
         if self.station.channel:
             s += " (%s)" % self.station.channel
-        self._set_label(self.ap_bssid, s, copy=self.station.ap_bssid)
+        self._set_label(self.info_box.ap_bssid, s, copy=self.station.ap_bssid)
         self._check_width(len(s))
 
     def _set_probes(self):
@@ -141,8 +140,11 @@ class StationCard(WMCard.WMCard):
         return self.station
 
     def get_info_screen(self):
-        #TODO
-        return None
+        screen = StationCardInfoScreen(
+                name=self.station.bssid,
+                station=self.station,
+                traffic=self.traffic)
+        return screen
 
     def init_background(self):
 	with self.canvas.before:
