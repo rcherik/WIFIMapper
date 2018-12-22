@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 """ Kivy """
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -27,7 +28,7 @@ class APCardSecurityBox(BoxLayout):
 class APCardDataBox(BoxLayout):
     pass
 
-Builder.load_file("Static/apcard.kv")
+Builder.load_file(os.path.join("Static", "apcard.kv"))
 
 class APCard(WMCard.WMCard):
 

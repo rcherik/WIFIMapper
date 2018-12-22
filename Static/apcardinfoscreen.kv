@@ -81,8 +81,10 @@
 						cols: 2
 						size_hint_y: None
 						height: self.minimum_height
-						spacing: (0, 30)
-						padding: (20, 20)
+						#spacing: (0, 30)
+						#padding: (20, 20)
+                		padding: (10, 10)
+						spacing: (0, 5)
 
 <APCardInfoClientHistoryBox>:
 		box: station_hist_box
@@ -100,8 +102,10 @@
 						cols: 1
 						size_hint_y: None
 						height: self.minimum_height
-						spacing: (0, 30)
-						padding: (0, 20)
+						#spacing: (0, 30)
+						#padding: (0, 20)
+                		padding: (10, 10)
+						spacing: (0, 5)
 
 <APCardInfoAttackBox>:
 		orientation: 'vertical'
@@ -193,10 +197,12 @@
                                                 size_hint: (1, 0.1)
 												CheckBox:
 														id: checkbox_all
-														size_hint: (0.1, 1)
+														size_hint: (0.055, 1)
+												Widget:
+                                                        size_hint: (0.045, 1)
                                                 Label:
                                                         text: "Connected"
-                                                        size_hint: (0.3, 1)
+                                                        size_hint: (0.2, 1)
 												Widget:
                                                         size_hint: (0.1, 1)
                                                 Label:

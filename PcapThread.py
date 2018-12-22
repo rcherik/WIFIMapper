@@ -271,7 +271,7 @@ class PcapThread(threading.Thread):
         if not isinstance(filename, basestring)\
                 or not self.pkt_list:
             return
-        if filename.find('.pcap') < 0:
+        if not filename.endswith('.pcap'):
             filename += ".pcap"
         self._say("Writing pcap to file %s" % filename)
         wrpcap(filename, self.pkt_list, append=append)

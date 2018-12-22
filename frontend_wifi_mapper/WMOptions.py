@@ -122,46 +122,50 @@ class WMOptions(Popup):
         else:
             self.layout.channel_input.disabled = True
 
-    """ Set buttons """
+    """ Save Load Pcap """
 
     def save_pcap_input_focus(self, widget, value):
         if not value:
             self.app.get_focus()
 
     def dismiss_popup(self):
-        self._popup.dismiss()
+        self.popup.dismiss()
 
     def read_pcap(self):
+        if self.popup:
+            self.popup.dismiss()
         content = LoadDialog(load=self.load,
                 path=self.app.path,
                 cancel=self.dismiss_popup)
-        self._popup = Popup(title="Load file",
+        self.popup = Popup(title="Load file",
                             content=content,
                             size_hint=(0.9, 0.9))
-        self._popup.open()
+        self.popup.open()
 
     def save_pcap(self):
+        if self.popup:
+            self.popup.dismiss()
         content = SaveDialog(save=self.save,
                 path=self.app.path,
                 cancel=self.dismiss_popup)
         content.text_input.bind(focus=self.save_pcap_input_focus)
-        self._popup = Popup(title="Save file",
+        self.popup = Popup(title="Save file",
                             content=content,
                             size_hint=(0.9, 0.9))
-        self._popup.open()
+        self.popup.open()
 
     def load(self, path, filename):
-        print("Load %s %s" % (path, filename))
         self.app.start_reading_pcap(os.path.join(path, filename[0]))
         self.dismiss_popup()
         self.app.get_focus()
 
     def save(self, path, filename):
-        print("Save %s %s" % (path, filename))
         if self.app.pcap_thread:
             self.app.pcap_thread.write_pcap(os.path.join(path, filename))
         self.dismiss_popup()
         self.app.get_focus()
+
+    """ Set buttons """
 
     def _channel_interfaces_popup_dismissed(self, widget):
         t = self.app.pcap_thread

@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 """ Kivy """
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
@@ -11,6 +12,7 @@ from kivy.uix.button import Button
 from kivy.uix.stacklayout import StackLayout
 from kivy.lang import Builder
 from kivy.metrics import sp
+from kivy.app import App
 """ Our stuff """
 import WMScreen
 #import CardInfoScreen
@@ -47,7 +49,7 @@ class StationCardInfoGraphBox(BoxLayout):
 class StationCardInfoAttackBox(BoxLayout):
     pass
 
-Builder.load_file("Static/stationcardinfoscreen.kv")
+Builder.load_file(os.path.join("Static", "stationcardinfoscreen.kv"))
 
 class StationCardInfoScreen(WMScreen.WMScreen):
 
@@ -202,15 +204,24 @@ class StationCardInfoScreen(WMScreen.WMScreen):
             s += "[b][i]%s[/i][/b]" % (model if model != False else "not found")
         self._set_label(self.model, s, copy=model)
 
+    def open_ap(self, widget):
+        App.get_running_app().open_card_link("AP", widget.key)
+
     def set_history(self):
-        for tupl in reversed(self.station.connected_history[self.last_idx_hist:]):
+        size = len(self.station.connected_history)
+        if size != self.last_idx_hist:
+            self.station_hist_lst.box.clear_widgets()
+        else:
+            return
+        for tupl in self.station.connected_history:
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
-            #TODO label open station
-            l = Label(text="[color=%s]%s - %s[/color]"
+            label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
                     % (color, tupl[0], tupl[1]),
-                    markup=True)
-            self.station_hist_lst.box.add_widget(l)
-        self.last_idx_hist = len(self.station.connected_history)
+                    size_hint=(1, None), size=(0, 20),
+                    markup=True, key=tupl[1])
+            label.bind(on_press=self.open_ap)
+            self.station_hist_lst.box.add_widget(label)
+        self.last_idx_hist = size
 
     def update_gui(self, dic, current=True):
         self.current_screen = current

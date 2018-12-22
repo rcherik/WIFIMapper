@@ -146,24 +146,29 @@ class Station():
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
 
 	def set_connected(self, ap_bssid):
-		if ap_bssid:
-			if ap_bssid != self.ap_bssid and self.ap_bssid in self.dic[WM_AP]:
-				self.dic[WM_AP][self.ap_bssid].client_connected(self.bssid)
-				time_str = time.strftime("%H:%M:%S", time.gmtime())
-				self.connected_history.append(
-						(time_str, self.ap_bssid, "connected"))
-			self.connected = True
-			self.ap_bssid = ap_bssid
-			self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
+		if not ap_bssid:
+			return
+		if ap_bssid != self.ap_bssid:
+			time_str = time.strftime("%H:%M:%S", time.gmtime())
+			if self.ap_bssid in self.dic[WM_AP]:
+				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
+			if self.ap_bssid:
+				self.connected_history.insert(0,
+						(time_str, self.ap_bssid, "disconnected"))
+			self.connected_history.insert(0,
+					(time_str, ap_bssid, "connected"))
+		self.connected = True
+		self.ap_bssid = ap_bssid
+		self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
 
 	def set_disconnected(self):
 		if self.ap_bssid and self.connected:
 			self.connected = False
-			if self.ap_bssid and self.ap_bssid in self.dic[WM_AP]:
+			if self.ap_bssid in self.dic[WM_AP]:
 				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
-				time_str = time.strftime("%H:%M:%S", time.gmtime())
-				self.connected_history.append(
-						(time_str, self.ap_bssid, "disconnected"))
+			time_str = time.strftime("%H:%M:%S", time.gmtime())
+			self.connected_history.insert(0,
+					(time_str, self.ap_bssid, "disconnected"))
 			self.ap_bssid = None
 
 	def set_rssi(self, rssi):
@@ -319,7 +324,7 @@ class AccessPoint():
 		if bssid not in self.client_co:
 			time_str = time.strftime("%H:%M:%S", time.gmtime())
 			self.client_co.add(bssid)
-			self.client_hist_co.append((time_str, bssid, "connected"))
+			self.client_hist_co.insert(0, (time_str, bssid, "connected"))
 			self.n_clients += 1
 
 	def client_disconnected(self, bssid):
@@ -327,7 +332,7 @@ class AccessPoint():
 			self.n_clients -= 1
 			self.client_co.remove(bssid)
 		time_str = time.strftime("%H:%M:%S", time.gmtime())
-		self.client_hist_co.append((time_str, bssid, "disconnected"))
+		self.client_hist_co.insert(0, (time_str, bssid, "disconnected"))
 
 	def __getitem__(self, key):
 		return self.__dict__[key]

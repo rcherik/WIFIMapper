@@ -67,6 +67,8 @@ class WMTabbedPanel(TabbedPanel):
     def remove_header(self, key):
         header = self.header_dic.pop(key, None)
         if header:
+            if header == self.previous_header:
+                self.previous_header = None
             if header == self.current_tab:
                 if header == self.previous_header:
                     self.previous_header = None

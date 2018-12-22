@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 """ Kivy """
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
@@ -55,7 +56,7 @@ class APCardInfoAttackBox(BoxLayout):
 class APCardInfoGraphBox(BoxLayout):
     pass
 
-Builder.load_file("Static/apcardinfoscreen.kv")
+Builder.load_file(os.path.join("Static", "apcardinfoscreen.kv"))
 
 class APCardInfoScreen(WMScreen.WMScreen):
 
@@ -223,11 +224,13 @@ class APCardInfoScreen(WMScreen.WMScreen):
             self.station_lst.box.clear_widgets()
             for bssid in self.ap.client_co:
                 """ Ensure label has text=bssid or change open_station """
-                label = WMPressableLabel(text=bssid, key=bssid, markup=True)
+                label = WMPressableLabel(text=bssid,
+                        size_hint=(1, None), size=(0, 20),
+                        markup=True, key=bssid)
                 label.bind(on_press=self.open_station)
                 check = WMRedCheckBox(allow_stretch=True,
                         size_hint=(None, None),
-                        size=(sp(8), sp(8)),
+                        size=(sp(10), sp(8)),
                         color=[1, 0, 0, 1])
                 check.bssid = bssid
                 if bssid in self.checkboxed_station:
@@ -238,13 +241,20 @@ class APCardInfoScreen(WMScreen.WMScreen):
             self.last_n_clients = self.ap.n_clients
 
     def set_history(self):
-        for tupl in reversed(self.ap.client_hist_co[self.last_idx_hist:]):
+        size = len(self.ap.client_hist_co)
+        if size != self.last_idx_hist:
+            self.station_hist_lst.box.clear_widgets()
+        else:
+            return
+        for tupl in self.ap.client_hist_co:
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
             label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
-                    % (color, tupl[0], tupl[1]), key=tupl[1], markup=True)
+                    % (color, tupl[0], tupl[1]),
+                    size_hint=(1, None), size=(0, 20),
+                    markup=True, key=tupl[1])
             label.bind(on_press=self.open_station)
             self.station_hist_lst.box.add_widget(label)
-        self.last_idx_hist = len(self.ap.client_hist_co)
+        self.last_idx_hist = size
 
     def update_gui(self, dic, current=True):
         self.current_screen = current

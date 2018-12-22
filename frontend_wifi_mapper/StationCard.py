@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 """ Kivy """
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -21,7 +22,7 @@ class StationCardInfoBox(BoxLayout):
 class StationCardDataBox(BoxLayout):
     pass
 
-Builder.load_file("Static/stationcard.kv")
+Builder.load_file(os.path.join("Static", "stationcard.kv"))
 
 class StationCard(WMCard.WMCard):
 
