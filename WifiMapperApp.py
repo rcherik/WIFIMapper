@@ -19,10 +19,12 @@ from kivy.config import Config
 Config.set('graphics', 'width', '1280')
 Config.set('graphics', 'height', '800')
 """ Removes right clicks dots on gui """
-Config.set('input', 'mouse', 'mouse,disable_multitouch,disable_on_activity')
-Config.set('kivy', 'window_icon', os.path.join('Static', 'images', 'icon.png'))
+Config.set('input', 'mouse', 'mouse,disable_on_activity')
 Config.set('kivy', 'exit_on_escape', 0)
 Config.set('kivy', 'pause_on_minimize', 1)
+Config.set('kivy', 'desktop', 1)
+Config.set('kivy', 'log_enable', 1)
+#Config.set('kivy', 'log_name', "WMLog.log")
 
 from kivy.clock import Clock
 Clock.max_iteration = 20
@@ -31,8 +33,6 @@ from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.core.window import Window
 if not Window:
     sys.exit("Please get an interface")
-Window.set_icon(os.path.join('Static', 'images', 'icon.png'))
-Window.icon = os.path.join('Static', 'images', 'icon.png')
 
 """ Our stuff """
 import WMConfig
@@ -44,6 +44,10 @@ from frontend_wifi_mapper.WMUtilityClasses import \
         WMPanelHeader, WMTabbedPanel, WMConfirmPopup
 from frontend_wifi_mapper.WMOptions import WMOptions
 
+Window.set_icon(WMConfig.conf.app_icon)
+Window.icon = WMConfig.conf.app_icon
+Config.set('kivy', 'window_icon', WMConfig.conf.app_icon)
+
 def stop_app():
     app = App.get_running_app()
     app._say("stopping app")
@@ -54,11 +58,13 @@ class WifiMapper(App):
     def __init__(self, args, **kwargs):
         App.__init__(self)
         self.args = args
+        self.path = os.path.dirname(os.path.abspath(__file__))
+        Config.set('kivy', 'log_level', 'debug' if args.debug else 'info')
+        Config.set('kivy', 'log_dir', os.path.join(self.path, "logs"))
         self.panel = None
         self.manager = None
         self.paused = False
         self.popup = None
-        self.path = os.path.dirname(os.path.abspath(__file__))
         """ Thread """
         self.pcap_thread = PcapThread(interface=self.args.interface,
                                         pcap_file=self.args.pcap,
