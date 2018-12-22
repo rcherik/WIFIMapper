@@ -10,20 +10,20 @@ import WMConfig
 
 class ChannelHopThread(threading.Thread):
 
-    def __init__(self, iface=None, args=None, app=None):
+    def __init__(self, iface=None, channels=None, debug=None, app=None):
 	threading.Thread.__init__(self)  
         self.pid = os.getpid()
         self.app = app
-        self.args = args
+        self.debug = debug
+        self.app = app
+        self.iface = iface
         self.started = False
 	self.stop = False
-        self.app = None
-        self.iface = iface if iface else (args.interface if args else None)
         self.bad_channels = set()
         self.current_chan = -1
         self.hop_time = WMConfig.conf.channel_hop_time
-        if args and args.channels:
-            self.channels = [int(chan) for chan in args.channels.split(';')]
+        if channels and isinstance(channels, basestring):
+            self.channels = [int(chan) for chan in channels.split(';')]
         else:
             self.channels = WMConfig.conf.channels
 
@@ -91,8 +91,7 @@ class ChannelHopThread(threading.Thread):
                 time.sleep(self.hop_time)
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and hasattr(self.args, "debug")\
-                and self.args.debug:
+        if self.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
 

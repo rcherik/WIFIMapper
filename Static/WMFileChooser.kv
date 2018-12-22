@@ -31,6 +31,7 @@
         orientation: "vertical"
         FileChooserIconView:
             id: filechooser
+			path: root.path
 
         BoxLayout:
             size_hint_y: None
@@ -51,6 +52,7 @@
         orientation: "vertical"
         FileChooserListView:
             id: filechooser
+			path: root.path
             on_selection: text_input.text = self.selection and self.selection[0] or ''
 
         TextInput:

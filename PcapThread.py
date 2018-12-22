@@ -9,7 +9,7 @@ import subprocess
 import scapy
 import scapy.config
 from scapy.sendrecv import sniff
-from scapy.utils import rdpcap, PcapReader
+from scapy.utils import rdpcap, PcapReader, wrpcap
 from scapy.error import Scapy_Exception
 """ Our Stuff """
 import interface_utilities
@@ -32,26 +32,27 @@ class PcapThread(threading.Thread):
     #Pkts sniffed
     sniffed_pkt_list = []
 
-    def __init__(self, interface=None, pcap_file=None, args=None, app=None):
+    def __init__(self, interface=None, pcap_file=None, no_hop=False,
+                                                debug=None, app=None):
         threading.Thread.__init__(self)
         #Own values
-        self.args = args
         self.app = app
-        self.started = False
-        self.stop = False
-        self.get_input = True
+        self.debug = debug
+        self.no_hop = no_hop
         #Check if file to read or set sniffing mode
-        self.snifs = True if interface else (args.interface if args else None)
+        self.snifs = True if interface else False
         if not self.snifs:
-            self._set_reading_file(pcap_file or (args.pcap if args else None))
+            self._set_reading_file(pcap_file)
         #Try to get a valid interface
         self.ifaces = None
         if self.snifs:
-            self.ifaces = interface or (args.interface if args else None)
+            self.ifaces = interface
             if not self.ifaces:
                 self.ifaces = interface_utilities.find_iface()
+        self.started = False
+        self.stop = False
+        self.get_input = True
         #Scapy pkts var
-        self.pkts = None
         self.pkt_list = PcapThread.sniffed_pkt_list
         self.n_pkts = 0
         self.pkt_dic = PcapThread.wm_pkt_dict
@@ -141,8 +142,8 @@ class PcapThread(threading.Thread):
 
     def _sniff(self):
         """ Sniff on interfaces while channel hopping """
-        if not (self.args and self.args.no_hop) and not self.channel_thread:
-            self.channel_thread = ChannelHopThread(args=self.args,
+        if not self.no_hop and not self.channel_thread:
+            self.channel_thread = ChannelHopThread(debug=self.debug,
                     iface=self.ifaces[0],
                     app=self.app)
             self.channel_thread.start()
@@ -266,6 +267,15 @@ class PcapThread(threading.Thread):
         ****
     """
 
+    def write_pcap(self, filename, append=False):
+        if not isinstance(filename, basestring)\
+                or not self.pkt_list:
+            return
+        if filename.find('.pcap') < 0:
+            filename += ".pcap"
+        self._say("Writing pcap to file %s" % filename)
+        wrpcap(filename, self.pkt_list, append=append)
+
     def _compile_c_file(self, name):
         """ Compile a c file for later use """
         if name in PcapThread.compiled_files:
@@ -325,9 +335,8 @@ class PcapThread(threading.Thread):
         return not self.ifaces and not self.pcap_file
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and hasattr(self.args, "debug")\
-                and self.args.debug:
-            s = "%s: " % (self.__class__.__name__) + s
+        if self.debug:
+            s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
 
     """ Stop thread """

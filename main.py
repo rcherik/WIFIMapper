@@ -18,18 +18,24 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='WifiMapper')
     parser.add_argument("-i", "--interface",
             type=str,
+            default=None,
             help="Choose interfaces to sniff on; -i <iface1;iface2;...>")
     parser.add_argument("-p", "--pcap",
             type=str,
+            default=None,
             help="Parse info from a pcap file; -p <pcapfilename>")
+    """
     parser.add_argument("-c", "--channels",
             type=str,
             help="Listen on specific channels; -c <channel1;channel2;...>")
+    """
     parser.add_argument("-n", "--no-hop",
             action='store_true',
+            default=False,
             help="No channel hopping")
     parser.add_argument("-d", "--debug",
             action='store_true',
+            default=False,
             help="Print some debug infos")
     parser.add_argument("-t", "--test",
             action='store_true',

@@ -53,13 +53,18 @@ class WifiMapper(App):
 
     def __init__(self, args, **kwargs):
         App.__init__(self)
-        self.panel = None
         self.args = args
+        self.panel = None
         self.manager = None
         self.paused = False
         self.popup = None
+        self.path = os.path.dirname(os.path.abspath(__file__))
         """ Thread """
-        self.pcap_thread = PcapThread(args=args, app=self)
+        self.pcap_thread = PcapThread(interface=self.args.interface,
+                                        pcap_file=self.args.pcap,
+                                        no_hop=self.args.no_hop,
+                                        debug=self.args.debug,
+                                        app=self)
         """ Keyboard """
         self.shift = False
         self.alt = False
@@ -74,11 +79,7 @@ class WifiMapper(App):
 
     def _dismiss_dragged_file(self, widget):
         if widget.confirmed():
-            self.stop_pcap_thread()
-            self.pcap_thread = PcapThread(pcap_file=self.dragged,
-                    args=self.args, app=self)
-            self.pcap_thread.start()
-	    #Clock.schedule_once(self._start_pcap_parse)
+            self.start_reading_pcap(self.dragged)
         else:
             self.dragged = None
         self.popup = None
@@ -90,16 +91,6 @@ class WifiMapper(App):
                 self._dismiss_dragged_file, auto_dismiss=False)
 
     """ Options """
-
-    def start_sniffing(self, ifaces):
-        if self.pcap_thread.sniffing\
-                and self.pcap_thread.ifaces == ifaces:
-            self._say("Already sniffing")
-            return
-        self.stop_pcap_thread()
-        self.pcap_thread = PcapThread(interface=ifaces,
-                args=self.args, app=self)
-        self.pcap_thread.start()
 
     def _options_popup_dismiss(self, widget):
 	super(WMOptions, widget).on_dismiss()
@@ -113,6 +104,25 @@ class WifiMapper(App):
         self.popup.open()
 
     """ Header global """
+
+    def start_sniffing(self, ifaces):
+        if self.pcap_thread.sniffing\
+                and self.pcap_thread.ifaces == ifaces:
+            self._say("Already sniffing")
+            return
+        self.stop_pcap_thread()
+        self.pcap_thread = PcapThread(interface=ifaces,
+                                        no_hop=self.args.no_hop,
+                                        debug=self.args.debug,
+                                        app=self)
+        self.pcap_thread.start()
+
+    def start_reading_pcap(self, path):
+        self.stop_pcap_thread()
+        self.pcap_thread = PcapThread(pcap_file=path,
+                                        debug=self.args.debug,
+                                        app=self)
+        self.pcap_thread.start()
 
     def app_ready(self):
         if self.pcap_thread.no_purpose():

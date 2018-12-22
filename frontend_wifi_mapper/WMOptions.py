@@ -132,29 +132,34 @@ class WMOptions(Popup):
         self._popup.dismiss()
 
     def read_pcap(self):
-        content = LoadDialog(load=self.load, cancel=self.dismiss_popup)
-        self._popup = Popup(title="Load file", content=content,
+        content = LoadDialog(load=self.load,
+                path=self.app.path,
+                cancel=self.dismiss_popup)
+        self._popup = Popup(title="Load file",
+                            content=content,
                             size_hint=(0.9, 0.9))
         self._popup.open()
 
     def save_pcap(self):
-        content = SaveDialog(save=self.save, cancel=self.dismiss_popup)
+        content = SaveDialog(save=self.save,
+                path=self.app.path,
+                cancel=self.dismiss_popup)
         content.text_input.bind(focus=self.save_pcap_input_focus)
-        self._popup = Popup(title="Save file", content=content,
+        self._popup = Popup(title="Save file",
+                            content=content,
                             size_hint=(0.9, 0.9))
         self._popup.open()
 
     def load(self, path, filename):
-        with open(os.path.join(path, filename[0])) as stream:
-            lines = stream.read()
+        print("Load %s %s" % (path, filename))
+        self.app.start_reading_pcap(os.path.join(path, filename[0]))
         self.dismiss_popup()
         self.app.get_focus()
 
     def save(self, path, filename):
-        """
-        with open(os.path.join(path, filename), 'w') as stream:
-            stream.write(self.text_input.text)
-        """
+        print("Save %s %s" % (path, filename))
+        if self.app.pcap_thread:
+            self.app.pcap_thread.write_pcap(os.path.join(path, filename))
         self.dismiss_popup()
         self.app.get_focus()
 

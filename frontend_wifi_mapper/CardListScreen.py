@@ -20,7 +20,7 @@ import WMScreen
 import WMConfig
 from WMUtilityClasses import WMPageToggleButton
 
-Builder.load_file("Static/cardlistscreen.kv")
+Builder.load_file(os.path.join("Static", "cardlistscreen.kv"))
 
 class CardListScreen(WMScreen.WMScreen):
 

@@ -12,11 +12,13 @@ Builder.load_file(os.path.join('Static', 'WMFileChooser.kv'))
 class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
+    path = ObjectProperty(None)
 
 class SaveDialog(FloatLayout):
     save = ObjectProperty(None)
     text_input = ObjectProperty(None)
     cancel = ObjectProperty(None)
+    path = ObjectProperty(None)
 
 class WMFileChooser(FloatLayout):
     loadfile = ObjectProperty(None)
