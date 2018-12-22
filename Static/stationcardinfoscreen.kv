@@ -1,4 +1,4 @@
-<StationCardInfoInfoBox@BoxLayout>:
+<StationCardInfoInfoBox>:
 		orientation: 'vertical'
 		bssid: bssid
 		ap_bssid: ap_bssid
@@ -10,7 +10,7 @@
 				id: ap_bssid
 				markup: True
 
-<StationCardInfoDataBox@BoxLayout>:
+<StationCardInfoDataBox>:
 		size_hint: (1, 0.1)
 		orientation: 'horizontal'
 		rcv: rcv
@@ -40,7 +40,7 @@
 						pos: separator.x, separator.center_y
 						size: separator.width, 2
 
-<StationCardInfoHistoryBox@BoxLayout>:
+<StationCardInfoHistoryBox>:
 		box: hist_box
 		orientation: 'vertical'
 		size_hint_x: 1
@@ -59,7 +59,7 @@
 						spacing: (0, 30)
 						padding: (0, 20)
 
-<StationCardInfoAttackBox@BoxLayout>:
+<StationCardInfoAttackBox>:
 		orientation: 'vertical'
 		canvas.before:
 				Color:
@@ -76,7 +76,7 @@
 						markup: True
 		Widget:
 
-<StationCardInfoGraphBox@BoxLayout>:
+<StationCardInfoGraphBox>:
 		graph_buttons: graph_buttons
 		graph: graph
 		orientation: 'vertical'
@@ -128,7 +128,7 @@
                                 padding: 50
                                 spacing: 10
                                 size_hint: (None, 1)
-                                width: 600
+                                width: 500
 								#First part - Info
                                 BoxLayout:
                                         orientation: 'vertical'

@@ -1,0 +1,112 @@
+<WMOptions>:
+    auto_dismiss: True
+    title: 'Options'
+    size_hint: (None, None)
+    size: (640, 480)
+    layout: layout
+    BoxLayout:
+        orientation: 'vertical'
+        GridLayout:
+            id: layout
+            cols: 3
+            row_force_default: True
+            row_default_height: 45
+            orientation: 'vertical'
+            spacing: (5, 5)
+            padding: (10, 10)
+            sniff_label: sniff_label
+            sniff_button: sniff_button
+            sniff_interfaces: sniff_interfaces
+            read_label: read_label
+            read_button: read_button
+            save_button: save_button
+            time_label: time_label
+            packet_label: packet_label
+            channel_button: channel_button
+            channel_input: channel_input
+            canvas:
+                Color:
+                    rgba: 0.5, 0.5, 0.5, 0.25
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Widget:
+            Label:
+                text: "Actions"
+                font_size: '24sp'
+                markup: True
+            Widget:
+
+            Label:
+                id: sniff_label
+                text: "Not sniffing"
+            Button:
+                id: sniff_button
+                text: 'Start sniffing'
+                on_release: root.sniff()
+            Label:
+                id: sniff_interfaces
+                padding: (20, 0)
+                #text: "enp58s0f1, wlp59s0, wlan0, eth0, prout"
+                text: "No interface"
+                size_hint_y: None
+                text_size: self.width, None
+                height: self.texture_size[1]
+
+            Label:
+                id: read_label
+                text: "Not reading"
+            Button:
+                id: read_button
+                text: 'Read Pcap'
+                on_release: root.read_pcap()
+            Button:
+                id: save_button
+                text: 'Save pcap'
+                on_release: root.save_pcap()
+
+            Widget:
+            Label:
+                text: "Stats"
+                font_size: '24sp'
+                markup: True
+            Widget:
+
+            Label:
+                text: "Time spent: "
+            Label:
+                id: time_label
+                text: "29m05s"
+            Label:
+                id: packet_label
+                text: "25000 packets"
+
+            Label:
+                text: "Channels: "
+            TextInput:
+                id: channel_input
+                hint_text: "1, 2, 3..."
+                font_size: '14sp'
+                multiline: False
+            Button:
+                id: channel_button
+                text: 'Change channel interface'
+                on_release: root.set_channel_interface()
+        WMSeparator:
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.2
+            Widget:
+            Button:
+                text: 'Cancel'
+                size_hint: (None, None)
+                height: 50
+                width: self.texture_size[0] + 32
+                on_release: root.cancel()
+            Button:
+                text: 'Confirm'
+                size_hint: (None, None)
+                height: 50
+                width: self.texture_size[0] + 29
+                on_release: root.confirm()
+

@@ -1,4 +1,4 @@
-<APCardInfoInfoBox@BoxLayout>:
+<APCardInfoInfoBox>:
 		orientation: 'vertical'
 		bssid: bssid
 		ssid: ssid
@@ -10,7 +10,7 @@
 				id: ssid
 				markup: True
 
-<APCardInfoSecurityBox@BoxLayout>:
+<APCardInfoSecurityBox>:
 		size_hint: (1, 0.1)
 		orientation: 'horizontal'
 		security: security
@@ -24,7 +24,7 @@
 				size_hint: (0.5, 1)
 				markup: True
 
-<APCardInfoDataBox@BoxLayout>:
+<APCardInfoDataBox>:
 		size_hint: (1, 0.2)
 		orientation: 'horizontal'
 		rcv: rcv
@@ -65,10 +65,10 @@
 						pos: separator.x, separator.center_y
 						size: separator.width, 2
 
-<APCardInfoClientConnectedBox@BoxLayout>:
+<APCardInfoClientConnectedBox>:
 		box: station_box
 		orientation: 'vertical'
-		size_hint_x: 0.4
+		size_hint_x: 0.45
 		ScrollView:
 				canvas.before:
 						Color:
@@ -84,10 +84,10 @@
 						spacing: (0, 30)
 						padding: (20, 20)
 
-<APCardInfoClientHistoryBox@BoxLayout>:
+<APCardInfoClientHistoryBox>:
 		box: station_hist_box
 		orientation: 'vertical'
-		size_hint_x: 0.6
+		size_hint_x: 0.55
 		ScrollView:
 				canvas.before:
 						Color:
@@ -103,7 +103,7 @@
 						spacing: (0, 30)
 						padding: (0, 20)
 
-<APCardInfoAttackBox@BoxLayout>:
+<APCardInfoAttackBox>:
 		orientation: 'vertical'
 		canvas.before:
 				Color:
@@ -120,7 +120,7 @@
 						markup: True
 		Widget:
 
-<APCardInfoGraphBox@BoxLayout>:
+<APCardInfoGraphBox>:
 		graph_buttons: graph_buttons
 		graph: graph
 		orientation: 'vertical'
@@ -144,10 +144,6 @@
 				height: 30
 				spacing: 20
 				padding: (20, 0)
-				Button:
-						text: "Create"
-				Button:
-						text: "Cancel"
 		BoxLayout:
 				id: graph
 				orientation: 'vertical'
@@ -161,6 +157,7 @@
         station_lst: station_lst
         station_hist_lst: station_hist_lst
 		graph_box: graph_box
+		checkbox_all: checkbox_all
         BoxLayout:
                 id: main_layout
                 orientation: 'vertical'
@@ -194,9 +191,14 @@
                                         BoxLayout:
                                                 orientation: 'horizontal'
                                                 size_hint: (1, 0.1)
+												CheckBox:
+														id: checkbox_all
+														size_hint: (0.1, 1)
                                                 Label:
                                                         text: "Connected"
-                                                        size_hint: (0.5, 1)
+                                                        size_hint: (0.3, 1)
+												Widget:
+                                                        size_hint: (0.1, 1)
                                                 Label:
                                                         text: "History"
                                                         size_hint: (0.5, 1)

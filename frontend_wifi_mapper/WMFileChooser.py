@@ -7,18 +7,16 @@ from kivy.lang import Builder
 
 import os
 
-Builder.load_file('Static/WMFileChooser.kv')
+Builder.load_file(os.path.join('Static', 'WMFileChooser.kv'))
 
 class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
 
-
 class SaveDialog(FloatLayout):
     save = ObjectProperty(None)
     text_input = ObjectProperty(None)
     cancel = ObjectProperty(None)
-
 
 class WMFileChooser(FloatLayout):
     loadfile = ObjectProperty(None)
@@ -43,15 +41,12 @@ class WMFileChooser(FloatLayout):
     def load(self, path, filename):
         with open(os.path.join(path, filename[0])) as stream:
             self.text_input.text = stream.read()
-
         self.dismiss_popup()
 
     def save(self, path, filename):
         with open(os.path.join(path, filename), 'w') as stream:
             stream.write(self.text_input.text)
-
         self.dismiss_popup()
-
 
 class Editor(App):
 

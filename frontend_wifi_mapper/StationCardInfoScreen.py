@@ -16,8 +16,7 @@ import WMScreen
 #import CardInfoScreen
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
-from WMUtilityClasses import WMRedCheckBox
-import WMSelectableLabel
+from WMUtilityClasses import WMRedCheckBox, WMPressableLabel, WMSelectableLabel
 """ Graph """
 import collections
 import numpy as np
@@ -29,6 +28,23 @@ try:
     import matplotlib.pyplot as plt
     CAN_USE_GRAPH = True
 except:
+    pass
+
+""" Important no nesting rule """
+
+class StationCardInfoInfoBox(BoxLayout):
+    pass
+
+class StationCardInfoDataBox(BoxLayout):
+    pass
+
+class StationCardInfoHistoryBox(BoxLayout):
+    pass
+
+class StationCardInfoGraphBox(BoxLayout):
+    pass
+
+class StationCardInfoAttackBox(BoxLayout):
     pass
 
 Builder.load_file("Static/stationcardinfoscreen.kv")
@@ -50,7 +66,6 @@ class StationCardInfoScreen(WMScreen.WMScreen):
         self.station = kwargs.get('station', None)
         self.traffic = kwargs.get('traffic', None)
         self.ready = False
-        self.last_n_clients = 0
         self.last_idx_hist = 0
         self.ui_paused = False
         self.graph_btn_create = None
@@ -146,7 +161,7 @@ class StationCardInfoScreen(WMScreen.WMScreen):
     def _set_label(self, label, string, copy=""):
         if string is None:
             string = ""
-        if isinstance(label, WMSelectableLabel.WMSelectableLabel):
+        if isinstance(label, WMSelectableLabel):
             if label.check_select_label_text(string):
                 label.set_select_label_text(string)
             label.set_copy(copy)
@@ -158,7 +173,8 @@ class StationCardInfoScreen(WMScreen.WMScreen):
         if self.station.oui:
             s += " (%s)" % self.station.oui
         self._set_label(self.info_box.bssid, s, copy=self.station.bssid)
-        s = self.station.ap_bssid or ""
+        s = "AP: %s" % (self.station.ap_bssid)\
+                if self.station.ap_bssid else "not connected"
         if self.station.channel:
             s += " (%s)" % self.station.channel
         self._set_label(self.info_box.ap_bssid, s, copy=self.station.ap_bssid)
@@ -182,20 +198,19 @@ class StationCardInfoScreen(WMScreen.WMScreen):
         s = ""
         model = self.station.model
         if model != None:
-            s = "[b][i]%s[/i][/b]" % (model if model != False else "not found")
+            s = "model: "
+            s += "[b][i]%s[/i][/b]" % (model if model != False else "not found")
         self._set_label(self.model, s, copy=model)
 
     def set_history(self):
-        """
-        for tupl in reversed(self.ap.client_hist_co[self.last_idx_hist:]):
+        for tupl in reversed(self.station.connected_history[self.last_idx_hist:]):
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
             #TODO label open station
             l = Label(text="[color=%s]%s - %s[/color]"
                     % (color, tupl[0], tupl[1]),
                     markup=True)
             self.station_hist_lst.box.add_widget(l)
-        self.last_idx_hist = len(self.ap.client_hist_co)
-        """
+        self.last_idx_hist = len(self.station.connected_history)
 
     def update_gui(self, dic, current=True):
         self.current_screen = current

@@ -9,8 +9,17 @@ from kivy.properties import ObjectProperty
 from kivy.clock import Clock
 """ Our stuff """
 from StationCardInfoScreen import StationCardInfoScreen
+from WMUtilityClasses import WMSelectableLabel
 import WMCard
-import WMSelectableLabel
+import WMConfig
+
+""" Important no nesting rule """
+
+class StationCardInfoBox(BoxLayout):
+    pass
+
+class StationCardDataBox(BoxLayout):
+    pass
 
 Builder.load_file("Static/stationcard.kv")
 
@@ -24,11 +33,12 @@ class StationCard(WMCard.WMCard):
 
     def __init__(self, **kwargs):
         super(StationCard, self).__init__(**kwargs)
+        self.type = "Sta"
         self.key = kwargs['key']
         self.station = kwargs.get('station', None)
         self.args = kwargs.get('args', None)
         self.traffic = kwargs.get('traffic', None)
-        self.width_mult = 8
+        self.width_mult = WMConfig.conf.label_width_mult
         self.final_width = 0
         self.space = 2
         self.known_bg = False
@@ -85,7 +95,7 @@ class StationCard(WMCard.WMCard):
         return l if l > min_len else min_len
 
     def _set_label(self, label, string, copy=""):
-        if isinstance(label, WMSelectableLabel.WMSelectableLabel):
+        if isinstance(label, WMSelectableLabel):
             if label.check_select_label_text(string):
                 self.has_changed = True
                 label.set_select_label_text(string)
@@ -93,6 +103,11 @@ class StationCard(WMCard.WMCard):
         if string != label.text:
             self.has_changed = True
             label.text = string
+
+    def get_name(self):
+        if self.station.oui:
+            return "%s%s" % (self.station.oui[:8], self.station.bssid[8:])
+        return self.station.bssid
 
     def _set_bssid(self):
         s = "[b]%s[/b]" % self.station.bssid
@@ -122,7 +137,8 @@ class StationCard(WMCard.WMCard):
         s = ""
         model = self.station.model
         if model != None:
-            s = "[b][i]%s[/i][/b]" % (model if model != False else "not found")
+            s = "model: "
+            s += "[b][i]%s[/i][/b]" % (model if model != False else "not found")
         self._set_label(self.model, s, copy=model)
         self._check_width(len(s))
 

@@ -5,7 +5,6 @@
 from __future__ import print_function
 import argparse
 import sys
-import signal
 import os
 
 """ Forces kivy to not interpret args """
@@ -41,14 +40,8 @@ def application_runtime_error(err):
     import traceback
     traceback.print_exc()
     print("RuntimeError : " + err.message)
-    WifiMapperApp.stop_threads()
+    WifiMapperApp.stop_app()
     sys.exit(1)
-
-def signal_handler(signal, frame):
-    from kivy.app import App
-    app = App.get_running_app()
-    app._say("CTRL+C signal")
-    app.stop()
 
 def say(s, **kwargs):
     print("WifiMapper: %s" % s, **kwargs)
@@ -56,16 +49,14 @@ def say(s, **kwargs):
 if __name__ == '__main__':
 
     args = parse_args()
-    if not args.pcap and os.geteuid():
+    if (not args.pcap and args.interface) and os.geteuid():
         say("Please run as root")
         sys.exit(1)
 
-    signal.signal(signal.SIGINT, signal_handler)
     wireless_lst, iface_lst = interface_utilities.list_interfaces()
-    args.interface = interface_utilities.find_iface()\
-            if not args.interface else args.interface
+    args.interface = args.interface or None
 
-    if not args.pcap and (args.interface not in iface_lst):
+    if not args.pcap and args.interface and (args.interface not in iface_lst):
         say("Interface%s not found"\
                 % (" " + args.interface if args.interface else ""))
         if iface_lst:
@@ -78,14 +69,15 @@ if __name__ == '__main__':
         import pkts_test
         pkts_test.test(args.interface)
 
-    if not args.pcap\
-            and not interface_utilities.is_interface_up(args.interface):
+    if not args.pcap and args.interface\
+            and not interface_utilities.\
+                is_interface_monitoring(args.interface):
         say("Interface %s not monitoring" % args.interface)
         say("to monitor: make monitor")
         say("to rollback: make managed")
         sys.exit(1)
 
-    if not args.pcap and args.interface not in wireless_lst:
+    if not args.pcap and args.interface and (args.interface not in wireless_lst):
         say("Interface %s not wireless" % args.interface)
         say("Wireless interfaces: %s" % wireless_lst)
         sys.exit(1)
@@ -97,4 +89,5 @@ if __name__ == '__main__':
         app.run()
     except Exception as err:
         application_runtime_error(err)
-    WifiMapperApp.stop_threads()
+    WifiMapperApp.stop_app()
+    sys.exit(0)

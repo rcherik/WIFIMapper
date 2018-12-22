@@ -18,76 +18,73 @@ from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES, get_wm_list
 from backend_wifi_mapper.taxonomy import TAXONOMY_C_FILE
 import WMConfig
+from frontend_wifi_mapper.toast import toast
+from ChannelHopThread import ChannelHopThread
 
 class PcapThread(threading.Thread):
 
-    def __init__(self, args, **kwargs):
+    #Global WM dict
+    wm_pkt_dict = get_wm_list()
+    #List of files read with [file_name] = (packets_read, has_stopped)
+    files_read = {}
+    #A set of compiled files so we don't have to compile them again
+    compiled_files = set()
+    #Pkts sniffed
+    sniffed_pkt_list = []
+
+    def __init__(self, interface=None, pcap_file=None, args=None, app=None):
         threading.Thread.__init__(self)
         #Own values
-        self.pid = os.getpid()
         self.args = args
-        self.pcap_file = args.pcap or None
-        self.ifaces = None
-        if not args.pcap:
-            if args.interface:
-                self.ifaces = [iface for iface in args.interface.split(';')]
-            else:
-                self.ifaces = interface_utilities.find_iface()
+        self.app = app
         self.started = False
         self.stop = False
         self.get_input = True
+        #Check if file to read or set sniffing mode
+        self.snifs = True if interface else (args.interface if args else None)
+        if not self.snifs:
+            self._set_reading_file(pcap_file or (args.pcap if args else None))
+        #Try to get a valid interface
+        self.ifaces = None
+        if self.snifs:
+            self.ifaces = interface or (args.interface if args else None)
+            if not self.ifaces:
+                self.ifaces = interface_utilities.find_iface()
+        #Scapy pkts var
         self.pkts = None
-        self.pkt_list = []
-        self.pkt_dic = get_wm_list()
-        self._get_mac_list()
+        self.pkt_list = PcapThread.sniffed_pkt_list
+        self.n_pkts = 0
+        self.pkt_dic = PcapThread.wm_pkt_dict
         self.pkt_stats = {}
+        self.reading = False
+        self.sniffing = False
+
+        #Utilities
+        self._get_mac_list()
+        self._compile_c_file(TAXONOMY_C_FILE)
 
         #Options
         self.update_time = WMConfig.conf.gui_update_time
 
         #Other classes
-        self.app = None
         self.channel_thread = None
         self.timer_thread = None
 
     def run(self):
         """ Thread either sniff or waits """
         self.started = True
-        self._compile_c_file(TAXONOMY_C_FILE)
         self._say("using scapy (%s)" % scapy.config.conf.version)
         self._wait_for_gui()
-        if not self.pcap_file:
-            self._sniff()
-        else:
-            self._read_pcap()
+        if self.snifs:
+            self.start_sniffing(self.ifaces)
+        elif self.pcap_file:
+            self.parse_pcap_file(self.pcap_file)
 
-    def _compile_c_file(self, name):
-        """ Compile a c file for later use """
-        self._say("Compiling %s file to %s" % (name, name[:-2]))
-        try:
-            dn = open(os.devnull, 'w')
-        except IOError:
-            dn = None
-        try:
-            ipr = subprocess.Popen(['/usr/bin/gcc', name, '-o', name[:-2]],
-                    stdout=dn, stderr=dn)
-            if dn:
-                dn.close()
-        except Exception as e:
-            if dn and not dn.closed:
-                dn.close()
-            self._say("Could not compile file %s: %s" % (name, e.message))
-
-    def _get_mac_list(self):
-        """ Get list to match bssid with vendor """
-        try:
-            with open(WMConfig.conf.mac_list_file) as f:
-                lines = f.readlines()
-                for l in lines:
-                    t = l.split('\t')
-                    self.pkt_dic[WM_VENDOR][t[0]] = t[1].replace('\n', "")
-        except Exception as e:
-            self._say("error creating mac_list: %s " % e)
+    """
+        ****
+            PcapThread GUI methods
+        ****
+    """
 
     def _update_gui(self):
         """ Update gui with pkts """
@@ -111,107 +108,199 @@ class PcapThread(threading.Thread):
         current = None
         if self.channel_thread:
             current = self.channel_thread.current_chan
-        self.pkt_list.append(pkt)
+        if self.snifs:
+            self.pkt_list.append(pkt)
         if current:
             self.pkt_stats[current] = self.pkt_stats.get(current, 0) + 1
         start_parsing_pkt(self.pkt_dic, pkt, channel=current)
+        self.n_pkts += 1
         self._start_update_timer()
 
     def _wait_for_gui(self):
         """ Check if all screen are loaded """
         if not self.app or not hasattr(self.app, "manager"):
             self._say("app not well initialized")
-            sys.exit(1)
+            self._app_shutdown()
         while not self.stop and not self.app.manager.is_ready():
             pass
         return True
 
+    """
+        ****
+            PcapThread SNIFFING methods
+        ****
+    """
+
+    def start_sniffing(self, ifaces):
+        if isinstance(ifaces, basestring):
+            self.ifaces = [iface for iface in ifaces.split(';')]
+        else:
+            self.ifaces = ifaces
+        self.snifs = True
+        self._sniff()
+
     def _sniff(self):
         """ Sniff on interfaces while channel hopping """
-        if self.channel_thread:
+        if not (self.args and self.args.no_hop) and not self.channel_thread:
+            self.channel_thread = ChannelHopThread(args=self.args,
+                    iface=self.ifaces[0],
+                    app=self.app)
             self.channel_thread.start()
         while not self.stop:
             self._say("starts sniffing on %s %s"\
                     % ("interface" if len(self.ifaces) == 1 else "interfaces",
                         self.ifaces))
+            self.sniffing = True
             sniff(iface=self.ifaces, prn=self._callback,
                     stop_filter=self._callback_stop, store=False)
+            self.sniffing = False
             while not self.get_input:
                 pass
+        self._stop_channel_thread()
 
-    def _read_all_pcap(self):
-        """ Read all pcap at once """
-        self.pkts = self._read_all_pkts()
-        self._wait_for_gui()
-        self._say("starts parsing")
-        i = 0
-        for pkt in self.pkts:
-            if self.stop:
-                return
-            self._callback(pkt)
-            if i == WMConfig.conf.pcap_read_pkts_pause:
-                i = -1
-                time.sleep(WMConfig.conf.pcap_read_pause)
-            i += 1
-        self._say("has finished reading")
+    """
+        ****
+            PcapThread READING methods
+        ****
+    """
 
-    def _read_all_pkts(self):
-        """ Load pkts from file """
-        self._say("loading full file {name}".format(name=self.pcap_file))
-        start_time = time.time()
-        try:
-                packets = rdpcap(self.pcap_file)
-        except (IOError, Scapy_Exception) as err:
-                self._say("rdpcap: error: {}".format(err),
-                        file=sys.stderr)
-                self._app_shutdown()
-        except NameError as err:
-                self._say("rdpcap error: not a pcap file ({})".format(err),
-                        file=sys.stderr)
-                self._app_shutdown()
-        except KeyboardInterrupt:
-                self._app_shutdown()
-        read_time = time.time()
-        self._say("took {0:.3f} seconds to read {} packets"
-                .format(read_time - start_time, len(packets)))
-        return packets
+    def _set_reading_file(self, path):
+        self.pcap_file = os.path.abspath(path) if path else None
+
+    def parse_pcap_file(self, path):
+        if path in PcapThread.files_read\
+                and PcapThread.files_read[path][1] == False:
+            toast("File %s already read" % path, True)
+            return
+        if self.reading:
+            self.stop = True
+            time.sleep(WMConfig.conf.pcap_read_pause)
+            self.stop = False
+        self._read_pcap(path)
+
+    def _recover_file_status(self, reader, skip_pkts):
+        n = 0
+        while not self.stop:
+            pkt = reader.read_packet()
+            if pkt is None:
+                break
+            #Skip pkts until the end
+            n += 1
+            if n < skip_pkts:
+                continue
+            break
+        if not self.stop:
+            toast("Recovered !", False)
+
+    def _recover_previously_read(self, path):
+        if path in PcapThread.files_read\
+                and PcapThread.files_read[path][1] == True:
+            return PcapThread.files_read[path][0]
+        return 0
 
     def _read_pkts(self, reader):
         """ Read a single pkt and callback GUI """
-        i = 0
+        #n_pkts = 0
+        n_pkts_pause = 0
+        self.reading = True
+        #If file already read but stopped, recover n packets read
+        skip_pkts = self._recover_previously_read(self.pcap_file)
+        if skip_pkts:
+            toast("Recovering file - previously read %d packets"\
+                    % skip_pkts, False)
+            self._recover_file_status(reader, skip_pkts)
+        pause_time = WMConfig.conf.pcap_read_pause
+        read_pkts_pause = WMConfig.conf.pcap_read_pkts_pause
         while not self.stop:
             while not self.get_input:
                 pass
             pkt = reader.read_packet()
             if pkt is None:
                 break
+            #Skip pkts until the end
+            #if n_pkts < skip_pkts:
+            #    continue
             self._callback(pkt)
-            if i == WMConfig.conf.pcap_read_pkts_pause:
-                i = -1
-                time.sleep(WMConfig.conf.pcap_read_pause)
-            i += 1
+            if n_pkts_pause == read_pkts_pause:
+                n_pkts_pause = -1
+                time.sleep(pause_time)
+            n_pkts_pause += 1
+            #n_pkts += 1
+        self.reading = False
+        return self.stop
 
-    def _read_pcap(self):
+    def _read_pcap(self, path):
         """ Prepare read for updating GUI pkt per pkt """
-        self._say("reading file {name}".format(name=self.pcap_file))
+        self._say("reading file {name}".format(name=path))
         start_time = time.time()
         try:
-            fdesc = PcapReader(self.pcap_file)
+            fdesc = PcapReader(path)
+            self._set_reading_file(path)
         except (IOError, Scapy_Exception) as err:
-                self._say("rdpcap: error: {}".format(err),
-                        file=sys.stderr)
-                self._app_shutdown()
+            toast("{}".format(err), True)
+            self._say("rdpcap: error: {}".format(err),
+                    file=sys.stderr)
+            return
+            #self._app_shutdown()
         except NameError as err:
-                self._say("rdpcap error: not a pcap file ({})".format(err),
-                        file=sys.stderr)
-                self._app_shutdown()
+            toast("{}".format(err), True)
+            self._say("rdpcap error: not a pcap file ({})".format(err),
+                    file=sys.stderr)
+            return
+            #self._app_shutdown()
         except KeyboardInterrupt:
-                self._app_shutdown()
-        self._read_pkts(fdesc)
+            self._app_shutdown()
+        has_stopped = self._read_pkts(fdesc)
+        l = self.n_pkts + self._recover_previously_read(path)
+        PcapThread.files_read[path] = (l, has_stopped)
+        if has_stopped:
+            return
         read_time = time.time()
+        toast("File {0:s} read - {1:d} packets".format(path, l), True)
         self._say("took {0:.3f} seconds to read and parse {1:d} packets"\
-                .format(read_time - start_time, len(self.pkt_list)))
-        
+                .format(read_time - start_time, l))
+
+    """
+        ****
+            PcapThread OTHER - FILE - UTILITY methods
+        ****
+    """
+
+    def _compile_c_file(self, name):
+        """ Compile a c file for later use """
+        if name in PcapThread.compiled_files:
+            return
+        self._say("Compiling %s file to %s" % (name, name[:-2]))
+        try:
+            dn = open(os.devnull, 'w')
+        except IOError:
+            dn = None
+        try:
+            ipr = subprocess.Popen(['/usr/bin/gcc', name, '-o', name[:-2]],
+                    stdout=dn, stderr=dn)
+            if dn:
+                dn.close()
+            PcapThread.compiled_files.add(name)
+        except Exception as e:
+            if dn and not dn.closed:
+                dn.close()
+            self._say("Could not compile file %s: %s" % (name, e.message))
+
+    def _get_mac_list(self):
+        """ Get list to match bssid with vendor """
+        if self.pkt_dic[WM_VENDOR]:
+            return
+        try:
+            with open(WMConfig.conf.mac_list_file) as f:
+                lines = f.readlines()
+                for l in lines:
+                    t = l.split('\t')
+                    self.pkt_dic[WM_VENDOR][t[0]] = t[1].replace('\n', "")
+        except Exception as e:
+            self._say("error creating mac_list: %s " % e)
+
+    """ Stop input flow from pcap thread """
+
     def is_input(self):
         return not self.get_input
 
@@ -227,23 +316,36 @@ class PcapThread(threading.Thread):
         self.get_input = True
         return False
 
+    """ Utility """
+
+    def doing_nothing(self):
+        return not self.reading and not self.sniffing
+
+    def no_purpose(self):
+        return not self.ifaces and not self.pcap_file
+
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
+        if hasattr(self, "args") and hasattr(self.args, "debug")\
+                and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
-        else:
-            print(s, **kwargs)
 
-    def set_application(self, app):
-        """ To be able to call Kivy from thread """
-        self.app = app
+    """ Stop thread """
 
-    def set_channel_hop_thread(self, thread):
-        """ To be able to start thread from thread """
-        self.channel_thread = thread
+    def stop_thread(self):
+        self._stop_channel_thread()
+        self.stop = True
+
+    def _stop_channel_thread(self):
+        if self.channel_thread and self.channel_thread.started:
+            self.channel_thread.stop = True
+            self.channel_thread.join(timeout=1)
+            self.channel_thread = None
+            self._say("Channel thread stopped")
 
     def _app_shutdown(self):
         """ Stops thread and app """
-        self._wait_for_gui()
-        self.app.stop()
+        self._stop_channel_thread()
+        if self.app:
+            self.app.stop()
         sys.exit(1)

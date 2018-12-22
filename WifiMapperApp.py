@@ -3,6 +3,7 @@ from __future__ import print_function
 import sys
 import os
 import signal
+import time
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -18,7 +19,7 @@ from kivy.config import Config
 Config.set('graphics', 'width', '1280')
 Config.set('graphics', 'height', '800')
 """ Removes right clicks dots on gui """
-Config.set('input', 'mouse', 'mouse,disable_multitouch')
+Config.set('input', 'mouse', 'mouse,disable_multitouch,disable_on_activity')
 Config.set('kivy', 'window_icon', os.path.join('Static', 'images', 'icon.png'))
 Config.set('kivy', 'exit_on_escape', 0)
 Config.set('kivy', 'pause_on_minimize', 1)
@@ -38,17 +39,15 @@ import WMConfig
 from PcapThread import PcapThread
 from ChannelHopThread import ChannelHopThread
 from frontend_wifi_mapper.CardListScreen import CardListScreen
-#from frontend_wifi_mapper.CardInfoScreen import CardInfoScreen
 from frontend_wifi_mapper.WMScreenManager import WMScreenManager
 from frontend_wifi_mapper.WMUtilityClasses import \
         WMPanelHeader, WMTabbedPanel, WMConfirmPopup
+from frontend_wifi_mapper.WMOptions import WMOptions
 
-def stop_threads():
+def stop_app():
     app = App.get_running_app()
-    app._say("stopping threads")
-    app.stop_pcap_thread()
-    app.stop_channel_thread()
-    sys.exit(0)
+    app._say("stopping app")
+    app.exit()
 
 class WifiMapper(App):
 
@@ -60,26 +59,78 @@ class WifiMapper(App):
         self.paused = False
         self.popup = None
         """ Thread """
-        self.pcap_thread = PcapThread(args)
-        self.pcap_thread.set_application(self)
-        self.channel_thread = None
-        if not args.pcap and not args.no_hop:
-            self.channel_thread = ChannelHopThread(args=args)
-            self.channel_thread.set_application(self)
-            self.pcap_thread.set_channel_hop_thread(self.channel_thread)
+        self.pcap_thread = PcapThread(args=args, app=self)
         """ Keyboard """
         self.shift = False
         self.alt = False
         self.get_focus()
+        """ Signal """
+        signal.signal(signal.SIGINT, self.signal_handler)
+        """ Drag """
+        Window.bind(on_dropfile=self.confirm_dragged_file)
+        self.dragged = None
+
+    """ Dragged file """
+
+    def _dismiss_dragged_file(self, widget):
+        if widget.confirmed():
+            self.stop_pcap_thread()
+            self.pcap_thread = PcapThread(pcap_file=self.dragged,
+                    args=self.args, app=self)
+            self.pcap_thread.start()
+	    #Clock.schedule_once(self._start_pcap_parse)
+        else:
+            self.dragged = None
+        self.popup = None
+
+    def confirm_dragged_file(self, window, path):
+        self._say("Dragged: %s" % path)
+        self.dragged = path
+        self._open_popup_confirm("Do you want to start parsing %s" % path,
+                self._dismiss_dragged_file, auto_dismiss=False)
+
+    """ Options """
+
+    def start_sniffing(self, ifaces):
+        if self.pcap_thread.sniffing\
+                and self.pcap_thread.ifaces == ifaces:
+            self._say("Already sniffing")
+            return
+        self.stop_pcap_thread()
+        self.pcap_thread = PcapThread(interface=ifaces,
+                args=self.args, app=self)
+        self.pcap_thread.start()
+
+    def _options_popup_dismiss(self, widget):
+	super(WMOptions, widget).on_dismiss()
+        self.popup = None
+
+    def open_options(self):
+        if self.popup:
+            self.popup.dismiss()
+        self.popup = WMOptions(self)
+        self.popup.bind(on_dismiss=self._options_popup_dismiss)
+        self.popup.open()
+
+    """ Header global """
+
+    def app_ready(self):
+        if self.pcap_thread.no_purpose():
+            self.open_options()
 
     def change_header(self, key, txt):
         self.panel.change_header(key, txt)
 
-    def add_header(self, key, screen, **kwargs):
-        self.panel.add_header(key, screen, **kwargs)
+    def add_header(self, text, key, screen, **kwargs):
+        self.panel.add_header(text, key, screen, **kwargs)
 
-    def remove_header(self, string):
-        self.panel.remove_header(string)
+    def remove_header(self, key):
+        self.panel.remove_header(key)
+
+    def open_card_link(self, which, key):
+        self.manager.open_card_link(which, key)
+
+    """ Dispatch stop/resume """
 
     def stop_input(self):
         r = self.pcap_thread.stop_input()
@@ -92,10 +143,13 @@ class WifiMapper(App):
     def is_input(self):
         return self.pcap_thread.is_input()
 
+    """ Build """
+
     def build(self):
         self.icon = WMConfig.conf.app_icon 
         self.version = WMConfig.conf.version
         self.title = "Wifi Mapper (%s)" % self.version
+        self.start_time = time.time()
         self.manager = WMScreenManager(app=self,
                 args=self.args,
                 pcap_thread=self.pcap_thread)
@@ -110,6 +164,8 @@ class WifiMapper(App):
                 default_tab=ap_tab)
         return self.panel
 
+    """ Keyboard """
+
     def get_focus(self, *args):
         self._keyboard = Window.request_keyboard(self._keyboard_closed,
                 self.root)
@@ -121,10 +177,26 @@ class WifiMapper(App):
         self._keyboard.unbind(on_key_up=self._on_keyboard_up)
         self._keyboard = None
 
+    """ Kivy app methods """
+
+    def on_pause(self):
+        self._say("On pause")
+        self.paused = True
+        return True
+
+    def on_resume(self):
+        self._say("On resume")
+        self.paused = False
+
+    def onstop(self):
+        self._say("leaving app - stopping threads")
+        self.stop_pcap_thread()
+        self._say("stopped")
+
     def _on_keyboard_up(self, keyboard, keycode):
         if self.paused:
             return True
-        self._say("keycode: %s" % keycode[1])
+        #self._say("keycode: %s" % keycode[1])
         if keycode[1] == 'shift':
             self.shift = False
         if keycode[1] == 'alt':
@@ -135,24 +207,13 @@ class WifiMapper(App):
             return True
         if keycode[1] >= "1" and keycode[1] <= "9":
             n = int(keycode[1])
-            for header in reversed(self.panel.tab_list):
-                n -= 1
-                if n == 0:
-                    self.panel.switch_to(header)
-                    return True
+            self.panel.go_to(n)
             return True
         if not self.alt and keycode[1] == 'tab':
-            found = False
-            direction = -1 if not self.shift else 1
-            loop = -1 if direction == -1 else 0
-            for header in self.panel.tab_list[::direction]:
-                if found:
-                    self.panel.switch_to(header)
-                    return True
-                if header == self.panel.current_tab:
-                    found = True
-            if found:
-                self.panel.switch_to(self.panel.tab_list[loop])
+            if self.shift:
+                self.panel.go_back()
+            else:
+                self.panel.go_forth()
             return True
         return True
 
@@ -173,53 +234,56 @@ class WifiMapper(App):
                 self.popup.confirm()
             return True
         if keycode[1] == 'escape':
-            if not self.popup:
-                self.popup = WMConfirmPopup(text="Do you really want to quit ?")
-                self.popup.bind(on_dismiss=self._confirm_popup_stop)
-                self.popup.open()
-            else:
-                self.popup.dismiss()
+            self._open_popup_confirm("Do you really want to quit ?",
+                    self._confirm_popup_stop)
             return True
         return True
 
+    """ Confirm Popup """
+
+    def _open_popup_confirm(self, text, fun, **kwargs):
+        if not self.popup:
+            self.popup = WMConfirmPopup(text=text, **kwargs)
+            self.popup.bind(on_dismiss=fun)
+            self.popup.open()
+        else:
+            if isinstance(self.popup, WMConfirmPopup):
+                #TODO maybe cancel() for release
+                self.popup.confirm()
+            else:
+                self.popup.dismiss()
+
     def _confirm_popup_stop(self, widget):
         if self.popup.confirmed():
-            self.stop()
+            self.exit()
         self.popup = None
 
+    """ Utility """
+
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
+        if hasattr(self, "args") and hasattr(self.args, "debug")\
+                and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
-        else:
-            print(s, **kwargs)
 
-    def on_pause(self):
-        self._say("On pause")
-        self.paused = True
-        return True
+    """ Stopping methods """
 
-    def on_resume(self):
-        self._say("On resume")
-        self.paused = False
+    def signal_handler(self, sig, frame):
+        self.exit()
 
-    def onstop(self):
-        self._say("leaving app - stopping threads")
-        stop_threads(self.pcap_thread, self.channel_thread)
-        self._say("stopped")
+    def exit(self):
+        self.stop_pcap_thread()
+        self.stop()
 
     def stop_pcap_thread(self):
-        self.pcap_thread.stop = True
+        if not self.pcap_thread:
+            return
+        if self.pcap_thread.channel_thread:
+            self.pcap_thread.channel_thread.stop = True
+            self.pcap_thread.channel_thread.join(timeout=1)
+            self.pcap_thread.channel_thread = None
+        self.pcap_thread.stop_thread()
         if self.pcap_thread.started:
             self.pcap_thread.join(timeout=1)
             self._say("Pcap thread stopped")
-            os.kill(self.pcap_thread.pid, signal.SIGKILL)
-
-    def stop_channel_thread(self):
-        if not self.channel_thread:
-            return
-        self.channel_thread.stop = True
-        if self.channel_thread.started:
-            self.channel_thread.join(timeout=1)
-            self._say("Channel thread stopped")
-            os.kill(self.channel_thread.pid, signal.SIGKILL)
+            self.pcap_thread = None

@@ -4,8 +4,10 @@ from kivy.properties import ObjectProperty
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.uix.image import Image
+from kivy.app import App
 """ Our stuff """
 from CardListScreen import CardListScreen
+from toast import toast
 
 class WMScreenManager(ScreenManager):
 
@@ -32,6 +34,7 @@ class WMScreenManager(ScreenManager):
         """ When kv loaded, may start thread """
         if not self.pcap_thread.started:
             self.pcap_thread.start()
+        self.app.app_ready()
 
     def is_ready(self):
         """ Called to check if all screens are init """
@@ -84,8 +87,27 @@ class WMScreenManager(ScreenManager):
         screen = CardListScreen(**kwargs)
         self.add_widget(screen)
 
+    def open_card_link(self, which, key):
+        if which not in ('AP', 'Station'):
+            self._say("open_card_link: bad which")
+            return
+        card = None
+        for screen in self.screens:
+            if isinstance(screen, CardListScreen)\
+                    and screen.wm_screen_type == which:
+                card = screen.get_card(key)
+                break
+        if card:
+            screen = card.get_info_screen()
+            App.get_running_app().add_header(
+                    "%s: %s" % (card.type, card.key),
+                    card.key, screen)
+        else:
+            toast("%s not found" % key)
+
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
+        if hasattr(self, "args") and hasattr(self.args, "debug")\
+                and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
         else:

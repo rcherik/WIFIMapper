@@ -5,6 +5,7 @@ class WMCard(BoxLayout):
 
     def __init__(self, **kwargs):
         self.clicked = False
+        self.type = None
         super(WMCard, self).__init__(**kwargs)
 
     def _get_nested_attr(self, value):
@@ -12,6 +13,9 @@ class WMCard(BoxLayout):
             return attrgetter(value)(self)
         except:
             return None
+
+    def get_name(self):
+        return ""
 
     def get_value(self, value):
         return self._get_nested_attr(value)
@@ -40,10 +44,6 @@ class WMCard(BoxLayout):
             self.pressed = touch.pos
             self.clicked = not self.clicked
             self.draw_background(self, self.pos)
-            #TODO open a tab with ap card infos screen
-            #screen = CardInfoScreen(name=self.key)
-            #App.get_running_app().add_header(self.key, screen)
-            #return True
         return ret
 
     def draw_background(self, widget, prop):

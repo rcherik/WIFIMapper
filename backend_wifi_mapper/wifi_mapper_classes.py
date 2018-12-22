@@ -129,6 +129,7 @@ class Station():
 		self.bssid = bssid
 		self.oui = oui_dict.get(bssid[:8].upper(), "") if oui_dict else None
 
+		self.ap_bssid = None
 		self.probe_req = None
 		self.assoc_req = None
 		self.rssi = 0
@@ -136,7 +137,7 @@ class Station():
 		self.ap_probed_str = None
 		self.model = None
 		self.connected = False
-		self.ap_bssid = None
+		self.connected_history = []
 		self.channel = None
 
 		Station.id += 1
@@ -147,7 +148,10 @@ class Station():
 	def set_connected(self, ap_bssid):
 		if ap_bssid:
 			if ap_bssid != self.ap_bssid and self.ap_bssid in self.dic[WM_AP]:
-				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
+				self.dic[WM_AP][self.ap_bssid].client_connected(self.bssid)
+				time_str = time.strftime("%H:%M:%S", time.gmtime())
+				self.connected_history.append(
+						(time_str, self.ap_bssid, "connected"))
 			self.connected = True
 			self.ap_bssid = ap_bssid
 			self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
@@ -157,6 +161,9 @@ class Station():
 			self.connected = False
 			if self.ap_bssid and self.ap_bssid in self.dic[WM_AP]:
 				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
+				time_str = time.strftime("%H:%M:%S", time.gmtime())
+				self.connected_history.append(
+						(time_str, self.ap_bssid, "disconnected"))
 			self.ap_bssid = None
 
 	def set_rssi(self, rssi):

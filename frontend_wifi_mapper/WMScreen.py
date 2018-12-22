@@ -5,6 +5,7 @@ class WMScreen(Screen):
 
     def __init__(self, **kwargs):
         self.current_screen = False
+        self.wm_screen_type = ""
         super(WMScreen, self).__init__(**kwargs)
 
     def update_gui(self, dic, **kwargs):
@@ -23,8 +24,7 @@ class WMScreen(Screen):
         pass
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
+        if hasattr(self, "args") and hasattr(self.args, "debug")\
+                and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
-            print(s, **kwargs)
-        else:
             print(s, **kwargs)

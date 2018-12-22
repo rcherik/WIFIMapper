@@ -17,7 +17,8 @@ from StationCard import StationCard
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
 import WMScreen
-import WMPageToggleButton
+import WMConfig
+from WMUtilityClasses import WMPageToggleButton
 
 Builder.load_file("Static/cardlistscreen.kv")
 
@@ -53,6 +54,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.args = kwargs.get('args', None)
         self._set_screen_type(**kwargs)
         super(CardListScreen, self).__init__(**kwargs)
+        self.wm_screen_type = "AP" if self.show_ap else "Station"
         self.ready = False
         self.card_dic = {}
         self.cards = []
@@ -65,7 +67,7 @@ class CardListScreen(WMScreen.WMScreen):
         self.browsing_card = False
         """ Pages """
         self.n_card = 0
-        self.max_cards = 20
+        self.max_cards = WMConfig.conf.max_card_per_screen
         self.current_page = 1
         self.pages = 0
         Clock.schedule_once(self._create_view)
@@ -85,7 +87,11 @@ class CardListScreen(WMScreen.WMScreen):
         self.action_bar.search_input.bind(focus=self.on_input_focus)
         self.action_bar.label_curr_page.text = "Page %d" % self.current_page
         self.action_bar.clear_button.bind(on_press=self._clear_input)
+        self.action_bar.action_previous.bind(on_press=self.open_options)
         Clock.schedule_once(self._is_ready)
+
+    def open_options(self, widget):
+        App.get_running_app().open_options()
 
     def _is_ready(self, *args):
         """ All is done by now """
@@ -180,7 +186,7 @@ class CardListScreen(WMScreen.WMScreen):
                 self.current_page = 1
             #Makes pages widget button based on old present buttons
             for i in range(from_page + 1, pages + 1):
-                btn = WMPageToggleButton.WMPageToggleButton(
+                btn = WMPageToggleButton(
                         text="Page %d" % i,
                         group='page',
                         page=i,
@@ -265,6 +271,8 @@ class CardListScreen(WMScreen.WMScreen):
 
     def _add_card(self, card):
         """ Add a card to stacklayout if user sees screen """
+        if self.ui_paused:
+            return
         if self.n_card >= self.max_cards:
             return False
         if self.current_screen and not card.parent:
@@ -275,8 +283,7 @@ class CardListScreen(WMScreen.WMScreen):
 
     def _insert_card(self, new_card):
         """ Add card to virtual stack of card and in stacklayout """
-        if not self.ui_paused\
-                and not self._should_remove(new_card.id, new_card.get_obj()):
+        if not self._should_remove(new_card.id, new_card.get_obj()):
             self.cards.append(new_card)
             self._add_card(new_card)
 
@@ -359,8 +366,8 @@ class CardListScreen(WMScreen.WMScreen):
             self._make_pages()
             #Sort cards in stack
             self._sort_cards()
-            #Update number of cards in header
-            self._update_header()
+        #Update number of cards in header
+        self._update_header()
 
     def reload_gui(self, current=True):
         """
@@ -389,6 +396,9 @@ class CardListScreen(WMScreen.WMScreen):
                 or (self.ui_paused and current is False):
             self._update_header()
         self.loading = False
+
+    def get_card(self, key):
+        return self.card_dic.get(key, None)
 
     def _update_header(self):
         """ Update its header with all cards present on screen """

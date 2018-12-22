@@ -36,7 +36,7 @@ def list_interfaces():
                 wireless_lst.append(iface)
     return wireless_lst, lst
 
-def is_interface_up(iface):
+def is_interface_monitoring(iface):
     """
         http://lxr.free-electrons.com/source/include/uapi/linux/if_arp.h
 

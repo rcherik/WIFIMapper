@@ -10,9 +10,10 @@ import WMConfig
 
 class ChannelHopThread(threading.Thread):
 
-    def __init__(self, iface=None, args=None):
+    def __init__(self, iface=None, args=None, app=None):
 	threading.Thread.__init__(self)  
         self.pid = os.getpid()
+        self.app = app
         self.args = args
         self.started = False
 	self.stop = False
@@ -26,37 +27,51 @@ class ChannelHopThread(threading.Thread):
         else:
             self.channels = WMConfig.conf.channels
 
+    def set_interface(self, iface):
+        if not isinstance(iface, basestring):
+            return
+        self._say("Changed interface to %s" % iface)
+        self.stop = 1
+        self.iface = iface
+        timer_thread = threading.Timer(self.hop_time, self.run)
+        timer_thread.start()
+
     def reset_channels(self):
         self.set_channel(WMConfig.conf.channels)
 
     def set_channel(self, chan):
-        self.stop = 1
+        self._say("eee")
         if isinstance(chan, int):
-            self.channels = list(chan)
-        elif isinstance(chan, (list, tuple)):
+            chan = list(chan)
+        if self.channels == chan:
+            return
+        self.stop = 1
+        if isinstance(chan, (list, tuple)):
             self.channels = chan
-        timer_thread = threading.Timer(self.WAIT_TIME, self.run)
+        self._say("Changed channels to %s" % self.channels)
+        timer_thread = threading.Timer(self.hop_time, self.run)
         timer_thread.start()
 
     def change_channel(self, channel):
         if self.current_chan == channel:
             return False
         try:
-            ret = subprocess.call([
-                '/sbin/iwconfig',
-                self.iface,
-                'channel',
-                str(channel)
-                ])
+            ret = subprocess.call(['/sbin/iwconfig', self.iface,
+                'channel', str(channel)])
         except Exception as e:
-            self._say("exception sniffing: " + e.message)
+            self._say("%s exception sniffing: %s"\
+                    % (e.__class__.__name__ , e.message))
+            import traceback
+            traceback.print_exc()
             return False
-        if ret != 0 and channel not in self.bad_channels:
-            self._say("bad channel {chan} - ret: {ret}"\
-                    .format(ret=ret, chan=channel))
-            self.bad_channels.add(channel)
+        if ret != 0:
+            if channel not in self.bad_channels:
+                self._say("bad channel {chan} - ret: {ret}"\
+                        .format(ret=ret, chan=channel))
+                self.bad_channels.add(channel)
+            sys.exit(ret)
         else:
-            #self._say("hopped to %s" % channel)
+            self._say("hopped to %s" % channel)
             self.current_chan = channel
         return True
 
@@ -65,6 +80,10 @@ class ChannelHopThread(threading.Thread):
         self.started = True
         self._say("starting to chan hop on interface %s" % self.iface)
         while not self.stop:
+            if self.bad_channels and self.bad_channels.issubset(self.channels):
+                self._say("Removing bad channels : %s" % self.bad_channels)
+                self.channels = [chan for chan in self.channels\
+                        if chan not in self.bad_channels]
             for channel in self.channels:
                 if self.stop:
                     return
@@ -72,10 +91,9 @@ class ChannelHopThread(threading.Thread):
                 time.sleep(self.hop_time)
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
+        if hasattr(self, "args") and hasattr(self.args, "debug")\
+                and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
-            print(s, **kwargs)
-        else:
             print(s, **kwargs)
 
     def _wait_for_gui(self):

@@ -12,9 +12,20 @@ from operator import attrgetter
 from kivy.utils import escape_markup
 """ Our stuff """
 import WMCard
-import WMImageLink
+import WMConfig
 from APCardInfoScreen import APCardInfoScreen
-import WMSelectableLabel
+from WMUtilityClasses import WMSelectableLabel, WMImageLink
+
+""" Important no nesting rule """
+
+class APCardInfoBox(BoxLayout):
+    pass
+
+class APCardSecurityBox(BoxLayout):
+    pass
+
+class APCardDataBox(BoxLayout):
+    pass
 
 Builder.load_file("Static/apcard.kv")
 
@@ -27,11 +38,12 @@ class APCard(WMCard.WMCard):
 
     def __init__(self, **kwargs):
         super(APCard, self).__init__(**kwargs)
+        self.type = "AP"
         self.key = kwargs['key']
         self.ap = kwargs.get('ap', None)
         self.args = kwargs.get('args', None)
         self.traffic = kwargs.get('traffic', None)
-        self.width_mult = 8
+        self.width_mult = WMConfig.conf.label_width_mult
         self.final_width = 0
         self.space = 2
         self.known_bg = False
@@ -86,7 +98,7 @@ class APCard(WMCard.WMCard):
         return l if l > min_len else min_len
 
     def _set_label(self, label, string, copy=""):
-        if isinstance(label, WMSelectableLabel.WMSelectableLabel):
+        if isinstance(label, WMSelectableLabel):
             if label.check_select_label_text(string):
                 self.has_changed = True
                 label.set_select_label_text(string)
@@ -94,6 +106,11 @@ class APCard(WMCard.WMCard):
         elif string != label.text:
             self.has_changed = True
             label.text = string
+
+    def get_name(self):
+        if self.ap.oui:
+            return "%s%s" % (self.ap.oui[:8], self.ap.bssid[8:])
+        return self.ap.bssid
 
     def _set_bssid(self):
         s = "[b]%s[/b]" % self.ap.bssid
@@ -137,10 +154,6 @@ class APCard(WMCard.WMCard):
 
     def get_obj(self):
         return self.ap
-
-    def open_link(self):
-        screen = self.get_info_screen()
-        App.get_running_app().add_header(self.ap.bssid, screen)
 
     def get_info_screen(self):
         screen = APCardInfoScreen(

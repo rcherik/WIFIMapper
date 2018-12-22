@@ -11,14 +11,14 @@ from kivy.uix.button import Button
 from kivy.uix.stacklayout import StackLayout
 from kivy.lang import Builder
 from kivy.metrics import sp
+from kivy.app import App
 """ Our stuff """
 import WMScreen
 #import CardInfoScreen
 import WMScreen
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
-from WMUtilityClasses import WMRedCheckBox
-import WMSelectableLabel
+from WMUtilityClasses import WMRedCheckBox, WMPressableLabel, WMSelectableLabel
 """ Graph """
 import collections
 import numpy as np
@@ -30,6 +30,29 @@ try:
     import matplotlib.pyplot as plt
     CAN_USE_GRAPH = True
 except:
+    pass
+
+""" Important no nesting rule """
+
+class APCardInfoInfoBox(BoxLayout):
+    pass
+
+class APCardInfoSecurityBox(BoxLayout):
+    pass
+
+class APCardInfoDataBox(BoxLayout):
+    pass
+
+class APCardInfoClientConnectedBox(BoxLayout):
+    pass
+
+class APCardInfoClientHistoryBox(BoxLayout):
+    pass
+
+class APCardInfoAttackBox(BoxLayout):
+    pass
+
+class APCardInfoGraphBox(BoxLayout):
     pass
 
 Builder.load_file("Static/apcardinfoscreen.kv")
@@ -46,6 +69,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
     data_box = ObjectProperty(None)
     station_box = ObjectProperty(None)
     graph_box = ObjectProperty(None)
+    checkbox_all = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         self.ap = kwargs.get('ap', None)
@@ -57,6 +81,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.graph_btn_create = None
         self.graph_btn_cancel = None
         self.graph_btn_update = None
+        self.checkboxed_station = set()
 	super(APCardInfoScreen, self).__init__(**kwargs)
 	Clock.schedule_once(self._create_view)
 
@@ -70,6 +95,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.graph_btn_create.bind(on_press=self.graph_callback)
         self.graph_btn_update.bind(on_press=self.graph_callback)
         self.graph_btn_cancel.bind(on_press=self.remove_graph)
+        self.checkbox_all.bind(active=self.on_checkbox_all_active)
         self._set_graph_btn()
         self.update_gui(None, current=True)
 
@@ -145,7 +171,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.update_gui(None, current)
 
     def _set_label(self, label, string, copy=""):
-        if isinstance(label, WMSelectableLabel.WMSelectableLabel):
+        if isinstance(label, WMSelectableLabel):
             if label.check_select_label_text(string):
                 self.has_changed = True
                 label.set_select_label_text(string)
@@ -159,7 +185,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
         if self.ap.oui:
             s += " (%s)" % self.ap.oui
         self._set_label(self.info_box.bssid, s, copy=self.ap.bssid)
-        s = self.ap.ssid
+        s = "ssid: %s" % self.ap.ssid if self.ap.ssid else ""
         if self.ap.channel:
             s += " (%s)" % self.ap.channel
         self._set_label(self.info_box.ssid, s, copy=self.ap.ssid)
@@ -178,24 +204,35 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self._set_label(self.data_box.beacons, beacons)
         self._set_label(self.data_box.signal, signal)
 
+    def on_checkbox_all_active(self, widget, active):
+        for child in self.station_lst.box.children:
+            if isinstance(child, CheckBox):
+                child.active = active
+
     def on_checkbox_active(self, widget, active):
-        self._say("%s %s %s" % (widget, widget.bssid, active))
+        if active:
+            self.checkboxed_station.add(widget.bssid)
+        else:
+            self.checkboxed_station.remove(widget.bssid)
+
+    def open_station(self, widget):
+        App.get_running_app().open_card_link("Station", widget.key)
 
     def set_connected(self):
         if self.ap.n_clients != self.last_n_clients:
             self.station_lst.box.clear_widgets()
             for bssid in self.ap.client_co:
-                #box = BoxLayout(orientation='horizontal')
-                #TODO label open station
-                label = Label(text=bssid)
+                """ Ensure label has text=bssid or change open_station """
+                label = WMPressableLabel(text=bssid, key=bssid, markup=True)
+                label.bind(on_press=self.open_station)
                 check = WMRedCheckBox(allow_stretch=True,
                         size_hint=(None, None),
                         size=(sp(8), sp(8)),
                         color=[1, 0, 0, 1])
                 check.bssid = bssid
+                if bssid in self.checkboxed_station:
+                    check.active = True
                 check.bind(active=self.on_checkbox_active)
-                #box.add_widget(check)
-                #box.add_widget(label)
                 self.station_lst.box.add_widget(check)
                 self.station_lst.box.add_widget(label)
             self.last_n_clients = self.ap.n_clients
@@ -203,11 +240,10 @@ class APCardInfoScreen(WMScreen.WMScreen):
     def set_history(self):
         for tupl in reversed(self.ap.client_hist_co[self.last_idx_hist:]):
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
-            #TODO label open station
-            l = Label(text="[color=%s]%s - %s[/color]"
-                    % (color, tupl[0], tupl[1]),
-                    markup=True)
-            self.station_hist_lst.box.add_widget(l)
+            label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
+                    % (color, tupl[0], tupl[1]), key=tupl[1], markup=True)
+            label.bind(on_press=self.open_station)
+            self.station_hist_lst.box.add_widget(label)
         self.last_idx_hist = len(self.ap.client_hist_co)
 
     def update_gui(self, dic, current=True):
