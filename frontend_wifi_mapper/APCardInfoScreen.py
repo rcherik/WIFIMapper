@@ -224,13 +224,13 @@ class APCardInfoScreen(WMScreen.WMScreen):
             self.station_lst.box.clear_widgets()
             for bssid in self.ap.client_co:
                 """ Ensure label has text=bssid or change open_station """
-                label = WMPressableLabel(text=bssid,
-                        size_hint=(1, None), size=(0, 20),
+                label = WMPressableLabel(text=self.ap.get_station_name(bssid),
+                        #size_hint=(1, None), size=(0, 20),
                         markup=True, key=bssid)
                 label.bind(on_press=self.open_station)
                 check = WMRedCheckBox(allow_stretch=True,
-                        size_hint=(None, None),
-                        size=(sp(10), sp(8)),
+                        size_hint=(None, 1),
+                        size=(sp(10), 0),
                         color=[1, 0, 0, 1])
                 check.bssid = bssid
                 if bssid in self.checkboxed_station:
@@ -246,12 +246,13 @@ class APCardInfoScreen(WMScreen.WMScreen):
             self.station_hist_lst.box.clear_widgets()
         else:
             return
+        #tuple is (time, name, status, bssid)
         for tupl in self.ap.client_hist_co:
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
             label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
                     % (color, tupl[0], tupl[1]),
-                    size_hint=(1, None), size=(0, 20),
-                    markup=True, key=tupl[1])
+                    #size_hint=(1, None), size=(0, 20),
+                    markup=True, key=tupl[3])
             label.bind(on_press=self.open_station)
             self.station_hist_lst.box.add_widget(label)
         self.last_idx_hist = size

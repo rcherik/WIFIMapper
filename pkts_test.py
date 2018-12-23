@@ -1,6 +1,5 @@
 import sys
 from scapy.all import *
-from backend_wifi_mapper.rssi_scapy import get_rssi
 
 def callback(pkt):
     print(pkt.summary())

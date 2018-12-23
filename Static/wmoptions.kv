@@ -2,7 +2,7 @@
     auto_dismiss: True
     title: 'Options'
     size_hint: (None, None)
-    size: (640, 480)
+    size: (640, 540)
     layout: layout
     BoxLayout:
         orientation: 'vertical'
@@ -14,13 +14,14 @@
             orientation: 'vertical'
             spacing: (5, 5)
             padding: (10, 10)
-            sniff_label: sniff_label
+            status_label: status_label
             sniff_button: sniff_button
             sniff_interfaces: sniff_interfaces
-            read_label: read_label
             read_button: read_button
             save_button: save_button
+            capture_button: capture_button
             time_label: time_label
+            memory_label: memory_label
             packet_label: packet_label
             channel_button: channel_button
             channel_input: channel_input
@@ -38,28 +39,28 @@
             Widget:
 
             Label:
-                id: sniff_label
+                id: status_label
                 text: "Not sniffing"
             Button:
                 id: sniff_button
-                text: 'Start sniffing'
+                text: 'Sniff interface'
                 on_release: root.sniff()
             Label:
                 id: sniff_interfaces
                 padding: (20, 0)
-                #text: "enp58s0f1, wlp59s0, wlan0, eth0, prout"
                 text: "No interface"
                 size_hint_y: None
                 text_size: self.width, None
                 height: self.texture_size[1]
 
-            Label:
-                id: read_label
-                text: "Not reading"
             Button:
                 id: read_button
                 text: 'Read Pcap'
                 on_release: root.read_pcap()
+            Button:
+                id: capture_button
+                text: 'Start Capture'
+                on_release: root.capture_pcap()
             Button:
                 id: save_button
                 text: 'Save pcap'
@@ -73,10 +74,11 @@
             Widget:
 
             Label:
-                text: "Time spent: "
+				id: time_label
+				text: "Time spent: 29m30s"
             Label:
-                id: time_label
-                text: "29m05s"
+                id: memory_label
+                text: "2%"
             Label:
                 id: packet_label
                 text: "25000 packets"
@@ -90,8 +92,15 @@
                 multiline: False
             Button:
                 id: channel_button
-                text: 'Change channel interface'
+                text: 'Change interface'
                 on_release: root.set_channel_interface()
+
+			Button:
+				id: channel_stat
+				text: "Channel stat"
+				on_release: root.open_channel_stat()
+			Widget:
+			Widget:
         WMSeparator:
         BoxLayout:
             orientation: 'horizontal'

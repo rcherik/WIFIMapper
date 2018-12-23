@@ -100,7 +100,7 @@ class WMScreenManager(ScreenManager):
         if card:
             screen = card.get_info_screen()
             App.get_running_app().add_header(
-                    "%s: %s" % (card.type, card.key),
+                    "%s: %s" % (card.type, card.get_name()),
                     card.key, screen)
         else:
             toast("%s not found" % key)

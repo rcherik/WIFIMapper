@@ -175,8 +175,9 @@ class StationCardInfoScreen(WMScreen.WMScreen):
         if self.station.oui:
             s += " (%s)" % self.station.oui
         self._set_label(self.info_box.bssid, s, copy=self.station.bssid)
-        s = "AP: %s" % (self.station.ap_bssid)\
-                if self.station.ap_bssid else "not connected"
+        ap_bssid = self.station.ap_bssid
+        s = "AP: %s" % (self.station.get_ap_name(ap_bssid))\
+                if ap_bssid else "not connected"
         if self.station.channel:
             s += " (%s)" % self.station.channel
         self._set_label(self.info_box.ap_bssid, s, copy=self.station.ap_bssid)
@@ -213,12 +214,19 @@ class StationCardInfoScreen(WMScreen.WMScreen):
             self.station_hist_lst.box.clear_widgets()
         else:
             return
+        #tuple is (time, name, status, bssid)
         for tupl in self.station.connected_history:
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
-            label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
-                    % (color, tupl[0], tupl[1]),
-                    size_hint=(1, None), size=(0, 20),
-                    markup=True, key=tupl[1])
+            s = "{time:s} - {name:s} (s:{send:d}, r:{recv:d})".format(
+                    time=tupl[0], name=tupl[1],
+                    send=self.traffic.get_sent(tupl[3], 'all'),
+                    recv=self.traffic.get_recv(tupl[3], 'all'),
+                    )
+            s = "[color=%s]%s[/color]" % (color, s)
+            #TODO REPLACE IF EXISTS AND DO SAME IN AP
+            label = WMPressableLabel(text=s,
+                    #size_hint=(1, None), size=(0, 20),
+                    markup=True, key=tupl[3])
             label.bind(on_press=self.open_ap)
             self.station_hist_lst.box.add_widget(label)
         self.last_idx_hist = size

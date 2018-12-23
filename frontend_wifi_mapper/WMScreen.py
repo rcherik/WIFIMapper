@@ -5,6 +5,7 @@ class WMScreen(Screen):
 
     def __init__(self, **kwargs):
         self.current_screen = False
+        #Used to open label link
         self.wm_screen_type = ""
         super(WMScreen, self).__init__(**kwargs)
 

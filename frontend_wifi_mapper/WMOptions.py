@@ -2,6 +2,7 @@
 
 import time
 import os
+import sys
 
 """ Kivy """
 
@@ -34,8 +35,10 @@ class WMOptions(Popup):
     def _create_view(self, *args):
         self._set_channels()
         self.layout.channel_input.bind(focus=self._on_channel_input_focus)
-        self.layout.channel_input.bind(on_text_validate=self._on_channel_input_validate)
+        self.layout.channel_input.bind(
+                on_text_validate=self._on_channel_input_validate)
         self.layout.sniff_button.disabled = True if os.geteuid() else False
+        self._set_save_button(self.app.pcap_thread)
         self.update()
         self.event = Clock.schedule_interval(self.update, 0.9)
 
@@ -71,19 +74,22 @@ class WMOptions(Popup):
         if label.text != text:
             label.text = text
 
-    def _set_reading_label(self, reading):
-        s = "Reading" if reading else "Not Reading"
-        self._set_label(self.layout.read_label, s)
-
-    def _set_sniffing_label(self, sniffing):
-        if not os.geteuid():
-            s = "Sniffing" if sniffing else "Not Sniffing"
-        else:
+    def _set_status_label(self, thread):
+        s = "Chilling"
+        if thread.reading:
+            s = "Reading"
+        elif thread.sniffing:
+            s = "Sniffing"
+        elif os.geteuid():
             s = "Cannot sniff (need Root)"
-        self._set_label(self.layout.sniff_label, s)
+        self._set_label(self.layout.status_label, s)
 
     def _set_sniffing_interfaces(self, ifaces):
-        s = ', '.join(ifaces) if ifaces else "No interface"
+        if ifaces:
+            s = ', '.join(ifaces)
+            s = "Interfaces: " + s
+        else:
+            s = "No interface"
         self._set_label(self.layout.sniff_interfaces, s)
 
     def _set_time(self):
@@ -91,33 +97,68 @@ class WMOptions(Popup):
         passed = now - self.app.start_time
         hours, remain = divmod(passed, 3600)
         minutes, seconds = divmod(remain, 60)
+        s = "Time: "
         if hours:
-            s = "{:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds))
+            s += "{:0>2}:{:0>2}:{:0>2}".format(int(hours),
+                    int(minutes), int(seconds))
         else:
-            s = "{:0>2}:{:0>2}".format(int(minutes), int(seconds))
+            s += "{:0>2}:{:0>2}".format(int(minutes), int(seconds))
         self.layout.time_label.text = s
+
+    def _set_memory(self):
+        s = "Mem: "
+        giga, remain = divmod(self.app.process.memory_info()[0], 1000000000)
+        mega, rest = divmod(remain, 1000000)
+        if giga:
+            s += "{}G:{}M".format(giga, mega)
+        else:
+            s += "{}M".format(mega)
+        self._set_label(self.layout.memory_label, s)
 
     def _set_packets(self, n):
         s = "%d packets" % n
         self._set_label(self.layout.packet_label, s)
 
+    def _set_capture(self, thread):
+        if not thread.sniffing:
+            self.layout.capture_button.disabled = True
+            return
+        else:
+            self.layout.capture_button.disabled = False
+        s = ""
+        if thread.save_pkts:
+            s = "Stop capturing (%d)" % thread.n_saved_pkts
+        else:
+            s = "Capture packets"
+        self._set_label(self.layout.capture_button, s)
+
     def update(self, *args):
         t = self.app.pcap_thread
         if t:
-            self._set_reading_label(t.reading)
-            self._set_sniffing_label(t.sniffing)
+            self._set_status_label(t)
             self._set_sniffing_interfaces(t.ifaces)
             self._set_packets(t.n_pkts)
-            if not t.pkt_list:
-                self.layout.save_button.disabled = True
-            self.layout.channel_button.disabled = False if t.channel_thread else True
+            self.layout.channel_button.disabled = False\
+                    if t.channel_thread else True
+            self._set_capture(t)
+        self._set_memory()
         self._set_time()
+
+    def _set_save_button(self, thread):
+        s = "Save Pcap"
+        if thread and thread.n_saved_pkts:
+            self.layout.save_button.disabled = False
+            s = "Save Pcap (%d)" % thread.n_saved_pkts
+        else:
+            self.layout.save_button.disabled = True
+        self._set_label(self.layout.save_button, s)
 
     def _set_channels(self, *args):
         t = self.app.pcap_thread
         if t and t.channel_thread:
             self.layout.channel_input.disabled = False
-            s = ', '.join(str(c) for c in t.channel_thread.channels) if t.channel_thread.channels else ""
+            s = ', '.join(str(c) for c in t.channel_thread.channels)\
+                    if t.channel_thread.channels else ""
             self._set_label(self.layout.channel_input, s)
         else:
             self.layout.channel_input.disabled = True
@@ -130,6 +171,7 @@ class WMOptions(Popup):
 
     def dismiss_popup(self):
         self.popup.dismiss()
+        self.popup = None
 
     def read_pcap(self):
         if self.popup:
@@ -162,10 +204,24 @@ class WMOptions(Popup):
     def save(self, path, filename):
         if self.app.pcap_thread:
             self.app.pcap_thread.write_pcap(os.path.join(path, filename))
+            self.app.pcap_thread.reset_saved_pkts()
+            self._set_save_button(self.app.pcap_thread)
         self.dismiss_popup()
         self.app.get_focus()
 
     """ Set buttons """
+
+    def open_channel_stat(self):
+        t = self.app.pcap_thread
+        if t:
+            print(t.pkt_stats)
+
+    def capture_pcap(self):
+        t = self.app.pcap_thread
+        if t:
+            if not t.start_saving_pkts():
+                self._set_save_button(t)
+            self._set_capture(t)
 
     def _channel_interfaces_popup_dismissed(self, widget):
         t = self.app.pcap_thread
@@ -186,12 +242,15 @@ class WMOptions(Popup):
     def _interfaces_popup_dismissed(self, widget):
         if widget.confirmed():
             self.app.start_sniffing(widget.selected)
-            self.popup = None
             Clock.schedule_once(self._set_channels)
+        self.popup = None
 
     def sniff(self):
         if not self.popup:
-            self.popup = WMInterfacesPopup()
+            to_down = []
+            if self.app.pcap_thread and self.app.pcap_thread.ifaces:
+                to_down = self.app.pcap_thread.ifaces
+            self.popup = WMInterfacesPopup(to_down=to_down)
             self.popup.bind(on_dismiss=self._interfaces_popup_dismissed)
             self.popup.open()
 

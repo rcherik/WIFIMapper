@@ -7,7 +7,7 @@ import struct
 """ Our stuff """
 from wifi_mapper_utilities import is_broadcast, is_retransmitted
 from wifi_mapper_utilities import WM_AP, WM_STATION,\
-        WM_TRAFFIC, WM_VENDOR
+		WM_TRAFFIC, WM_VENDOR
 from taxonomy import identify_wifi_device
 
 """
@@ -124,7 +124,7 @@ class Station():
 
 	id = 0
 
-	def __init__(self, dic, bssid, oui_dict=None):
+	def __init__(self, dic, bssid, oui_dict=None, hop_channel=None):
 		self.dic = dic
 		self.bssid = bssid
 		self.oui = oui_dict.get(bssid[:8].upper(), "") if oui_dict else None
@@ -138,37 +138,63 @@ class Station():
 		self.model = None
 		self.connected = False
 		self.connected_history = []
-		self.channel = None
+		self.channel = hop_channel
 
 		Station.id += 1
 		self.id = Station.id
 		if bssid not in dic[WM_TRAFFIC]:
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
 
+	def get_ap_name(self, bssid):
+		obj = self.dic[WM_AP].get(bssid, None)
+		if obj:
+			return obj.get_name()
+		return bssid
+
+	def get_name(self):
+		if self.oui:
+			return "%s%s" % (self.oui[:8], self.bssid[8:])
+		return self.bssid
+
+	def set_channel(self, channel):
+		self.channel = channel
+
 	def set_connected(self, ap_bssid):
 		if not ap_bssid:
 			return
+		new_ap_obj = self.dic[WM_AP].get(ap_bssid, None)
 		if ap_bssid != self.ap_bssid:
 			time_str = time.strftime("%H:%M:%S", time.gmtime())
-			if self.ap_bssid in self.dic[WM_AP]:
-				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
+			current_ap_obj = self.dic[WM_AP].get(self.ap_bssid, None)
+			current_ap_name = current_ap_obj.get_name()\
+					if current_ap_obj else self.ap_bssid
+			new_ap_name = new_ap_obj.get_name()\
+					if new_ap_obj else ap_bssid
+
+			if current_ap_obj:
+				current_ap_obj.client_disconnected(self.bssid)
 			if self.ap_bssid:
 				self.connected_history.insert(0,
-						(time_str, self.ap_bssid, "disconnected"))
+						(time_str, current_ap_name, "disconnected", self.ap_bssid))
 			self.connected_history.insert(0,
-					(time_str, ap_bssid, "connected"))
+					(time_str, new_ap_name, "connected", ap_bssid))
+
 		self.connected = True
 		self.ap_bssid = ap_bssid
-		self.dic[WM_AP][ap_bssid].client_connected(self.bssid)
+		if new_ap_obj:
+			new_ap_obj.client_connected(self.bssid)
 
 	def set_disconnected(self):
 		if self.ap_bssid and self.connected:
 			self.connected = False
-			if self.ap_bssid in self.dic[WM_AP]:
-				self.dic[WM_AP][self.ap_bssid].client_disconnected(self.bssid)
+			current_ap_obj = self.dic[WM_AP].get(self.ap_bssid, None)
+			current_ap_name = current_ap_obj.get_name()\
+					if current_ap_obj else self.ap_bssid
+			if current_ap_obj:
+				current_ap_obj.client_disconnected(self.bssid)
 			time_str = time.strftime("%H:%M:%S", time.gmtime())
 			self.connected_history.insert(0,
-					(time_str, self.ap_bssid, "disconnected"))
+					(time_str, current_ap_name, "disconnected", self.ap_bssid))
 			self.ap_bssid = None
 
 	def set_rssi(self, rssi):
@@ -217,13 +243,14 @@ class Station():
 """
 class AccessPoint():
 
-	def __init__(self, dic, bssid, ssid=None, oui_dict=None):
+	def __init__(self, dic, bssid, ssid=None, oui_dict=None, hop_channel=None):
 		self.dic = dic
 		self.bssid = bssid
 		self.oui = oui_dict.get(bssid[:8].upper(), "") if oui_dict else None
 
 		self.ssid = None
 		self.channel = None
+		self.hop_channel = hop_channel
 		self.security = None
 		self.known = False
 		self.wps = None
@@ -236,6 +263,17 @@ class AccessPoint():
 
 		if bssid not in dic[WM_TRAFFIC]:
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
+
+	def get_station_name(self, bssid):
+		obj = self.dic[WM_STATION].get(bssid, None)
+		if obj:
+			return obj.get_name()
+		return bssid
+
+	def get_name(self):
+		if self.oui:
+			return "%s%s" % (self.oui[:8], self.bssid[8:])
+		return self.bssid
 
 	def set_rssi(self, rssi):
 		if rssi != self.rssi:
@@ -315,7 +353,6 @@ class AccessPoint():
 			return None
 		self.wps = int(decoded[6]) == 0x2
 
-
 	def add_beacon(self):
 		self.beacons += 1
 		self.known = True
@@ -324,7 +361,9 @@ class AccessPoint():
 		if bssid not in self.client_co:
 			time_str = time.strftime("%H:%M:%S", time.gmtime())
 			self.client_co.add(bssid)
-			self.client_hist_co.insert(0, (time_str, bssid, "connected"))
+			obj = self.dic[WM_STATION].get(bssid, None)
+			name = obj.get_name() if obj else bssid
+			self.client_hist_co.insert(0, (time_str, name, "connected", bssid))
 			self.n_clients += 1
 
 	def client_disconnected(self, bssid):
@@ -332,7 +371,9 @@ class AccessPoint():
 			self.n_clients -= 1
 			self.client_co.remove(bssid)
 		time_str = time.strftime("%H:%M:%S", time.gmtime())
-		self.client_hist_co.insert(0, (time_str, bssid, "disconnected"))
+		obj = self.dic[WM_STATION].get(bssid, None)
+		name = obj.get_name() if obj else bssid
+		self.client_hist_co.insert(0, (time_str, name, "disconnected", bssid))
 
 	def __getitem__(self, key):
 		return self.__dict__[key]

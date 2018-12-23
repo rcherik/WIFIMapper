@@ -13,8 +13,8 @@ class WMConfig():
     #app config
     version = "0.5"
     app_icon = os.path.join('Static', 'images', 'icon.png')
-    taxo_file = os.path.join('backend_wifi_mapper', 'C_Utilities', 'create_signature.c')
-    mac_list_file = os.path.join('mac_list')
+    taxo_file = os.path.join('backend_wifi_mapper', 'Utilities', 'C', 'create_signature.c')
+    mac_list_file = os.path.join('backend_wifi_mapper', 'Utilities', 'mac_list')
     click_color = "0000ff"
     max_card_per_screen = 16
     label_width_mult = 8

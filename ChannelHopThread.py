@@ -63,15 +63,15 @@ class ChannelHopThread(threading.Thread):
                     % (e.__class__.__name__ , e.message))
             import traceback
             traceback.print_exc()
-            return False
+            self.stop = True
         if ret != 0:
             if channel not in self.bad_channels:
                 self._say("bad channel {chan} - ret: {ret}"\
                         .format(ret=ret, chan=channel))
                 self.bad_channels.add(channel)
-            sys.exit(ret)
+            self.stop = True
         else:
-            self._say("hopped to %s" % channel)
+            #self._say("hopped to %s" % channel)
             self.current_chan = channel
         return True
 

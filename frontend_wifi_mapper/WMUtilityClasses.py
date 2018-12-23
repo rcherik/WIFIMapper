@@ -51,7 +51,7 @@ class WMTabbedPanel(TabbedPanel):
         if key in self.header_dic:
             self.header_dic[key].text = txt
 
-    def add_header(self, text, key, screen, **kwargs):
+    def add_header(self, text, key, screen, *args, **kwargs):
         if key not in self.header_dic:
             self.manager.add_widget(screen)
             header = WMPanelHeader(text=text,

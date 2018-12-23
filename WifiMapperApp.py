@@ -5,8 +5,13 @@ import os
 import signal
 import time
 
+from functools import partial
+
 import gi
 gi.require_version('Gtk', '3.0')
+
+""" Addon """
+import psutil
 
 """ Kivy """
 import kivy
@@ -19,7 +24,7 @@ from kivy.config import Config
 Config.set('graphics', 'width', '1280')
 Config.set('graphics', 'height', '800')
 """ Removes right clicks dots on gui """
-Config.set('input', 'mouse', 'mouse,disable_on_activity')
+Config.set('input', 'mouse', 'mouse,disable_multitouch,disable_on_activity')
 Config.set('kivy', 'exit_on_escape', 0)
 Config.set('kivy', 'pause_on_minimize', 1)
 Config.set('kivy', 'desktop', 1)
@@ -59,6 +64,7 @@ class WifiMapper(App):
         App.__init__(self)
         self.args = args
         self.path = os.path.dirname(os.path.abspath(__file__))
+        self.process = psutil.Process(os.getpid())
         Config.set('kivy', 'log_level', 'debug' if args.debug else 'info')
         Config.set('kivy', 'log_dir', os.path.join(self.path, "logs"))
         self.panel = None
@@ -138,7 +144,9 @@ class WifiMapper(App):
         self.panel.change_header(key, txt)
 
     def add_header(self, text, key, screen, **kwargs):
-        self.panel.add_header(text, key, screen, **kwargs)
+        Clock.schedule_once(partial(self.panel.add_header,
+                                    text, key, screen, **kwargs))
+        #self.panel.add_header(text, key, screen, **kwargs)
 
     def remove_header(self, key):
         self.panel.remove_header(key)
@@ -294,12 +302,14 @@ class WifiMapper(App):
     def stop_pcap_thread(self):
         if not self.pcap_thread:
             return
+        """
         if self.pcap_thread.channel_thread:
             self.pcap_thread.channel_thread.stop = True
             self.pcap_thread.channel_thread.join(timeout=1)
             self.pcap_thread.channel_thread = None
+        """
         self.pcap_thread.stop_thread()
         if self.pcap_thread.started:
-            self.pcap_thread.join(timeout=1)
+            self.pcap_thread.join(timeout=3)
             self._say("Pcap thread stopped")
             self.pcap_thread = None

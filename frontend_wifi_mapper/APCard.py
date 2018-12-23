@@ -109,9 +109,7 @@ class APCard(WMCard.WMCard):
             label.text = string
 
     def get_name(self):
-        if self.ap.oui:
-            return "%s%s" % (self.ap.oui[:8], self.ap.bssid[8:])
-        return self.ap.bssid
+        return self.ap.get_name()
 
     def _set_bssid(self):
         s = "[b]%s[/b]" % self.ap.bssid

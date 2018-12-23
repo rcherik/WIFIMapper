@@ -31,6 +31,8 @@ class PcapThread(threading.Thread):
     compiled_files = set()
     #Pkts sniffed
     sniffed_pkt_list = []
+    #Channel pkt stat
+    channel_pkt_stats = [0 for i in range(1, 15)]
 
     def __init__(self, interface=None, pcap_file=None, no_hop=False,
                                                 debug=None, app=None):
@@ -53,10 +55,12 @@ class PcapThread(threading.Thread):
         self.stop = False
         self.get_input = True
         #Scapy pkts var
-        self.pkt_list = PcapThread.sniffed_pkt_list
-        self.n_pkts = 0
         self.pkt_dic = PcapThread.wm_pkt_dict
-        self.pkt_stats = {}
+        self.pkt_list = PcapThread.sniffed_pkt_list
+        self.save_pkts = False
+        self.n_saved_pkts = 0
+        self.n_pkts = 0
+        self.pkt_stats = PcapThread.channel_pkt_stats
         self.reading = False
         self.sniffing = False
 
@@ -109,10 +113,11 @@ class PcapThread(threading.Thread):
         current = None
         if self.channel_thread:
             current = self.channel_thread.current_chan
-        if self.snifs:
+        if self.snifs and self.save_pkts:
             self.pkt_list.append(pkt)
+            self.n_saved_pkts += 1
         if current:
-            self.pkt_stats[current] = self.pkt_stats.get(current, 0) + 1
+            self.pkt_stats[current] += 1
         start_parsing_pkt(self.pkt_dic, pkt, channel=current)
         self.n_pkts += 1
         self._start_update_timer()
@@ -131,6 +136,15 @@ class PcapThread(threading.Thread):
             PcapThread SNIFFING methods
         ****
     """
+
+    def reset_saved_pkts(self):
+        self.n_saved_pkts = 0
+        PcapThread.sniffed_pkt_list = []
+        self.pkt_list = PcapThread.sniffed_pkt_list
+
+    def start_saving_pkts(self):
+        self.save_pkts = not self.save_pkts
+        return self.save_pkts
 
     def start_sniffing(self, ifaces):
         if isinstance(ifaces, basestring):
@@ -157,6 +171,7 @@ class PcapThread(threading.Thread):
             self.sniffing = False
             while not self.get_input:
                 pass
+        self._say("Stopped sniffing")
         self._stop_channel_thread()
 
     """
@@ -342,7 +357,7 @@ class PcapThread(threading.Thread):
     """ Stop thread """
 
     def stop_thread(self):
-        self._stop_channel_thread()
+        #self._stop_channel_thread()
         self.stop = True
 
     def _stop_channel_thread(self):

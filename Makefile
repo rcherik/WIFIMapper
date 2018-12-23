@@ -47,7 +47,7 @@ all: sniff
 
 install:
 	@printf "Installing dependencies for wifi mapper\n\n"
-	$(SUDO) /usr/bin/apt install git gcc python-kivy python-matplotlib python-docutils
+	$(SUDO) /usr/bin/apt install git gcc python-kivy python-matplotlib python-docutils python-psutil
 	pip install kivy-garden --user
 	garden install matplotlib
 ifndef SCAPY
@@ -110,7 +110,7 @@ clean:
 	rm -f *.pyc
 	rm -f backend_wifi_mapper/*.pyc
 	rm -f frontend_wifi_mapper/*.pyc
-	rm -rf backend_wifi_mapper/C_Utilities/create_signature
+	rm -rf backend_wifi_mapper/Utilities/C/create_signature
 
 .PHONY: managed monitor interface read read_1 read_2 clean sniff test install
 .IGNORE:

@@ -60,7 +60,6 @@ class CardListScreen(WMScreen.WMScreen):
         self.cards = []
         self.loading = False
         self.has_to_sort = False
-        self.event = None
         self.to_search = None
         self.first_sort = 'clients' if self.show_ap else 'bssid'
         """ Important """
@@ -143,7 +142,7 @@ class CardListScreen(WMScreen.WMScreen):
         if self.show_ap:
             #TODO change sort: separate those with sig and those with not, sort them and
             self._add_sort_value('bssid', 'ap.bssid', False)
-            self._add_sort_value('oui', 'ap.oui', True)
+            self._add_sort_value('oui', 'ap.oui', False)
             self._add_sort_value('signal', 'ap.rssi', True)
             self._add_sort_value('clients', 'ap.n_clients', True)
             self._add_sort_value('channels', 'ap.channel', False)
@@ -155,8 +154,8 @@ class CardListScreen(WMScreen.WMScreen):
         if self.show_station:
             #TODO change after card station
             self._add_sort_value('bssid', 'station.bssid', False)
-            self._add_sort_value('ap', 'station.ap_bssid', True)
-            self._add_sort_value('oui', 'station.oui', True)
+            self._add_sort_value('ap', 'station.ap_bssid', False)#####
+            self._add_sort_value('oui', 'station.oui', False)
             self._add_sort_value('signal', 'station.rssi', True)
             self._add_sort_value('sent', 'traffic.sent', True)
             self._add_sort_value('recv', 'traffic.recv', True)
@@ -342,25 +341,21 @@ class CardListScreen(WMScreen.WMScreen):
     def update_gui(self, dic, current=True):
         """ Updates GUI - must never stop adding cards while parsing pcap """
         self.current_screen = current
-        self.event = None
+
         if self.show_ap:
             ap = dic[WM_AP]
-            #for key, value in ap.iteritems():
             for key in dic[WM_CHANGES][WM_AP]:
                 traffic = dic[WM_TRAFFIC].get(key, None)
                 self._set_ap_card(key, ap[key], traffic)
                 self.has_to_sort = True
+
         if self.show_station:
             sta = dic[WM_STATION]
-            #for key, value in sta.iteritems():
             for key in dic[WM_CHANGES][WM_STATION]:
                 traffic = dic[WM_TRAFFIC].get(key, None)
-                if key not in sta:
-                    #TODO
-                    print("wtf: " + key)
-                    continue
                 self._set_station_card(key, sta[key], traffic)
                 self.has_to_sort = True
+
         if not self.ui_paused:
             #Pagination
             self._make_pages()
@@ -379,10 +374,9 @@ class CardListScreen(WMScreen.WMScreen):
         """
         if self.loading:
             return
-        self._say("Reloading GUI")
+        #self._say("Reloading GUI")
         self.current_screen = current
         self.loading = True
-        self.event = None
         self._clear_cards()
         self.browsing_card = True
         for key, value in self.card_dic.iteritems():
@@ -483,11 +477,11 @@ class CardListScreen(WMScreen.WMScreen):
     """ Pause ui methods """
 
     def set_ui_paused(self):
-        self._say("Paused")
+        #self._say("Paused")
         self.ui_paused = True
 
     def set_ui_unpaused(self):
-        self._say("Unpaused")
+        #self._say("Unpaused")
         self.ui_paused = False
         self.reload_gui(current=True)
 

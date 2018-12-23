@@ -39,20 +39,24 @@ def add_traffic(dic, addr):
 			dic[WM_TRA][addr] = Traffic(dic, addr)
 
 
-def add_ap(dic, bssid):
+def add_ap(dic, bssid, channel=None):
 	if not is_broadcast(bssid):
 		if bssid not in dic[WM_AP]:
-			dic[WM_AP][bssid] = AccessPoint(dic, bssid, oui_dict=dic[WM_VENDOR])
+			dic[WM_AP][bssid] = AccessPoint(dic, bssid,
+					hop_channel=channel,
+					oui_dict=dic[WM_VENDOR])
 			return dic[WM_AP][bssid]
 		else:
 			return dic[WM_AP][bssid]
 	else:
 		return None
 
-def add_station(dic, bssid):
+def add_station(dic, bssid, channel=None):
 	if not is_broadcast(bssid) and isinstance(bssid, str):
 		if bssid not in dic[WM_STATION]:
-			dic[WM_STATION][bssid] = Station(dic, bssid, oui_dict=dic[WM_VENDOR])
+			dic[WM_STATION][bssid] = Station(dic, bssid,
+					hop_channel=channel,
+					oui_dict=dic[WM_VENDOR])
 			return dic[WM_STATION][bssid]
 		else:
 			return dic[WM_STATION][bssid]
@@ -108,38 +112,38 @@ def handle_traffic(pkt, dic, src, dst):
 			dic[WM_TRA][dst] = Traffic(dic, dst)
 		dic[WM_TRA][dst].add_recv(src)
 
-def ap_sender(pkt, dic, src, dst):
+def ap_sender(pkt, dic, src, dst, channel=None):
 	#sender is an AP, do we know it ?
 	if src in dic[WM_AP]:
 		#yes we do
 		ap = dic[WM_AP][src]
 	else:
 		#no we don't, create it
-		ap = add_ap(dic, src)
+		ap = add_ap(dic, src, channel=channel)
 	#sender is an AP, receiver must be an STA. Do we know it ?
 	if dst in dic[WM_STA]:
 		#yes we do
 		sta = dic[WM_STA][dst]
 	else:
 		#no we don't, create it
-		sta = add_station(dic, dst)
+		sta = add_station(dic, dst, channel=channel)
 	return ap, sta
 
-def sta_sender(pkt, dic, src, dst):
+def sta_sender(pkt, dic, src, dst, channel=None):
 	#sender is an STA, do we know it ?
 	if src in dic[WM_STA]:
 		#yes we do
 		sta = dic[WM_STA][src]
 	else:
 		#no we don't, create it
-		sta = add_station(dic, src)
+		sta = add_station(dic, src, channel=channel)
 	#sender is an STA, receiver must be an AP. Do we know it ?
 	if dst in dic[WM_AP]:
 		#yes we do
 		ap = dic[WM_AP][dst]
 	else:
 		#no we don't, create it
-		ap = add_ap(dic, dst)
+		ap = add_ap(dic, dst, channel=channel)
 	return ap, sta
 
 def parse_pkt(pkt, dic, channel=None):
@@ -155,9 +159,9 @@ def parse_pkt(pkt, dic, channel=None):
 	#check if we know both devices, create them if we don't
 	#Note: ap or sta will be None if broadcast
 	if src == ds[WM_DS_AP]:
-		ap, sta = ap_sender(pkt, dic, src, dst)
+		ap, sta = ap_sender(pkt, dic, src, dst, channel=channel)
 	elif src == ds[WM_DS_STATION]:
-		ap, sta = sta_sender(pkt, dic, src, dst)
+		ap, sta = sta_sender(pkt, dic, src, dst, channel=channel)
 	else:
 		#TODO FIX WEIRD MULTICAST
 		return
@@ -216,9 +220,11 @@ def start_parsing_pkt(dic, pkt, channel=None):
 	else:
 		return False
 	#Sometimes things like printer are both station and AP
+	"""
 	for key, value in dic[WM_AP].iteritems():
 		if key in dic[WM_STATION]:
 			dic[WM_STATION].pop(key, None)
+	"""
 	return True
 
 # vim:noexpandtab:autoindent:tabstop=4:shiftwidth=4:

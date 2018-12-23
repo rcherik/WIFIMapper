@@ -106,9 +106,7 @@ class StationCard(WMCard.WMCard):
             label.text = string
 
     def get_name(self):
-        if self.station.oui:
-            return "%s%s" % (self.station.oui[:8], self.station.bssid[8:])
-        return self.station.bssid
+        return self.station.get_name()
 
     def _set_bssid(self):
         s = "[b]%s[/b]" % self.station.bssid
@@ -119,11 +117,12 @@ class StationCard(WMCard.WMCard):
 
     def _set_ap_bssid(self):
         s = ""
-        if self.station.ap_bssid:
-            s = "[i]AP:[/i] [b]%s[/b]" % (self.station.ap_bssid)
+        ap_bssid = self.station.ap_bssid
+        if ap_bssid:
+            s = "[i]AP:[/i] [b]%s[/b]" % (self.station.get_ap_name(ap_bssid))
         if self.station.channel:
             s += " (%s)" % self.station.channel
-        self._set_label(self.info_box.ap_bssid, s, copy=self.station.ap_bssid)
+        self._set_label(self.info_box.ap_bssid, s, copy=ap_bssid)
         self._check_width(len(s))
 
     def _set_probes(self):
