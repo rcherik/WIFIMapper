@@ -82,6 +82,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.graph_btn_create = None
         self.graph_btn_cancel = None
         self.graph_btn_update = None
+        self.graph_canvas = None
         self.connected_label = {}
         self.checkboxed_station = set()
 	super(APCardInfoScreen, self).__init__(**kwargs)
@@ -264,14 +265,8 @@ class APCardInfoScreen(WMScreen.WMScreen):
         ax.bar(list(keys), d.values())
         ax.set_ylabel('packets')
         ax.set_xlabel(time_value)
-        print(traffic.timeline)
-        print(d)
-        print(keys)
-        print(list(np.arange(0, keys[-1] + 1, step=1)))
-        print(list(np.arange(0, (len(keys)) * step, step=step)))
         ax.set_xticks(np.arange(0, keys[-1] + 1, step=1))
         ax.set_xticklabels(np.arange(0, (len(keys) + 1) * step, step=step))
-        #ax.set_xticks(list(np.arange(0, keys[-1] + 1, step=1)), np.arange(0, (len(keys)) * step, step=step))
         return fig.canvas
 
     def _set_graph_btn(self):
