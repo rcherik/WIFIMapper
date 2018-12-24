@@ -142,6 +142,8 @@ class WMPanelHeader(TabbedPanelHeader):
         self.ready = True
 
     def on_touch_down(self, touch):
+        if super(WMPanelHeader, self).on_touch_down(touch):
+            return True
         if self.collide_point(*touch.pos):
             if not hasattr(touch, "button"):
                 return super(WMPanelHeader, self).on_touch_down(touch)
@@ -150,7 +152,7 @@ class WMPanelHeader(TabbedPanelHeader):
                 return True
             if touch.button in ("middle", "right"):
                 return False
-        return super(WMPanelHeader, self).on_touch_down(touch)
+        return False
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and hasattr(self.args, "debug")\
@@ -158,6 +160,57 @@ class WMPanelHeader(TabbedPanelHeader):
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
 
+from kivy.uix.boxlayout import BoxLayout
+
+class WMCard(BoxLayout):
+
+    def __init__(self, **kwargs):
+        self.clicked = False
+        self.type = None
+        super(WMCard, self).__init__(**kwargs)
+
+    def _get_nested_attr(self, value):
+        try:
+            return attrgetter(value)(self)
+        except:
+            return None
+
+    def get_name(self):
+        return ""
+
+    def get_value(self, value):
+        return self._get_nested_attr(value)
+
+    def get_obj(self):
+        pass
+
+    def get_info_screen(self):
+        return None
+
+    def _say(self, s, **kwargs):
+        if hasattr(self, "args") and self.args.debug:
+            s = "%s: %s" % (self.__class__.__name__, s)
+            print(s, **kwargs)
+        else:
+            print(s, **kwargs)
+ 
+    def on_pressed(self, instance, pos):
+        self._say("pressed at {pos}".format(pos=pos))
+
+    def on_touch_up(self, touch):
+        if super(WMCard, self).on_touch_up(touch):
+            return True
+        if self.collide_point(*touch.pos)\
+                and hasattr(touch, "button")\
+                and touch.button == "left":
+            self.pressed = touch.pos
+            self.clicked = not self.clicked
+            self.draw_background(self, self.pos)
+            return True
+        return False
+
+    def draw_background(self, widget, prop):
+        pass
 
 from kivy.uix.screenmanager import Screen
 
@@ -451,12 +504,11 @@ class WMSelectableLabel(Label):
         self.event_unclick = Clock.schedule_once(self.set_unclicked, 0.2)
 
     def on_touch_down(self, touch):
-	if self.disabled or not self.hidden_text:
-	    return False
-	if not self.collide_point(*touch.pos):
-	    return False
 	if super(WMSelectableLabel, self).on_touch_down(touch):
-	    return True
+            return True
+	if self.disabled or not self.hidden_text\
+                or not self.collide_point(*touch.pos):
+	    return False
         if not self.can_copy\
             or (hasattr(touch, "button") and touch.button == 'right'):
             return True
@@ -528,16 +580,17 @@ class WMImageLink(Image):
         super(WMImageLink, self).__init__(**kwargs)
 
     def on_touch_up(self, touch):
-        if not self.card:
-            return
-        if self.collide_point(*touch.pos) and hasattr(touch, "button")\
+        if super(WMImageLink, self).on_touch_up(touch):
+            return True
+        if self.card and self.collide_point(*touch.pos)\
+                and hasattr(touch, "button")\
                 and touch.button == "left":
             screen = self.card.get_info_screen()
             App.get_running_app().add_header(
                     "%s: %s" % (self.card.type, self.card.get_name()),
                     self.card.key, screen)
             return True
-        return super(WMImageLink, self).on_touch_up(touch)
+        return False
 
 from kivy.uix.togglebutton import ToggleButton
 from kivy.properties import ObjectProperty

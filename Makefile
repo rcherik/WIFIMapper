@@ -111,7 +111,7 @@ clean:
 	rm -f backend_wifi_mapper/*.pyc
 	rm -f frontend_wifi_mapper/*.pyc
 
-fclean:
+fclean: clean
 	rm -rf logs/*.txt
 	rm -f wifimapper.ini
 	rm -rf backend_wifi_mapper/Utilities/C/create_signature

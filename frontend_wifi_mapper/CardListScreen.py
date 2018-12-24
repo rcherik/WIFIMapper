@@ -572,11 +572,13 @@ class WMCardScrollView(ScrollView):
     def key_scroll_up(self, animate=True):
 	return self.key_scroll_y(-60, animate)
 
+    """
     def on_touch_down(self, touch):
 	super(WMCardScrollView, self).on_touch_down(touch)
 
     def on_touch_up(self, touch):
 	super(WMCardScrollView, self).on_touch_up(touch)
+    """
 
     def on_touch_move(self, touch):
 	super(WMCardScrollView, self).on_touch_move(touch)

@@ -12,10 +12,9 @@ from kivy.uix.screenmanager import Screen
 from operator import attrgetter
 from kivy.utils import escape_markup
 """ Our stuff """
-import WMCard
 import WMConfig
 from APCardInfoScreen import APCardInfoScreen
-from WMUtilityClasses import WMSelectableLabel, WMImageLink
+from WMUtilityClasses import WMSelectableLabel, WMImageLink, WMCard
 
 """ Important no nesting rule """
 
@@ -30,7 +29,7 @@ class APCardDataBox(BoxLayout):
 
 Builder.load_file(os.path.join("Static", "apcard.kv"))
 
-class APCard(WMCard.WMCard):
+class APCard(WMCard):
 
     info_box = ObjectProperty(None)
     security_box = ObjectProperty(None)

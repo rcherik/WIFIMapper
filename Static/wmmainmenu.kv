@@ -24,6 +24,7 @@
             memory_label: memory_label
             packet_label: packet_label
             channel_button: channel_button
+            channel_stat_button: channel_stat_button
             channel_input: channel_input
             canvas:
                 Color:
@@ -94,9 +95,8 @@
                 id: channel_button
                 text: 'Change interface'
                 on_release: root.set_channel_interface()
-
 			Button:
-				id: channel_stat
+				id: channel_stat_button
 				text: "Channel stat"
 				on_release: root.open_channel_stat()
 			Widget:

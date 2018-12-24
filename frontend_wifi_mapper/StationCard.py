@@ -10,8 +10,7 @@ from kivy.properties import ObjectProperty
 from kivy.clock import Clock
 """ Our stuff """
 from StationCardInfoScreen import StationCardInfoScreen
-from WMUtilityClasses import WMSelectableLabel
-import WMCard
+from WMUtilityClasses import WMSelectableLabel, WMCard
 import WMConfig
 
 """ Important no nesting rule """
@@ -24,7 +23,7 @@ class StationCardDataBox(BoxLayout):
 
 Builder.load_file(os.path.join("Static", "stationcard.kv"))
 
-class StationCard(WMCard.WMCard):
+class StationCard(WMCard):
 
     info_box = ObjectProperty(None)
     data_box = ObjectProperty(None)

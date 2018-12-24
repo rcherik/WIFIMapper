@@ -195,7 +195,7 @@ class WifiMapper(App):
 
     def build_settings(self, settings):
         settings.add_json_panel(
-            'General', self.config, data='''[
+            'General Fajo', self.config, data='''[
                     { "type": "title",
                     "title": "Remi"},
 
@@ -208,7 +208,7 @@ class WifiMapper(App):
             ]''')
 
         settings.add_json_panel(
-            'GUI', self.config, data='''[
+            'Graphical User Interface', self.config, data='''[
                     { "type": "title",
                     "title": "Refresh"},
 
@@ -230,7 +230,7 @@ class WifiMapper(App):
                     ]''')
 
         settings.add_json_panel(
-            'Channel', self.config, data='''[
+            'Wifi Channels', self.config, data='''[
                     { "type": "title",
                     "title": "Hopping"},
 

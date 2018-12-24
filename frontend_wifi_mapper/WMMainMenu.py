@@ -150,11 +150,13 @@ class WMMainMenu(Popup):
         t = self.app.pcap_thread
         if t and t.channel_thread:
             self.layout.channel_input.disabled = False
+            self.layout.channel_stat_button.disabled = False
             s = ', '.join(str(c) for c in t.channel_thread.channels)\
                     if t.channel_thread.channels else ""
             self._set_label(self.layout.channel_input, s)
         else:
             self.layout.channel_input.disabled = True
+            self.layout.channel_stat_button.disabled = True
 
     """ Save Load Pcap """
 
@@ -171,7 +173,7 @@ class WMMainMenu(Popup):
         if self.popup:
             self.popup.dismiss()
         content = LoadDialog(load=self.load,
-                path=self.app.path,
+                path=os.path.join(self.app.path, 'Traces_pcap'),
                 cancel=self.dismiss_popup)
         self.popup = Popup(title="Load file",
                             content=content,
@@ -182,7 +184,7 @@ class WMMainMenu(Popup):
         if self.popup:
             self.popup.dismiss()
         content = SaveDialog(save=self.save,
-                path=self.app.path,
+                path=os.path.join(self.app.path, 'Traces_pcap'),
                 cancel=self.dismiss_popup)
         content.text_input.bind(focus=self.save_pcap_input_focus)
         self.popup = Popup(title="Save file",
