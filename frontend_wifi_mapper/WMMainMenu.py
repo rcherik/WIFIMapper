@@ -18,9 +18,9 @@ from WMUtilityClasses import WMInterfacesPopup
 from WMFileChooser import LoadDialog, SaveDialog
 
 
-Builder.load_file(os.path.join('Static', 'wmoptions.kv'))
+Builder.load_file(os.path.join('Static', 'wmmainmenu.kv'))
 
-class WMOptions(Popup):
+class WMMainMenu(Popup):
 
     layout = ObjectProperty()
 
@@ -28,7 +28,8 @@ class WMOptions(Popup):
         self.app = app
         self.width_mult = WMConfig.conf.label_width_mult
         self.popup = None
-	super(WMOptions, self).__init__(**kwargs)
+        self.event = None
+	super(WMMainMenu, self).__init__(**kwargs)
         self.auto_dismiss = False
 	Clock.schedule_once(self._create_view)
 
@@ -53,18 +54,10 @@ class WMOptions(Popup):
         t = self.app.pcap_thread
         if not t or not t.channel_thread:
             return
-        try:
-            channels = []
-            for s in widget.text.split(','):
-                c = int(s)
-                if c >= 0 and c <= 13:
-                    channels.append(c)
-            if channels:
-                widget.text = ', '.join(str(c) for c in channels)
-        except ValueError as e:
+        if t.channel_thread.set_channel(widget.text):
+            widget.text = ', '.join(str(c) for c in t.channel_thread.channels)
+        else:
             self._set_channels()
-            return
-        t.channel_thread.set_channel(channels)
 
     """ Set UI """
 
@@ -170,8 +163,9 @@ class WMOptions(Popup):
             self.app.get_focus()
 
     def dismiss_popup(self):
-        self.popup.dismiss()
-        self.popup = None
+        if self.popup:
+            self.popup.dismiss()
+            self.popup = None
 
     def read_pcap(self):
         if self.popup:

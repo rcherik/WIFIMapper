@@ -110,9 +110,13 @@ clean:
 	rm -f *.pyc
 	rm -f backend_wifi_mapper/*.pyc
 	rm -f frontend_wifi_mapper/*.pyc
+
+fclean:
+	rm -rf logs/*.txt
+	rm -f wifimapper.ini
 	rm -rf backend_wifi_mapper/Utilities/C/create_signature
 
-.PHONY: managed monitor interface read read_1 read_2 clean sniff test install
+.PHONY: managed monitor interface read read_1 read_2 clean sniff test install fclean
 .IGNORE:
-.SILENT: clean
+.SILENT: clean fclean
 

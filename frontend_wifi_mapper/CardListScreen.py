@@ -16,13 +16,12 @@ from APCard import APCard
 from StationCard import StationCard
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
-import WMScreen
 import WMConfig
-from WMUtilityClasses import WMPageToggleButton
+from WMUtilityClasses import WMPageToggleButton, WMScreen
 
 Builder.load_file(os.path.join("Static", "cardlistscreen.kv"))
 
-class CardListScreen(WMScreen.WMScreen):
+class CardListScreen(WMScreen):
 
     scroll_view = ObjectProperty(None)
     main_layout = ObjectProperty(None)
@@ -86,11 +85,11 @@ class CardListScreen(WMScreen.WMScreen):
         self.action_bar.search_input.bind(focus=self.on_input_focus)
         self.action_bar.label_curr_page.text = "Page %d" % self.current_page
         self.action_bar.clear_button.bind(on_press=self._clear_input)
-        self.action_bar.action_previous.bind(on_press=self.open_options)
+        self.action_bar.action_previous.bind(on_press=self.open_main_menu)
         Clock.schedule_once(self._is_ready)
 
-    def open_options(self, widget):
-        App.get_running_app().open_options()
+    def open_main_menu(self, widget):
+        App.get_running_app().open_main_menu()
 
     def _is_ready(self, *args):
         """ All is done by now """

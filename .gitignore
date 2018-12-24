@@ -1,3 +1,5 @@
 *.swp
 *.pyc
 *.txt
+*.ini
+*create_signature

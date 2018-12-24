@@ -69,7 +69,7 @@ class PcapThread(threading.Thread):
         self._compile_c_file(TAXONOMY_C_FILE)
 
         #Options
-        self.update_time = WMConfig.conf.gui_update_time
+        self.update_time = float(self.app.config.get('GUI', 'UpdateTime'))
 
         #Other classes
         self.channel_thread = None
@@ -77,6 +77,7 @@ class PcapThread(threading.Thread):
 
     def run(self):
         """ Thread either sniff or waits """
+
         self.started = True
         self._say("using scapy (%s)" % scapy.config.conf.version)
         self._wait_for_gui()

@@ -14,13 +14,13 @@ class WMScreenManager(ScreenManager):
     ap_screen = ObjectProperty(None)
     station_screen = ObjectProperty(None)
 
-    def __init__(self, **kwargs):
+    def __init__(self, app=None, args=None, **kwargs):
         """ Init screens before super for WMTabbedPanel switch_to """
         self.to_init_screens = []
-        self.args = kwargs.get('args', None)
+        self.args = args
         self._init_screens(**kwargs)
-        self.app = kwargs.get('app', None)
-        self.pcap_thread = kwargs.get('pcap_thread', None)
+        self.app = app
+        self.pcap_thread = self.app.pcap_thread
         super(WMScreenManager, self).__init__(**kwargs)
         self.transition = SlideTransition()
         for screen in self.to_init_screens:
@@ -32,7 +32,7 @@ class WMScreenManager(ScreenManager):
 
     def _manager_ready(self, *args):
         """ When kv loaded, may start thread """
-        if not self.pcap_thread.started:
+        if self.pcap_thread and not self.pcap_thread.started:
             self.pcap_thread.start()
         self.app.app_ready()
 

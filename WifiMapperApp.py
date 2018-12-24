@@ -21,15 +21,15 @@ if kivy.__version__ >= "1.9.1":
     matplotlib.use('module://kivy.garden.matplotlib.backend_kivy')
 
 from kivy.config import Config
+
 Config.set('graphics', 'width', '1280')
 Config.set('graphics', 'height', '800')
-""" Removes right clicks dots on gui """
+# Removes right clicks dots on gui
 Config.set('input', 'mouse', 'mouse,disable_multitouch,disable_on_activity')
 Config.set('kivy', 'exit_on_escape', 0)
 Config.set('kivy', 'pause_on_minimize', 1)
 Config.set('kivy', 'desktop', 1)
 Config.set('kivy', 'log_enable', 1)
-#Config.set('kivy', 'log_name', "WMLog.log")
 
 from kivy.clock import Clock
 Clock.max_iteration = 20
@@ -47,7 +47,7 @@ from frontend_wifi_mapper.CardListScreen import CardListScreen
 from frontend_wifi_mapper.WMScreenManager import WMScreenManager
 from frontend_wifi_mapper.WMUtilityClasses import \
         WMPanelHeader, WMTabbedPanel, WMConfirmPopup
-from frontend_wifi_mapper.WMOptions import WMOptions
+from frontend_wifi_mapper.WMMainMenu import WMMainMenu
 
 Window.set_icon(WMConfig.conf.app_icon)
 Window.icon = WMConfig.conf.app_icon
@@ -71,12 +71,7 @@ class WifiMapper(App):
         self.manager = None
         self.paused = False
         self.popup = None
-        """ Thread """
-        self.pcap_thread = PcapThread(interface=self.args.interface,
-                                        pcap_file=self.args.pcap,
-                                        no_hop=self.args.no_hop,
-                                        debug=self.args.debug,
-                                        app=self)
+        self.pcap_thread = None
         """ Keyboard """
         self.shift = False
         self.alt = False
@@ -102,17 +97,17 @@ class WifiMapper(App):
         self._open_popup_confirm("Do you want to start parsing %s" % path,
                 self._dismiss_dragged_file, auto_dismiss=False)
 
-    """ Options """
+    """ Main Menu """
 
-    def _options_popup_dismiss(self, widget):
-	super(WMOptions, widget).on_dismiss()
+    def _main_menu_popup_dismiss(self, widget):
+	super(WMMainMenu, widget).on_dismiss()
         self.popup = None
 
-    def open_options(self):
+    def open_main_menu(self):
         if self.popup:
             self.popup.dismiss()
-        self.popup = WMOptions(self)
-        self.popup.bind(on_dismiss=self._options_popup_dismiss)
+        self.popup = WMMainMenu(self)
+        self.popup.bind(on_dismiss=self._main_menu_popup_dismiss)
         self.popup.open()
 
     """ Header global """
@@ -137,8 +132,8 @@ class WifiMapper(App):
         self.pcap_thread.start()
 
     def app_ready(self):
-        if self.pcap_thread.no_purpose():
-            self.open_options()
+        if self.pcap_thread and self.pcap_thread.no_purpose():
+            self.open_main_menu()
 
     def change_header(self, key, txt):
         self.panel.change_header(key, txt)
@@ -168,6 +163,99 @@ class WifiMapper(App):
     def is_input(self):
         return self.pcap_thread.is_input()
 
+    """ Config """
+
+    def build_config(self, config):
+        config.adddefaultsection('General')
+        config.setdefault('General', 'Version', WMConfig.conf.version)
+        config.setdefault('General', 'IsFajo', "Vrai")#######TODO
+
+        config.adddefaultsection('GUI')
+        config.setdefault('GUI', 'UpdateTime',
+                WMConfig.conf.gui_update_time)
+        config.setdefault('GUI', 'AppIcon',
+                WMConfig.conf.app_icon)
+        config.setdefault('GUI', 'CardsPerScreen',
+                WMConfig.conf.max_card_per_screen)
+
+        config.adddefaultsection('Channel')
+        config.setdefault('Channel', 'Hop',
+                'Off' if self.args.no_hop else 'On')
+        config.setdefault('Channel', 'HopTime',
+                WMConfig.conf.channel_hop_time)
+        config.setdefault('Channel', 'Channels',
+                ', '.join(str(c) for c in WMConfig.conf.channels))
+
+
+    def on_config_change(self, config, section, key, value):
+        self._say("Changing conf obj in section %s with key %s value %s"\
+                % (section, key, value))
+
+    """ Setting """
+
+    def build_settings(self, settings):
+        settings.add_json_panel(
+            'General', self.config, data='''[
+                    { "type": "title",
+                    "title": "Remi"},
+
+                    {"type": "options",
+                    "title": "Remi status",
+                    "desc": "Est-ce que remi est un fajo",
+                    "section": "General",
+                    "key": "IsFajo",
+                    "options": ["Vrai", "Faux", "Fuccbois"]}
+            ]''')
+
+        settings.add_json_panel(
+            'GUI', self.config, data='''[
+                    { "type": "title",
+                    "title": "Refresh"},
+
+                    {"type": "numeric",
+                    "title": "GUI update time",
+                    "desc": "Time between each GUI refresh",
+                    "section": "GUI",
+                    "key": "UpdateTime"},
+
+                    { "type": "title",
+                    "title": "Card List Screen"},
+
+                    {"type": "numeric",
+                    "title": "Cards per screen",
+                    "desc": "Number of cards listed before paging",
+                    "section": "GUI",
+                    "key": "CardsPerScreen"}
+
+                    ]''')
+
+        settings.add_json_panel(
+            'Channel', self.config, data='''[
+                    { "type": "title",
+                    "title": "Hopping"},
+
+                    { "type": "bool",
+                    "title": "Channel Hopping",
+                    "desc": "Activate channel switching on interface",
+                    "section": "Channel",
+                    "key": "Hop",
+                    "values": ["Off", "On"]},
+
+                    {"type": "numeric",
+                    "title": "Channel Hop Time",
+                    "desc": "Time between channel hopping",
+                    "section": "Channel",
+                    "key": "HopTime"},
+
+                    { "type": "title",
+                    "title": "List"},
+
+                    {"type": "string",
+                    "title": "Channels",
+                    "desc": "Comma separated channels to hop on",
+                    "section": "Channel",
+                    "key": "Channels"}
+            ]''')
     """ Build """
 
     def build(self):
@@ -175,15 +263,24 @@ class WifiMapper(App):
         self.version = WMConfig.conf.version
         self.title = "Wifi Mapper (%s)" % self.version
         self.start_time = time.time()
+        """ Thread """
+        self.pcap_thread = PcapThread(interface=self.args.interface,
+                                        pcap_file=self.args.pcap,
+                                        no_hop=self.args.no_hop,
+                                        debug=self.args.debug,
+                                        app=self)
+        """ Screen Manager """
         self.manager = WMScreenManager(app=self,
                 args=self.args,
                 pcap_thread=self.pcap_thread)
+        """ Panel Header """
         ap_tab = WMPanelHeader(text="Access Points",
                 args=self.args,
                 content=self.manager,
                 #background_color=(0, 128, 128, 0.25),
                 screen="ap",
                 can_remove=False)
+        """ Tabbed Panel Header """
         self.panel = WMTabbedPanel(manager=self.manager,
                 args=self.args,
                 default_tab=ap_tab)
@@ -213,10 +310,17 @@ class WifiMapper(App):
         self._say("On resume")
         self.paused = False
 
-    def onstop(self):
-        self._say("leaving app - stopping threads")
+    def on_stop(self):
+        self._say("On stop")
         self.stop_pcap_thread()
-        self._say("stopped")
+
+    def _is_settings_open(self):
+        win = self._app_window
+        if win:
+            settings = self._app_settings
+            if settings in win.children:
+                return True
+        return False
 
     def _on_keyboard_up(self, keyboard, keycode):
         if self.paused:
@@ -226,8 +330,16 @@ class WifiMapper(App):
             self.shift = False
         if keycode[1] == 'alt':
             self.alt = False
+        if keycode[1] == 'f1':
+            if not self._is_settings_open():
+                self.open_settings()
+            else:
+                self.close_settings()
+            return True
         if self.popup:
             return True
+        if keycode[1] == 'm':
+            self.open_main_menu()
         if self.manager.keyboard_up(keyboard, keycode):
             return True
         if keycode[1] >= "1" and keycode[1] <= "9":
@@ -259,8 +371,11 @@ class WifiMapper(App):
                 self.popup.confirm()
             return True
         if keycode[1] == 'escape':
-            self._open_popup_confirm("Do you really want to quit ?",
-                    self._confirm_popup_stop)
+            if self._is_settings_open():
+                self.close_settings()
+            else:
+                self._open_popup_confirm("Do you really want to quit ?",
+                        self._confirm_popup_stop)
             return True
         return True
 

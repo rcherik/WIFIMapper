@@ -14,12 +14,9 @@ from kivy.lang import Builder
 from kivy.metrics import sp
 from kivy.app import App
 """ Our stuff """
-import WMScreen
-#import CardInfoScreen
-import WMScreen
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
-from WMUtilityClasses import WMRedCheckBox, WMPressableLabel, WMSelectableLabel
+from WMUtilityClasses import WMRedCheckBox, WMPressableLabel, WMSelectableLabel, WMScreen
 """ Graph """
 import collections
 import numpy as np
@@ -58,7 +55,7 @@ class APCardInfoGraphBox(BoxLayout):
 
 Builder.load_file(os.path.join("Static", "apcardinfoscreen.kv"))
 
-class APCardInfoScreen(WMScreen.WMScreen):
+class APCardInfoScreen(WMScreen):
 
     main_layout = ObjectProperty(None)
     card_layout = ObjectProperty(None)
