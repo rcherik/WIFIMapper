@@ -20,9 +20,7 @@ from scapy.error import Scapy_Exception
 import wifi_mapper_ds
 from wifi_mapper_ds import WM_DS_SRC, WM_DS_TRANS, WM_DS_RCV, WM_DS_DST,\
 		WM_DS_AP, WM_DS_STATION, WM_DS_SENDER, WM_DS_RECEIVER
-from wifi_mapper_classes import AccessPoint, Station, Traffic,\
-		WM_TRA_SENT, WM_TRA_RECV,\
-		WM_TRA_ALL, WM_TRA_MNG, WM_TRA_CTRL, WM_TRA_DATA
+from wifi_mapper_classes import AccessPoint, Station, Traffic
 from wifi_mapper_utilities import is_broadcast, is_retransmitted, is_control, is_data,\
 			WM_AP, WM_STATION, WM_TRA, WM_CHANGES, WM_VENDOR, WM_STA
 import time

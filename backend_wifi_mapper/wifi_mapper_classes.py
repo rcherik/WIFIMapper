@@ -15,15 +15,17 @@ from taxonomy import identify_wifi_device
 	Used only to get station traffic
 """
 
-WM_TRA_SENT = 0
-WM_TRA_RECV = 1
-
-WM_TRA_ALL = 0
-WM_TRA_MNG = 1
-WM_TRA_CTRL = 2
-WM_TRA_DATA = 3
-
 class Traffic():
+
+	#Traffic Type
+	SENT = 0
+	RECV = 1
+
+	#Frame Type
+	ALL = 0
+	MNG = 1
+	CTRL = 2
+	DATA = 3
 
 	def __init__(self, dic, bssid):
 		self.bssid = bssid
@@ -39,59 +41,47 @@ class Traffic():
 		self.traffic = {}
 		self.timeline = []
 
-	def plot(self):
-		pass
-
-	def prepare_traffic_dict(self, addr):
-		self.traffic[addr] = {
-				'sent': {
-					'management': 0,
-					'all': 0
-				},
-				'recv': {
-					'management': 0,
-					'all': 0
-				}
-		}
-		#TODO
-		"""
+	def prepare_list(self, addr):
 		self.traffic[addr] = [
 				[0, 0, 0, 0],
 				[0, 0, 0, 0],
 				]
-		"""
 
-	def get_sent(self, addr, key):
-		if addr in self.traffic and\
-			key in self.traffic[addr]['sent']:
-			return self.traffic[addr]['sent'][key]
+	def _add_traffic(self, addr, traffic_type, frame_type):
+		if self.traffic.get(addr, None) is None:
+			self.prepare_list(addr)
+		lst = self.traffic[addr]
+		lst[traffic_type][frame_type] += 1
+
+	def _get_traffic(self, addr, traffic_type, frame_type):
+		lst = self.traffic[addr]
+		if lst:
+			return lst[traffic_type][frame_type]
 		return 0
 
-	def get_recv(self, addr, key):
-		if addr in self.traffic and\
-			key in self.traffic[addr]['recv']:
-			return self.traffic[addr]['recv'][key]
-		return 0
+	def get_sent_all(self, addr):
+		return self._get_traffic(addr, Traffic.SENT, Traffic.ALL)
+
+	def get_recv_all(self, addr):
+		return self._get_traffic(addr, Traffic.RECV, Traffic.ALL)
+
+	def get_sent(self, addr, frame_type):
+		return self._get_traffic(addr, Traffic.SENT, frame_type)
+
+	def get_recv(self, addr, frame_type):
+		return self._get_traffic(addr, Traffic.RECV, frame_type)
 
 	def add_sent(self, addr):
 		self.sent += 1
 		self.timeline.append(int(time.time()))
 		if not addr:
 			return
-		if addr not in self.traffic:
-			self.prepare_traffic_dict(addr)
-			self.traffic[addr]['sent']['all'] = 1
-		else:
-			self.traffic[addr]['sent']['all'] += 1
+		self._add_traffic(addr, Traffic.SENT, Traffic.ALL)
 
 	def add_recv(self, addr):
 		self.recv += 1
 		self.timeline.append(int(time.time()))
-		if addr not in self.traffic:
-			self.prepare_traffic_dict(addr)
-			self.traffic[addr]['recv']['all'] = 1
-		else:
-			self.traffic[addr]['recv']['all'] += 1
+		self._add_traffic(addr, Traffic.RECV, Traffic.ALL)
 
 	def get_rssi_avg(self):
 		if self.n == 0:
@@ -102,27 +92,25 @@ class Traffic():
 	Present in main dictionnary in dic[WM_STATION][some_bssid_key]
 """
 
-#TODO
-WM_STA_STEP_DONE = 0
-WM_STA_SUCESS = 1
-WM_STA_FAIL = 2
-WM_STA_EXT = 3
-WM_STA_KICK = 4
-WM_STA_AUTH = 5
-WM_STA_AUTH_RESP = 6
-WM_STA_DEAUTH = 7
-WM_STA_ASSOS = 8
-WM_STA_REASSOS = 9
-WM_STA_ASSOS_RESP = 10
-WM_STA_REASSOS_RESP = 11
-WM_STA_DISASSOS = 12
-WM_STA_HDSK_PKT = 13
-WM_STA_LAST_SUCCESS = 14
-WM_STA_CURRENT_STEP = 15
-
 class Station():
 
 	id = 0
+	_STEP_DONE = 0
+	_SUCESS = 1
+	_FAIL = 2
+	_EXT = 3
+	_KICK = 4
+	_AUTH = 5
+	_AUTH_RESP = 6
+	_DEAUTH = 7
+	_ASSOS = 8
+	_REASSOS = 9
+	_ASSOS_RESP = 10
+	_REASSOS_RESP = 11
+	_DISASSOS = 12
+	_HDSK_PKT = 13
+	_LAST_SUCCESS = 14
+	_CURRENT_STEP = 15
 
 	def __init__(self, dic, bssid, oui_dict=None, hop_channel=None):
 		self.dic = dic

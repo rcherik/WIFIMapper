@@ -144,6 +144,7 @@ class WifiMapper(App):
         self.panel.change_header(key, txt)
 
     def add_header(self, text, key, screen, **kwargs):
+        #TODO bugged ?
         Clock.schedule_once(partial(self.panel.add_header,
                                     text, key, screen, **kwargs))
         #self.panel.add_header(text, key, screen, **kwargs)

@@ -68,7 +68,7 @@
 <APCardInfoClientConnectedBox>:
 		box: station_box
 		orientation: 'vertical'
-		size_hint_x: 0.45
+		size_hint_x: 0.55
 		ScrollView:
 				canvas.before:
 						Color:
@@ -91,7 +91,7 @@
 <APCardInfoClientHistoryBox>:
 		box: station_hist_box
 		orientation: 'vertical'
-		size_hint_x: 0.55
+		size_hint_x: 0.45
 		ScrollView:
 				canvas.before:
 						Color:
@@ -177,7 +177,7 @@
                                 padding: 50
                                 spacing: 10
                                 size_hint: (None, 1)
-                                width: 600
+                                width: 650
 								#First part - Info
                                 BoxLayout:
                                         orientation: 'vertical'
@@ -202,16 +202,17 @@
 												CheckBox:
 														id: checkbox_all
 														size_hint: (0.055, 1)
-												Widget:
-                                                        size_hint: (0.045, 1)
+												#Widget:
+                                                #        size_hint: (0.045, 1)
                                                 Label:
-                                                        text: "Connected"
-                                                        size_hint: (0.2, 1)
-												Widget:
-                                                        size_hint: (0.1, 1)
+                                                        text: "Connected (sent/recv)"
+                                                #        size_hint: (0.2, 1)
+                                                        size_hint: (0.4, 1)
+												#Widget:
+                                                #        size_hint: (0.1, 1)
                                                 Label:
                                                         text: "History"
-                                                        size_hint: (0.5, 1)
+                                                        size_hint: (0.45, 1)
 										#Second part - Lists
                                         BoxLayout:
                                                 orientation: 'horizontal'

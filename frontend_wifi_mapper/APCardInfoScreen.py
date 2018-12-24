@@ -82,6 +82,7 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.graph_btn_create = None
         self.graph_btn_cancel = None
         self.graph_btn_update = None
+        self.connected_label = {}
         self.checkboxed_station = set()
 	super(APCardInfoScreen, self).__init__(**kwargs)
 	Clock.schedule_once(self._create_view)
@@ -99,6 +100,134 @@ class APCardInfoScreen(WMScreen.WMScreen):
         self.checkbox_all.bind(active=self.on_checkbox_all_active)
         self._set_graph_btn()
         self.update_gui(None, current=True)
+
+    def reload_gui(self, current=True):
+        self.update_gui(None, current)
+
+    def update_gui(self, dic, current=True):
+        self.current_screen = current
+        if not current\
+                or not self.ready\
+                or self.ui_paused:
+            return
+        if dic and (self.ap.bssid not in dic[WM_CHANGES][WM_AP]):
+            return
+        self._set_info_box()
+        self._set_security_box()
+        self._set_data_box()
+        self._set_connected()
+        self._set_history()
+
+    """ Setter for label """
+
+    def _set_label(self, label, string, copy=""):
+        if isinstance(label, WMSelectableLabel):
+            if label.check_select_label_text(string):
+                self.has_changed = True
+                label.set_select_label_text(string)
+            label.set_copy(copy)
+        elif string != label.text:
+            self.has_changed = True
+            label.text = string
+
+    def _set_info_box(self):
+        s = self.ap.bssid
+        if self.ap.oui:
+            s += " (%s)" % self.ap.oui
+        self._set_label(self.info_box.bssid, s, copy=self.ap.bssid)
+        s = "ssid: %s" % self.ap.ssid if self.ap.ssid else ""
+        if self.ap.channel:
+            s += " (%s)" % self.ap.channel
+        self._set_label(self.info_box.ssid, s, copy=self.ap.ssid)
+
+    def _set_security_box(self):
+        self._set_label(self.security_box.co, "co: %d" % self.ap.n_clients)
+        self._set_label(self.security_box.security, self.ap.get_security())
+
+    def _set_data_box(self):
+        sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
+        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
+        beacons = "beacons: %d" % self.ap.beacons
+        signal = "sig: %d" % (self.ap.rssi if self.ap.rssi else 0)
+        self._set_label(self.data_box.sent, sent)
+        self._set_label(self.data_box.rcv, rcv)
+        self._set_label(self.data_box.beacons, beacons)
+        self._set_label(self.data_box.signal, signal)
+
+    def on_checkbox_all_active(self, widget, active):
+        for child in self.station_lst.box.children:
+            if isinstance(child, CheckBox):
+                child.active = active
+
+    def on_checkbox_active(self, widget, active):
+        if active:
+            self.checkboxed_station.add(widget.bssid)
+        else:
+            self.checkboxed_station.remove(widget.bssid)
+
+    def _open_station(self, widget):
+        App.get_running_app().open_card_link("Station", widget.key)
+
+    def _clear_connected(self):
+        self.station_lst.box.clear_widgets()
+        self.connected_label = {}
+
+    def _get_connected_label(self, bssid):
+        return "{} ({send:d}/{recv:d})".format(
+                self.ap.get_station_name(bssid),
+                send=self.traffic.get_sent_all(bssid),
+                recv=self.traffic.get_recv_all(bssid),
+            )
+
+    def _create_connected(self):
+        self._clear_connected()
+        for bssid in self.ap.client_co:
+            """ Ensure label has text=bssid or change open_station """
+            s = self._get_connected_label(bssid)
+            label = WMPressableLabel(text=s,
+                    markup=True, key=bssid)
+            label.bind(on_press=self._open_station)
+            check = WMRedCheckBox(allow_stretch=True,
+                    size_hint=(None, 1),
+                    size=(sp(10), 0),
+                    color=[1, 0, 0, 1])
+            check.bssid = bssid
+            if bssid in self.checkboxed_station:
+                check.active = True
+            check.bind(active=self.on_checkbox_active)
+            self.station_lst.box.add_widget(check)
+            self.station_lst.box.add_widget(label)
+            self.connected_label[bssid] = label
+        self.last_n_clients = self.ap.n_clients
+
+    def _change_connected(self):
+        for bssid in self.ap.client_co:
+            self._set_label(self.connected_label[bssid],
+                    self._get_connected_label(bssid))
+
+    def _set_connected(self):
+        if self.ap.n_clients == self.last_n_clients:
+            self._change_connected()
+        else:
+            self._create_connected()
+
+    def _set_history(self):
+        size = len(self.ap.client_hist_co)
+        if size != self.last_idx_hist:
+            self.station_hist_lst.box.clear_widgets()
+        else:
+            return
+        #tuple is (time, name, status, bssid)
+        for tupl in self.ap.client_hist_co:
+            color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
+            label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
+                    % (color, tupl[0], tupl[1]),
+                    markup=True, key=tupl[3])
+            label.bind(on_press=self._open_station)
+            self.station_hist_lst.box.add_widget(label)
+        self.last_idx_hist = size
+
+    """ Graph """
 
     def get_plot(self, traffic):
         print('PLOTTING')
@@ -168,109 +297,8 @@ class APCardInfoScreen(WMScreen.WMScreen):
             self.graph_box.graph.add_widget(self.graph_canvas)
             self._set_graph_btn()
 
-    def reload_gui(self, current=True):
-        self.update_gui(None, current)
+    """ Override WMScreen """
 
-    def _set_label(self, label, string, copy=""):
-        if isinstance(label, WMSelectableLabel):
-            if label.check_select_label_text(string):
-                self.has_changed = True
-                label.set_select_label_text(string)
-            label.set_copy(copy)
-        elif string != label.text:
-            self.has_changed = True
-            label.text = string
-
-    def set_info_box(self):
-        s = self.ap.bssid
-        if self.ap.oui:
-            s += " (%s)" % self.ap.oui
-        self._set_label(self.info_box.bssid, s, copy=self.ap.bssid)
-        s = "ssid: %s" % self.ap.ssid if self.ap.ssid else ""
-        if self.ap.channel:
-            s += " (%s)" % self.ap.channel
-        self._set_label(self.info_box.ssid, s, copy=self.ap.ssid)
-
-    def set_security_box(self):
-        self._set_label(self.security_box.co, "co: %d" % self.ap.n_clients)
-        self._set_label(self.security_box.security, self.ap.get_security())
-
-    def set_data_box(self):
-        sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
-        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
-        beacons = "beacons: %d" % self.ap.beacons
-        signal = "sig: %d" % (self.ap.rssi if self.ap.rssi else 0)
-        self._set_label(self.data_box.sent, sent)
-        self._set_label(self.data_box.rcv, rcv)
-        self._set_label(self.data_box.beacons, beacons)
-        self._set_label(self.data_box.signal, signal)
-
-    def on_checkbox_all_active(self, widget, active):
-        for child in self.station_lst.box.children:
-            if isinstance(child, CheckBox):
-                child.active = active
-
-    def on_checkbox_active(self, widget, active):
-        if active:
-            self.checkboxed_station.add(widget.bssid)
-        else:
-            self.checkboxed_station.remove(widget.bssid)
-
-    def open_station(self, widget):
-        App.get_running_app().open_card_link("Station", widget.key)
-
-    def set_connected(self):
-        if self.ap.n_clients != self.last_n_clients:
-            self.station_lst.box.clear_widgets()
-            for bssid in self.ap.client_co:
-                """ Ensure label has text=bssid or change open_station """
-                label = WMPressableLabel(text=self.ap.get_station_name(bssid),
-                        #size_hint=(1, None), size=(0, 20),
-                        markup=True, key=bssid)
-                label.bind(on_press=self.open_station)
-                check = WMRedCheckBox(allow_stretch=True,
-                        size_hint=(None, 1),
-                        size=(sp(10), 0),
-                        color=[1, 0, 0, 1])
-                check.bssid = bssid
-                if bssid in self.checkboxed_station:
-                    check.active = True
-                check.bind(active=self.on_checkbox_active)
-                self.station_lst.box.add_widget(check)
-                self.station_lst.box.add_widget(label)
-            self.last_n_clients = self.ap.n_clients
-
-    def set_history(self):
-        size = len(self.ap.client_hist_co)
-        if size != self.last_idx_hist:
-            self.station_hist_lst.box.clear_widgets()
-        else:
-            return
-        #tuple is (time, name, status, bssid)
-        for tupl in self.ap.client_hist_co:
-            color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
-            label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
-                    % (color, tupl[0], tupl[1]),
-                    #size_hint=(1, None), size=(0, 20),
-                    markup=True, key=tupl[3])
-            label.bind(on_press=self.open_station)
-            self.station_hist_lst.box.add_widget(label)
-        self.last_idx_hist = size
-
-    def update_gui(self, dic, current=True):
-        self.current_screen = current
-        if not current\
-                or not self.ready\
-                or self.ui_paused:
-            return
-        if dic and (self.ap.bssid not in dic[WM_CHANGES][WM_AP]):
-            return
-        self.set_info_box()
-        self.set_security_box()
-        self.set_data_box()
-        self.set_connected()
-        self.set_history()
-        
     def set_ui_paused(self):
         self.ui_paused = True
 

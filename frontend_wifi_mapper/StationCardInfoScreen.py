@@ -89,6 +89,105 @@ class StationCardInfoScreen(WMScreen.WMScreen):
         self._set_graph_btn()
         self.update_gui(None, current=True)
 
+    def update_gui(self, dic, current=True):
+        self.current_screen = current
+        if not current\
+            or not self.ready\
+            or self.ui_paused:
+            return
+        if dic and (self.station.bssid not in dic[WM_CHANGES][WM_STATION]):
+            return
+        self._set_info_box()
+        self._set_data_box()
+        self._set_probes()
+        self._set_model()
+        self._set_history()
+       
+    def reload_gui(self, current=True):
+        self.update_gui(None, current)
+
+    """ Setter for labels """
+
+    def _set_label(self, label, string, copy=""):
+        if string is None:
+            string = ""
+        if isinstance(label, WMSelectableLabel):
+            if label.check_select_label_text(string):
+                label.set_select_label_text(string)
+            label.set_copy(copy)
+        elif label and string != label.text:
+            label.text = string
+
+    def _set_info_box(self):
+        s = self.station.bssid
+        if self.station.oui:
+            s += " (%s)" % self.station.oui
+        self._set_label(self.info_box.bssid, s, copy=self.station.bssid)
+        ap_bssid = self.station.ap_bssid
+        s = "AP: %s" % (self.station.get_ap_name(ap_bssid))\
+                if ap_bssid else "not connected"
+        if self.station.channel:
+            s += " (%s)" % self.station.channel
+        self._set_label(self.info_box.ap_bssid, s, copy=self.station.ap_bssid)
+
+    def _set_data_box(self):
+        sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
+        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
+        signal = "sig: %d" % (self.station.rssi if self.station.rssi else 0)
+        self._set_label(self.data_box.sent, sent)
+        self._set_label(self.data_box.rcv, rcv)
+        self._set_label(self.data_box.signal, signal)
+
+    def _set_probes(self):
+        s = ""
+        probes = self.station.get_ap_probed()
+        if probes:
+            s = "[i]probed: %s[/i]" % (probes)
+        self._set_label(self.probes, s, copy=probes)
+
+    def _set_model(self):
+        s = ""
+        model = self.station.model
+        if model != None:
+            s = "model: "
+            s += "[b][i]%s[/i][/b]" % (model if model != False else "not found")
+        self._set_label(self.model, s, copy=model)
+
+    def _open_ap(self, widget):
+        App.get_running_app().open_card_link("AP", widget.key)
+
+    def _add_history_traffic(self, string, bssid):
+        string = "{} (s:{send:d}, r:{recv:d})".format(
+                    string,
+                    send=self.traffic.get_sent_all(bssid),
+                    recv=self.traffic.get_recv_all(bssid),
+                )
+        return string
+
+    def _set_history(self):
+        size = len(self.station.connected_history)
+        if size != self.last_idx_hist:
+            self.station_hist_lst.box.clear_widgets()
+        else:
+            return
+        #tuple is (time, name, status, bssid)
+        for tupl in self.station.connected_history:
+            s = "{time:s} - {name:s}".format(time=tupl[0], name=tupl[1])
+            connected = True if tupl[2] == 'connected' else False
+            if not connected:
+                color = "#FF0000"
+                s = self._add_history_traffic(s, tupl[3])
+            else:
+                color = "#00FF00"
+            s = "[color=%s]%s[/color]" % (color, s)
+            label = WMPressableLabel(text=s,
+                    markup=True, key=tupl[3])
+            label.bind(on_press=self._open_ap)
+            self.station_hist_lst.box.add_widget(label)
+        self.last_idx_hist = size
+
+    """ Graph """
+
     def get_plot(self, traffic):
         print('PLOTTING')
         if len(traffic.timeline) < 2:
@@ -157,94 +256,8 @@ class StationCardInfoScreen(WMScreen.WMScreen):
             self.graph_box.graph.add_widget(self.graph_canvas)
             self._set_graph_btn()
 
-    def reload_gui(self, current=True):
-        self.update_gui(None, current)
+    """ Overrides WMScreen """
 
-    def _set_label(self, label, string, copy=""):
-        if string is None:
-            string = ""
-        if isinstance(label, WMSelectableLabel):
-            if label.check_select_label_text(string):
-                label.set_select_label_text(string)
-            label.set_copy(copy)
-        elif label and string != label.text:
-            label.text = string
-
-    def set_info_box(self):
-        s = self.station.bssid
-        if self.station.oui:
-            s += " (%s)" % self.station.oui
-        self._set_label(self.info_box.bssid, s, copy=self.station.bssid)
-        ap_bssid = self.station.ap_bssid
-        s = "AP: %s" % (self.station.get_ap_name(ap_bssid))\
-                if ap_bssid else "not connected"
-        if self.station.channel:
-            s += " (%s)" % self.station.channel
-        self._set_label(self.info_box.ap_bssid, s, copy=self.station.ap_bssid)
-
-    def set_data_box(self):
-        sent = "sent: %d" % (self.traffic.sent if self.traffic else 0)
-        rcv = "rcv: %d" % (self.traffic.recv if self.traffic else 0)
-        signal = "sig: %d" % (self.station.rssi if self.station.rssi else 0)
-        self._set_label(self.data_box.sent, sent)
-        self._set_label(self.data_box.rcv, rcv)
-        self._set_label(self.data_box.signal, signal)
-
-    def set_probes(self):
-        s = ""
-        probes = self.station.get_ap_probed()
-        if probes:
-            s = "[i]probed: %s[/i]" % (probes)
-        self._set_label(self.probes, s, copy=probes)
-
-    def set_model(self):
-        s = ""
-        model = self.station.model
-        if model != None:
-            s = "model: "
-            s += "[b][i]%s[/i][/b]" % (model if model != False else "not found")
-        self._set_label(self.model, s, copy=model)
-
-    def open_ap(self, widget):
-        App.get_running_app().open_card_link("AP", widget.key)
-
-    def set_history(self):
-        size = len(self.station.connected_history)
-        if size != self.last_idx_hist:
-            self.station_hist_lst.box.clear_widgets()
-        else:
-            return
-        #tuple is (time, name, status, bssid)
-        for tupl in self.station.connected_history:
-            color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
-            s = "{time:s} - {name:s} (s:{send:d}, r:{recv:d})".format(
-                    time=tupl[0], name=tupl[1],
-                    send=self.traffic.get_sent(tupl[3], 'all'),
-                    recv=self.traffic.get_recv(tupl[3], 'all'),
-                    )
-            s = "[color=%s]%s[/color]" % (color, s)
-            #TODO REPLACE IF EXISTS AND DO SAME IN AP
-            label = WMPressableLabel(text=s,
-                    #size_hint=(1, None), size=(0, 20),
-                    markup=True, key=tupl[3])
-            label.bind(on_press=self.open_ap)
-            self.station_hist_lst.box.add_widget(label)
-        self.last_idx_hist = size
-
-    def update_gui(self, dic, current=True):
-        self.current_screen = current
-        if not current\
-                or not self.ready\
-                or self.ui_paused:
-            return
-        if dic and (self.station.bssid not in dic[WM_CHANGES][WM_STATION]):
-            return
-        self.set_info_box()
-        self.set_data_box()
-        self.set_probes()
-        self.set_model()
-        self.set_history()
-        
     def set_ui_paused(self):
         self.ui_paused = True
 

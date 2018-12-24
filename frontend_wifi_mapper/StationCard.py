@@ -70,30 +70,7 @@ class StationCard(WMCard.WMCard):
         self._check_known()
         return self.has_changed
 
-    def _check_known(self):
-        if not self.known_bg and self.station.connected:
-            self.known_bg = True
-            self.draw_background(self, self.pos)
-        elif self.known_bg and not self.station.connected:
-            self.known_bg = False
-            self.draw_background(self, self.pos)
-
-    def _check_width(self, l):
-        new_width = l * self.width_mult
-        if new_width > self.final_width:
-            self.final_width = new_width
-
-    def _check_width_changed(self):
-        if self.final_width < self.minimum_width\
-            and self.width != self.minimum_width:
-            self.width = self.minimum_width
-        elif self.final_width > self.minimum_width and\
-                self.width != self.final_width:
-            self.width = self.final_width
-
-    def _get_min_len(self, string, min_len):
-        l = len(string) * self.width_mult
-        return l if l > min_len else min_len
+    """ Setter for labels """
 
     def _set_label(self, label, string, copy=""):
         if isinstance(label, WMSelectableLabel):
@@ -104,9 +81,6 @@ class StationCard(WMCard.WMCard):
         if string != label.text:
             self.has_changed = True
             label.text = string
-
-    def get_name(self):
-        return self.station.get_name()
 
     def _set_bssid(self):
         s = "[b]%s[/b]" % self.station.bssid
@@ -152,6 +126,11 @@ class StationCard(WMCard.WMCard):
         size = len(sent) + len(rcv) + len(sig)
         self._check_width(size)
 
+    """ Override WMCard """
+
+    def get_name(self):
+        return self.station.get_name()
+
     def get_obj(self):
         return self.station
 
@@ -161,6 +140,35 @@ class StationCard(WMCard.WMCard):
                 station=self.station,
                 traffic=self.traffic)
         return screen
+
+    """ Resize Card """
+
+    def _check_known(self):
+        if not self.known_bg and self.station.connected:
+            self.known_bg = True
+            self.draw_background(self, self.pos)
+        elif self.known_bg and not self.station.connected:
+            self.known_bg = False
+            self.draw_background(self, self.pos)
+
+    def _check_width(self, l):
+        new_width = l * self.width_mult
+        if new_width > self.final_width:
+            self.final_width = new_width
+
+    def _check_width_changed(self):
+        if self.final_width < self.minimum_width\
+            and self.width != self.minimum_width:
+            self.width = self.minimum_width
+        elif self.final_width > self.minimum_width and\
+                self.width != self.final_width:
+            self.width = self.final_width
+
+    def _get_min_len(self, string, min_len):
+        l = len(string) * self.width_mult
+        return l if l > min_len else min_len
+
+    """ Background """
 
     def init_background(self):
 	with self.canvas.before:

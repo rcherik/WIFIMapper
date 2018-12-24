@@ -1,5 +1,6 @@
 from __future__ import print_function
 import copy
+import re
 """ Kivy """
 from kivy.uix.tabbedpanel import TabbedPanelHeader, TabbedPanel
 from kivy.properties import ObjectProperty
@@ -389,6 +390,11 @@ class WMSelectableLabel(Label):
     def set_clicked(self, value):
         if not self.no_color_text:
             self.no_color_text = value
+            if value.find('color') >= 0:
+                match = re.search(r'#[0-9a-fA-F]+', value)
+                if match:
+                    self.text = value.replace(match.group(0), self.click_color)
+                    return
             self.text = "[color=%s]%s[/color]"\
                 % (self.click_color, value)
 
@@ -466,6 +472,11 @@ class WMPressableLabel(ButtonBehavior, Label):
     def set_clicked(self, value):
         if not self.no_color_text:
             self.no_color_text = value
+            if value.find('color') >= 0:
+                match = re.search(r'#[0-9a-fA-F]+', value)
+                if match:
+                    self.text = value.replace(match.group(0), self.click_color)
+                    return
             self.text = "[color=%s]%s[/color]"\
                 % (self.click_color, value)
 
