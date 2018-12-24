@@ -146,7 +146,10 @@ def sta_sender(pkt, dic, src, dst, channel=None):
 
 def parse_pkt(pkt, dic, channel=None):
 	#ignore control frames
-	if is_control(pkt):
+	try:
+		if is_control(pkt):
+			return
+	except:
 		return
 
 	#get the sender and the destination
