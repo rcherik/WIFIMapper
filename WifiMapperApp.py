@@ -449,7 +449,7 @@ class WifiMapper(App):
     def send_packet(self, packet, iface=None, **kwargs):
         t = self.pcap_thread
         if t:
-            return t.send_packet(packet, iface=iface)
+            return t.send_packet(packet, iface=iface, **kwargs)
         return False
 
     def stay_on_channel(self, channel, time=0):
