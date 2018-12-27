@@ -29,7 +29,7 @@ def get_addrs(packet):
 			dst (destination), bssid, station (guess from DS flag),
 			sent (True if station has sent, False if it has received),
 			from_ds, to_ds
-		:rtype: dict
+		:rtype: list
 	"""
 	layer = Dot11 if packet.haslayer(Dot11) else Dot11FCS
 	ds = packet.FCfield & 0x3
@@ -62,6 +62,16 @@ def get_addrs(packet):
 		sent = True if bssid == rcv else False
 		sender = station if bssid == rcv else src #TODO station to station, do we want the ap getting involved ?
 		receiver = bssid if bssid == rcv else rcv #TODO ^^^^
+
+		"""
+		if packet.type == 0 and packet.subtype == 13:
+			print()
+			print("================= STA TO STA ======================")
+			packet.show()
+			print(packet.summary())
+			print("================= STA TO STA ======================")
+			print()
+		"""
 	elif not from_ds and to_ds:
 		"""
 			The frame is being sent from a station to the DS.
@@ -88,8 +98,17 @@ def get_addrs(packet):
 		bssid = None
 		station = None
 		sent = False
-		sender = None
-		receiver = None
+		sender = packet[layer].addr2
+		receiver = packet[layer].addr1
+		"""
+		print()
+		print("================= AP TO AP ======================")
+		packet.show()
+		print(packet.summary())
+		print("================= AP TO AP ======================")
+		print()
+		"""
+		return None
 
 
 	return [

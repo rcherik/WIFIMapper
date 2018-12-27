@@ -1,7 +1,8 @@
 #! /usr/bin/python
 #coding: utf-8
 from __future__ import print_function
-from scapy.all import Dot11Elt
+import scapy
+from scapy.layers.dot11 import RadioTap, Dot11, Dot11Elt, Dot11Deauth
 import time
 import struct
 """ Our stuff """
@@ -11,8 +12,11 @@ from wifi_mapper_utilities import WM_AP, WM_STATION,\
 from taxonomy import identify_wifi_device
 
 """
+	###########
+	# TRAFFIC #
+	###########
+
 	Present in main dictionnary in dic[WM_TRAFFIC][some_bssid_key]
-	Used only to get station traffic
 """
 
 class Traffic():
@@ -31,15 +35,22 @@ class Traffic():
 		self.bssid = bssid
 		self.sent = 0
 		self.recv = 0
-		self.max_sig = 0
-		self.avg_sig = 0.0
-		self.min_sig = 0
 		self.first = True
 		self.sigs = 0
 		self.n = 0
 		self.dic = dic
 		self.traffic = {}
 		self.timeline = []
+		""" old
+		self.max_sig = 0
+		self.avg_sig = 0.0
+		self.min_sig = 0
+		"""
+
+	def __getstate__(self):
+		dic = dict(self.__dict__)
+		del dic['dic']
+		return dic
 
 	def prepare_list(self, addr):
 		self.traffic[addr] = [
@@ -89,6 +100,10 @@ class Traffic():
 		return float(self.sigs / self.n)
 
 """
+	###########
+	# STATION #
+	###########
+
 	Present in main dictionnary in dic[WM_STATION][some_bssid_key]
 """
 
@@ -132,6 +147,13 @@ class Station():
 		self.id = Station.id
 		if bssid not in dic[WM_TRAFFIC]:
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
+		self.traffic = dic[WM_TRAFFIC][bssid]
+
+	def __getstate__(self):
+		dic = dict(self.__dict__)
+		del dic['dic']
+		del dic['traffic']
+		return dic
 
 	def get_ap_name(self, bssid):
 		obj = self.dic[WM_AP].get(bssid, None)
@@ -163,7 +185,8 @@ class Station():
 				current_ap_obj.client_disconnected(self.bssid)
 			if self.ap_bssid:
 				self.connected_history.insert(0,
-						(time_str, current_ap_name, "disconnected", self.ap_bssid))
+						(time_str, current_ap_name, "disconnected",
+							self.ap_bssid))
 			self.connected_history.insert(0,
 					(time_str, new_ap_name, "connected", ap_bssid))
 
@@ -227,9 +250,22 @@ class Station():
 		return ', '.join(self.ap_probed)
 
 """
+	###############
+	# ACCESSPOINT #
+	###############
+
 	Present in main dictionnary in dic[WM_AP][some_bssid_key]
 """
 class AccessPoint():
+
+	TYPE_MANAGEMENT = 0
+
+	SUBTYPE_DEAUTH = 12
+
+	DEAUTH_NO_LONGER_VALID = 2
+	DEAUTH_CLIENT_LEFT = 3
+	DEAUTH_INACTIVIY = 4
+	DEAUTH_CANT_HANDLE = 5
 
 	def __init__(self, dic, bssid, ssid=None, oui_dict=None, hop_channel=None):
 		self.dic = dic
@@ -251,6 +287,30 @@ class AccessPoint():
 
 		if bssid not in dic[WM_TRAFFIC]:
 			dic[WM_TRAFFIC][bssid] = Traffic(dic, bssid)
+		self.traffic = dic[WM_TRAFFIC][bssid]
+
+	def __getstate__(self):
+		dic = dict(self.__dict__)
+		del dic['dic']
+		del dic['traffic']
+		return dic
+
+	def get_deauth(self, bssid):
+		packet_to_sta = RadioTap()/Dot11(
+					type=AccessPoint.TYPE_MANAGEMENT,
+					subtype=AccessPoint.SUBTYPE_DEAUTH,
+					addr1=bssid,
+					addr2=self.bssid,
+					addr3=self.bssid,
+				)/Dot11Deauth(reason=AccessPoint.DEAUTH_NO_LONGER_VALID)
+		packet_to_ap = RadioTap()/Dot11(
+					type=AccessPoint.TYPE_MANAGEMENT,
+					subtype=AccessPoint.SUBTYPE_DEAUTH,
+					addr1=self.bssid,
+					addr2=bssid,
+					addr3=bssid,
+				)/Dot11Deauth(reason=AccessPoint.DEAUTH_CLIENT_LEFT)
+		return [packet_to_sta, packet_to_ap]
 
 	def get_station_name(self, bssid):
 		obj = self.dic[WM_STATION].get(bssid, None)

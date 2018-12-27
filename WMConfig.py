@@ -25,4 +25,11 @@ class WMConfig():
     taxo_file = os.path.join('backend_wifi_mapper', 'Utilities', 'C', 'create_signature.c')
     mac_list_file = os.path.join('backend_wifi_mapper', 'Utilities', 'mac_list')
 
+    #attack
+    channel_wait_time = 1.5
+
+    #dump
+    magic_file = "\xde\xad\xca\xfe"
+    wm_extension = ".wmdump"
+
 conf = WMConfig()

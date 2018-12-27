@@ -30,31 +30,6 @@ try:
 except:
     pass
 
-""" Important no nesting rule """
-
-class APCardInfoInfoBox(BoxLayout):
-    pass
-
-class APCardInfoSecurityBox(BoxLayout):
-    pass
-
-class APCardInfoDataBox(BoxLayout):
-    pass
-
-class APCardInfoClientConnectedBox(BoxLayout):
-    pass
-
-class APCardInfoClientHistoryBox(BoxLayout):
-    pass
-
-class APCardInfoAttackBox(BoxLayout):
-    pass
-
-class APCardInfoGraphBox(BoxLayout):
-    pass
-
-Builder.load_file(os.path.join("Static", "apcardinfoscreen.kv"))
-
 class APCardInfoScreen(WMScreen):
 
     main_layout = ObjectProperty(None)
@@ -67,11 +42,12 @@ class APCardInfoScreen(WMScreen):
     data_box = ObjectProperty(None)
     station_box = ObjectProperty(None)
     graph_box = ObjectProperty(None)
+    attack_box = ObjectProperty(None)
     checkbox_all = ObjectProperty(None)
 
-    def __init__(self, **kwargs):
-        self.ap = kwargs.get('ap', None)
-        self.traffic = kwargs.get('traffic', None)
+    def __init__(self, ap=None, traffic=None, **kwargs):
+        self.ap = ap
+        self.traffic = traffic
         self.ready = False
         self.last_n_clients = 0
         self.last_idx_hist = 0
@@ -83,7 +59,13 @@ class APCardInfoScreen(WMScreen):
         self.connected_label = {}
         self.checkboxed_station = set()
 	super(APCardInfoScreen, self).__init__(**kwargs)
+        self.name = self.ap.bssid
+        self.screen_type = "AP"
 	Clock.schedule_once(self._create_view)
+
+    @classmethod
+    def from_obj(cls, obj):
+        return cls(ap=obj, traffic=obj.traffic)
 
     def _create_view(self, *args): 
        	self.ready = True
@@ -96,6 +78,7 @@ class APCardInfoScreen(WMScreen):
         self.graph_btn_update.bind(on_press=self.graph_callback)
         self.graph_btn_cancel.bind(on_press=self.remove_graph)
         self.checkbox_all.bind(active=self.on_checkbox_all_active)
+        self.attack_box.disco_button.bind(on_press=self.disconnect_stations)
         self._set_graph_btn()
         self.update_gui(None, current=True)
 
@@ -152,6 +135,24 @@ class APCardInfoScreen(WMScreen):
         self._set_label(self.data_box.beacons, beacons)
         self._set_label(self.data_box.signal, signal)
 
+    def _set_history(self):
+        size = len(self.ap.client_hist_co)
+        if size != self.last_idx_hist:
+            self.station_hist_lst.box.clear_widgets()
+        else:
+            return
+        #tuple is (time, name, status, bssid)
+        for tupl in self.ap.client_hist_co:
+            color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
+            label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
+                    % (color, tupl[0], tupl[1]),
+                    markup=True, key=tupl[3])
+            label.bind(on_press=self._open_station)
+            self.station_hist_lst.box.add_widget(label)
+        self.last_idx_hist = size
+
+    """ Connected List """
+
     def on_checkbox_all_active(self, widget, active):
         for child in self.station_lst.box.children:
             if isinstance(child, CheckBox):
@@ -164,7 +165,7 @@ class APCardInfoScreen(WMScreen):
             self.checkboxed_station.remove(widget.bssid)
 
     def _open_station(self, widget):
-        App.get_running_app().open_card_link("Station", widget.key)
+        App.get_running_app().open_screen("Station", widget.key)
 
     def _clear_connected(self):
         self.station_lst.box.clear_widgets()
@@ -209,21 +210,21 @@ class APCardInfoScreen(WMScreen):
         else:
             self._create_connected()
 
-    def _set_history(self):
-        size = len(self.ap.client_hist_co)
-        if size != self.last_idx_hist:
-            self.station_hist_lst.box.clear_widgets()
-        else:
-            return
-        #tuple is (time, name, status, bssid)
-        for tupl in self.ap.client_hist_co:
-            color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
-            label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
-                    % (color, tupl[0], tupl[1]),
-                    markup=True, key=tupl[3])
-            label.bind(on_press=self._open_station)
-            self.station_hist_lst.box.add_widget(label)
-        self.last_idx_hist = size
+    """ Attack """
+
+    def disconnect_stations(self, widget):
+        app = App.get_running_app()
+        thread = app.pcap_thread
+        time = float(app.config.get("Attack", "ChannelWaitTime"))
+        for bssid in self.checkboxed_station:
+            if self.ap.channel:
+                self._say("Deauth from AP %s to Station %s"
+                        % (self.ap.bssid, bssid))
+                packets = self.ap.get_deauth(bssid)
+                for packet in packets:
+                    print(packet.summary())
+                app.stay_on_channel(self.ap.channel, time=time)
+                app.send_packet(packets)
 
     """ Graph """
 
@@ -291,6 +292,9 @@ class APCardInfoScreen(WMScreen):
 
     """ Override WMScreen """
 
+    def get_name(self):
+        return self.ap.get_name()
+
     def set_ui_paused(self):
         self.ui_paused = True
 
@@ -319,3 +323,5 @@ class APCardInfoScreen(WMScreen):
         """ Handles keyboard input sent by App to screen manager """
         if not self.current_screen:
             return False
+
+Builder.load_file(os.path.join("Static", "apcardinfoscreen.kv"))

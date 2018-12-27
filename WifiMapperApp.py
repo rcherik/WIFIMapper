@@ -44,10 +44,13 @@ import WMConfig
 from PcapThread import PcapThread
 from ChannelHopThread import ChannelHopThread
 from frontend_wifi_mapper.CardListScreen import CardListScreen
+from frontend_wifi_mapper.APCardInfoScreen import APCardInfoScreen
+from frontend_wifi_mapper.StationCardInfoScreen import StationCardInfoScreen
 from frontend_wifi_mapper.WMScreenManager import WMScreenManager
 from frontend_wifi_mapper.WMUtilityClasses import \
         WMPanelHeader, WMTabbedPanel, WMConfirmPopup
 from frontend_wifi_mapper.WMMainMenu import WMMainMenu
+from frontend_wifi_mapper.toast import toast
 
 Window.set_icon(WMConfig.conf.app_icon)
 Window.icon = WMConfig.conf.app_icon
@@ -86,7 +89,7 @@ class WifiMapper(App):
 
     def _dismiss_dragged_file(self, widget):
         if widget.confirmed():
-            self.start_reading_pcap(self.dragged)
+            self.parse_file(self.dragged)
         else:
             self.dragged = None
         self.popup = None
@@ -94,6 +97,8 @@ class WifiMapper(App):
     def confirm_dragged_file(self, window, path):
         self._say("Dragged: %s" % path)
         self.dragged = path
+        if self.popup:
+            self.popup.dismiss()
         self._open_popup_confirm("Do you want to start parsing %s" % path,
                 self._dismiss_dragged_file, auto_dismiss=False)
 
@@ -110,8 +115,6 @@ class WifiMapper(App):
         self.popup.bind(on_dismiss=self._main_menu_popup_dismiss)
         self.popup.open()
 
-    """ Header global """
-
     def start_sniffing(self, ifaces):
         if self.pcap_thread.sniffing\
                 and self.pcap_thread.ifaces == ifaces:
@@ -124,31 +127,60 @@ class WifiMapper(App):
                                         app=self)
         self.pcap_thread.start()
 
-    def start_reading_pcap(self, path):
+    def parse_file(self, path):
+        if path.endswith('.pcap'):
+            self._start_reading_pcap(path)
+        elif path.endswith(WMConfig.conf.wm_extension):
+            self._load_data(path)
+        else:
+            toast("Wifi Mapper does not support this file extension", True)
+
+    def _load_data(self, path):
+        self.pcap_thread.load_data(path)
+
+    def _start_reading_pcap(self, path):
         self.stop_pcap_thread()
         self.pcap_thread = PcapThread(pcap_file=path,
                                         debug=self.args.debug,
                                         app=self)
         self.pcap_thread.start()
 
+    """ No args app """
+
     def app_ready(self):
         if self.pcap_thread and self.pcap_thread.no_purpose():
             self.open_main_menu()
 
+    """ Header global """
+
     def change_header(self, key, txt):
         self.panel.change_header(key, txt)
 
-    def add_header(self, text, key, screen, **kwargs):
+    def add_header(self, screen, **kwargs):
         #TODO bugged ?
         Clock.schedule_once(partial(self.panel.add_header,
-                                    text, key, screen, **kwargs))
+                                    screen, **kwargs))
         #self.panel.add_header(text, key, screen, **kwargs)
 
     def remove_header(self, key):
         self.panel.remove_header(key)
 
-    def open_card_link(self, which, key):
-        self.manager.open_card_link(which, key)
+    def open_screen(self, which, key):
+        cls = None
+        if which.lower() in ("sta", "station"):
+            cls = StationCardInfoScreen
+            obj = self.pcap_thread.get_station(key)
+        elif which.lower() in ('ap', 'accesspoint'):
+            cls = APCardInfoScreen
+            obj = self.pcap_thread.get_ap(key)
+        if not cls:
+            toast("%s not found" % which, False)
+            return
+        if not obj:
+            toast("% key not found" % key, False)
+            return
+        screen = cls.from_obj(obj)
+        self.add_header(screen)
 
     """ Dispatch stop/resume """
 
@@ -178,15 +210,17 @@ class WifiMapper(App):
         config.setdefault('GUI', 'CardsPerScreen',
                 WMConfig.conf.max_card_per_screen)
 
-        config.adddefaultsection('Channel')
-        config.setdefault('Channel', 'Hop',
+        config.adddefaultsection('Sniffer')
+        config.setdefault('Sniffer', 'Hop',
                 'Off' if self.args.no_hop else 'On')
-        config.setdefault('Channel', 'HopTime',
+        config.setdefault('Sniffer', 'HopTime',
                 WMConfig.conf.channel_hop_time)
-        config.setdefault('Channel', 'Channels',
+        config.setdefault('Sniffer', 'Channels',
                 ', '.join(str(c) for c in WMConfig.conf.channels))
 
-
+        config.adddefaultsection('Attack')
+        config.setdefault('Attack', 'ChannelWaitTime',
+                WMConfig.conf.channel_wait_time)
     def on_config_change(self, config, section, key, value):
         self._say("Changing conf obj in section %s with key %s value %s"\
                 % (section, key, value))
@@ -230,32 +264,44 @@ class WifiMapper(App):
                     ]''')
 
         settings.add_json_panel(
-            'Wifi Channels', self.config, data='''[
+            'Wifi Sniffer', self.config, data='''[
                     { "type": "title",
-                    "title": "Hopping"},
+                    "title": "Channel Hopping"},
 
                     { "type": "bool",
                     "title": "Channel Hopping",
                     "desc": "Activate channel switching on interface",
-                    "section": "Channel",
+                    "section": "Sniffer",
                     "key": "Hop",
                     "values": ["Off", "On"]},
 
                     {"type": "numeric",
                     "title": "Channel Hop Time",
                     "desc": "Time between channel hopping",
-                    "section": "Channel",
+                    "section": "Sniffer",
                     "key": "HopTime"},
-
-                    { "type": "title",
-                    "title": "List"},
 
                     {"type": "string",
                     "title": "Channels",
                     "desc": "Comma separated channels to hop on",
-                    "section": "Channel",
-                    "key": "Channels"}
+                    "section": "Sniffer",
+                    "key": "Channels"},
+                    
+                    { "type": "title",
+                    "title": "Other TODO"}
             ]''')
+        settings.add_json_panel(
+            'Wifi Offensive', self.config, data='''[
+                    { "type": "title",
+                    "title": "Time"},
+
+                    {"type": "numeric",
+                    "title": "Channel Wait Time",
+                    "desc": "Time waiting in a channel when an attack is sent",
+                    "section": "Attack",
+                    "key": "ChannelWaitTime"}
+            ]''')
+
     """ Build """
 
     def build(self):
@@ -298,21 +344,6 @@ class WifiMapper(App):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
         self._keyboard.unbind(on_key_up=self._on_keyboard_up)
         self._keyboard = None
-
-    """ Kivy app methods """
-
-    def on_pause(self):
-        self._say("On pause")
-        self.paused = True
-        return True
-
-    def on_resume(self):
-        self._say("On resume")
-        self.paused = False
-
-    def on_stop(self):
-        self._say("On stop")
-        self.stop_pcap_thread()
 
     def _is_settings_open(self):
         win = self._app_window
@@ -379,6 +410,21 @@ class WifiMapper(App):
             return True
         return True
 
+    """ Kivy app methods """
+
+    def on_pause(self):
+        self._say("On pause")
+        self.paused = True
+        return True
+
+    def on_resume(self):
+        self._say("On resume")
+        self.paused = False
+
+    def on_stop(self):
+        self._say("On stop")
+        self.stop_pcap_thread()
+
     """ Confirm Popup """
 
     def _open_popup_confirm(self, text, fun, **kwargs):
@@ -398,7 +444,28 @@ class WifiMapper(App):
             self.exit()
         self.popup = None
 
+    """ Attack Methods """
+
+    def send_packet(self, packet, iface=None, **kwargs):
+        t = self.pcap_thread
+        if t:
+            return t.send_packet(packet, iface=iface)
+        return False
+
+    def stay_on_channel(self, channel, time=0):
+        t = self.get_channel_thread()
+        if not t:
+            return False
+        if time:
+            return t.temporary_set_channel(channel, time)
+        return t.set_channel(channel)
+
     """ Utility """
+
+    def get_channel_thread(self):
+        if self.pcap_thread:
+            return self.pcap_thread.channel_thread
+        return None
 
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and hasattr(self.args, "debug")\

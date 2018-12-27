@@ -17,7 +17,7 @@ from StationCard import StationCard
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
 import WMConfig
-from WMUtilityClasses import WMPageToggleButton, WMScreen
+from WMUtilityClasses import WMPageToggleButton, WMScreen, WMCard
 
 Builder.load_file(os.path.join("Static", "cardlistscreen.kv"))
 
@@ -51,16 +51,16 @@ class CardListScreen(WMScreen):
     def __init__(self, **kwargs):
         """ Delays view creation because some views are init in kv langage """
         self.args = kwargs.get('args', None)
+        self.card_memory = kwargs.get('card_memory', False)
         self._set_screen_type(**kwargs)
-        super(CardListScreen, self).__init__(**kwargs)
         self.wm_screen_type = "AP" if self.show_ap else "Station"
         self.ready = False
+        self.card_obj = {}
         self.card_dic = {}
         self.cards = []
         self.loading = False
         self.has_to_sort = False
         self.to_search = None
-        self.first_sort = 'clients' if self.show_ap else 'bssid'
         """ Important """
         self.browsing_card = False
         """ Pages """
@@ -68,6 +68,7 @@ class CardListScreen(WMScreen):
         self.max_cards = WMConfig.conf.max_card_per_screen
         self.current_page = 1
         self.pages = 0
+        super(CardListScreen, self).__init__(**kwargs)
         Clock.schedule_once(self._create_view)
 
     def _create_view(self, *args):
@@ -133,33 +134,35 @@ class CardListScreen(WMScreen):
                 allow_no_selection=False,
                 state="down" if key == self.first_sort else "normal",
                 screen=self)
-        btn.bind(on_press=self.action_bar.sort_dropdown._dropdown.dismiss)#TODO
+        btn.bind(on_press=self.action_bar.sort_dropdown._dropdown.dismiss)
         self.action_bar.sort_dropdown.add_widget(btn)
 
     def _create_sort_by(self):
         """ Handles sort dropdown text, values and direction """
+        self.first_sort = 'clients' if self.show_ap else 'bssid'
+        prefix = ""
+        if self.card_memory:
+            prefix = "ap." if self.show_ap else "station."
         if self.show_ap:
-            #TODO change sort: separate those with sig and those with not, sort them and
-            self._add_sort_value('bssid', 'ap.bssid', False)
-            self._add_sort_value('oui', 'ap.oui', False)
-            self._add_sort_value('signal', 'ap.rssi', True)
-            self._add_sort_value('clients', 'ap.n_clients', True)
-            self._add_sort_value('channels', 'ap.channel', False)
+            self._add_sort_value('bssid', prefix + 'bssid', False)
+            self._add_sort_value('oui', prefix + 'oui', False)
+            self._add_sort_value('signal', prefix + 'rssi', True)
+            self._add_sort_value('clients', prefix + 'n_clients', True)
+            self._add_sort_value('channels', prefix + 'channel', False)
             self._add_sort_value('sent', 'traffic.sent', True)
             self._add_sort_value('recv', 'traffic.recv', True)
-            self._add_sort_value('beacons', 'ap.beacons', True)
-            self._add_sort_value('secu', 'ap.security', True)
-            self._add_sort_value('wps', 'ap.wps', True)
+            self._add_sort_value('beacons', prefix + 'beacons', True)
+            self._add_sort_value('secu', prefix + 'security', True)
+            self._add_sort_value('wps', prefix + 'wps', True)
         if self.show_station:
-            #TODO change after card station
-            self._add_sort_value('bssid', 'station.bssid', False)
-            self._add_sort_value('ap', 'station.ap_bssid', False)#####
-            self._add_sort_value('oui', 'station.oui', False)
-            self._add_sort_value('signal', 'station.rssi', True)
+            self._add_sort_value('bssid', prefix + 'bssid', False)
+            self._add_sort_value('ap', prefix + 'ap_bssid', False)
+            self._add_sort_value('oui', prefix + 'oui', False)
+            self._add_sort_value('signal', prefix + 'rssi', True)
             self._add_sort_value('sent', 'traffic.sent', True)
             self._add_sort_value('recv', 'traffic.recv', True)
-            self._add_sort_value('model', 'station.model', True)
-            self._add_sort_value('probes', 'station.ap_probed_str', True)
+            self._add_sort_value('model', prefix + 'model', True)
+            self._add_sort_value('probes', prefix + 'ap_probed_str', True)
              
     def _select_page(self):
         """ Goes through every page buttons and change state of actual """
@@ -222,7 +225,6 @@ class CardListScreen(WMScreen):
         to_sort = []
         no_sort = []
         for card in self.cards:
-            obj = card.get_obj()
             value = attrgetter(self.sort_by)(card)
             if value:
                 to_sort.append(card)
@@ -246,96 +248,118 @@ class CardListScreen(WMScreen):
                     self.current_page * self.max_cards
                     ]:
                 self._add_card(card)
+            self.has_to_sort = False
 
     def _remove_card(self, key):
         """ Remove a card of both virtual and layout stack """
         if self.ui_paused:
             return
-        card = self.card_dic[key]
-        if self.current_screen and card.parent:
-            self.stack_layout.remove_widget(card)
-        if card in self.cards:
-            self.cards.remove(card)
-        self.n_card -= 1
+        card = self.card_dic.get(key, None)
+        if card:
+            if self.current_screen and card.parent:
+                self.stack_layout.remove_widget(card)
+                self.n_card = self.n_card - 1 if self.n_card - 1 >= 0 else 0
+        if not self.card_memory:
+            item = self.card_obj.get(key, None)
+        else:
+            item = card
+        if item in self.cards:
+            self.cards.remove(item)
         self.has_to_sort = True
 
-    def _clear_cards(self):
+    def _clear_cards(self, full_clear=False):
         """ Remove all virtual and layout stack of cards """
         if self.current_screen:
+            self.n_card = 0
             self.stack_layout.clear_widgets()
         self.cards = []
-        self.n_card = 0
+        if full_clear and not self.card_memory:
+            self.card_dic = {}
         self.has_to_sort = True
 
-    def _add_card(self, card):
+    def _add_card(self, item):
         """ Add a card to stacklayout if user sees screen """
         if self.ui_paused:
-            return
+            return False
         if self.n_card >= self.max_cards:
             return False
-        if self.current_screen and not card.parent:
-            self.stack_layout.add_widget(card)
-        self.n_card += 1
-        self.has_to_sort = True
+        #No memory has to buid card on the go
+        if self.current_screen:
+            if not isinstance(item, WMCard):
+                if item.bssid in self.card_dic:
+                    card = self.card_dic[item.bssid]
+                else:
+                    card = self._get_card_from_obj(item)
+            else:
+                card = item
+            if not self.card_memory:
+                self.card_dic[card.key] = card
+            if not card.parent:
+                self.stack_layout.add_widget(card)
+                self.n_card = self.n_card + 1
+            self.has_to_sort = True
         return True
 
-    def _insert_card(self, new_card):
+    def _insert_card(self, item):
         """ Add card to virtual stack of card and in stacklayout """
-        if not self._should_remove(new_card.id, new_card.get_obj()):
-            self.cards.append(new_card)
-            self._add_card(new_card)
+        if isinstance(item, WMCard):
+            obj = item.get_obj()
+            key = item.key
+        else:
+            obj = item
+            key = item.bssid
+        if not self._should_remove(key, obj):
+            self.cards.append(item)
+            self._add_card(item)
 
-    def _set_ap_card(self, bssid, ap, traffic):
+    def _get_card_from_obj(self, obj):
+        card = None
+        if self.show_ap:
+            card = APCard(key=obj.bssid,
+                    ap=obj,
+                    traffic=obj.traffic,
+                    args=self.args)
+        else:
+            card = StationCard(key=obj.bssid,
+                    station=obj,
+                    traffic=obj.traffic,
+                    args=self.args)
+        return card
+
+    def _set_card(self, bssid, obj):
         """ Fill card with access point info and displays it if it can"""
-        if bssid not in self.card_dic:
+        if bssid not in self.card_obj:
+            self.card_obj[bssid] = obj
+        if self.card_memory:
             #Create if not in cards dic
-            card = APCard(key=bssid,
-                    ap=ap,
-                    traffic=traffic,
-                    args=self.args)
-            #Protection against reloading while adding
-            while self.browsing_card:
-                pass
-            self.card_dic[bssid] = card
-            self._insert_card(card)
-            return
+            if bssid not in self.card_dic:
+                card = self._get_card_from_obj(obj)
+                #Protection against reloading while adding
+                while self.browsing_card:
+                    pass
+                self.card_dic[bssid] = card
+                self._insert_card(card)
+                return
         #If paused do not update
-        if self.ui_paused:
+        if self.ui_paused and self.card_memory:
             return
         #Remove if not wanted or add if wanted
-        if self._should_remove(bssid, ap):
+        dic = self.card_dic if self.card_memory else self.card_obj
+        if self._should_remove(bssid, obj):
             self._remove_card(bssid)
             return
-        elif self.card_dic[bssid] not in self.cards:
-            self.cards.append(self.card_dic[bssid])
-        #Update
-        self.card_dic[bssid].update(ap=ap, traffic=traffic)
-
-    def _set_station_card(self, bssid, station, traffic):
-        """ Fill card with station info and displays it if it can """
-        if bssid not in self.card_dic:
-            #Create if not in cards dic
-            card = StationCard(key=bssid,
-                    station=station,
-                    traffic=traffic,
-                    args=self.args)
-            #Protection against reloading while adding
-            while self.browsing_card:
-                pass
-            self.card_dic[bssid] = card
-            self._insert_card(card)
-            return
-        #If paused do not update
+        elif dic[bssid] not in self.cards:
+            self.cards.append(dic[bssid])
+            if not self.card_memory:
+                self._add_card(obj)
         if self.ui_paused:
             return
-        #Remove if not wanted or add if wanted
-        if self._should_remove(bssid, station):
-            self._remove_card(bssid)
-            return
-        elif self.card_dic[bssid] not in self.cards:
-            self.cards.append(self.card_dic[bssid])
         #Update
-        self.card_dic[bssid].update(station=station, traffic=traffic)
+        card = self.card_dic.get(bssid, None)
+        if card:
+            obj_name = "ap" if self.show_ap else "station"
+            update_dic = {obj_name: obj, "traffic": obj.traffic}
+            card.update(**update_dic)
 
     def update_gui(self, dic, current=True):
         """ Updates GUI - must never stop adding cards while parsing pcap """
@@ -345,14 +369,14 @@ class CardListScreen(WMScreen):
             ap = dic[WM_AP]
             for key in dic[WM_CHANGES][WM_AP]:
                 traffic = dic[WM_TRAFFIC].get(key, None)
-                self._set_ap_card(key, ap[key], traffic)
+                self._set_card(key, ap[key])
                 self.has_to_sort = True
 
         if self.show_station:
             sta = dic[WM_STATION]
             for key in dic[WM_CHANGES][WM_STATION]:
                 traffic = dic[WM_TRAFFIC].get(key, None)
-                self._set_station_card(key, sta[key], traffic)
+                self._set_card(key, sta[key])
                 self.has_to_sort = True
 
         if not self.ui_paused:
@@ -376,14 +400,20 @@ class CardListScreen(WMScreen):
         #self._say("Reloading GUI")
         self.current_screen = current
         self.loading = True
-        self._clear_cards()
+        self._clear_cards(full_clear=True)
         self.browsing_card = True
-        for key, value in self.card_dic.iteritems():
-            if not self._should_remove(value.key, value.get_obj()):
+        if self.card_memory:
+            iterator = self.card_dic.iteritems()
+        else:
+            iterator = self.card_obj.iteritems()
+        for key, value in iterator:
+            obj = value.get_obj() if self.card_memory else value
+            if not self._should_remove(key, obj):
                 self.cards.append(value)
         self.browsing_card = False
         if not self.ui_paused:
             self._make_pages()
+        #Will add all cards to GUI
         self._sort_cards(add=True)
         if not self.ui_paused\
                 or (self.ui_paused and current is False):
@@ -391,6 +421,9 @@ class CardListScreen(WMScreen):
         self.loading = False
 
     def get_card(self, key):
+        return self.card_dic.get(key, None)
+
+    def get_screen(self, key):
         return self.card_dic.get(key, None)
 
     def _update_header(self):

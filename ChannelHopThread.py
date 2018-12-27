@@ -21,10 +21,11 @@ class ChannelHopThread(threading.Thread):
 	self.stop = False
         self.bad_channels = set()
         self.channels = []
+        self.tmp_channels = None
         self.current_chan = -1
-        self.hop_time = float(self.app.config.get('Channel', 'HopTime'))
-        self.set_channel(channels or self.app.config.get('Channel', 'Channels'),
-                    no_run=True)
+        self.hop_time = float(self.app.config.get('Sniffer', 'HopTime'))
+        self.set_channel(channels or self.app.config.get('Sniffer', 'Channels'),
+                    run=False)
 
     def set_interface(self, iface):
         if not isinstance(iface, basestring):
@@ -36,9 +37,23 @@ class ChannelHopThread(threading.Thread):
         timer_thread.start()
 
     def reset_channels(self):
-        self.set_channel(WMConfig.conf.channels)
+        return self.set_channel(WMConfig.conf.channels)
 
-    def set_channel(self, chan, no_run=False):
+    def reverse_temporary(self):
+        #self._say("reversing to %s" % self.tmp_channels)
+        self.set_channel(self.tmp_channels)
+        self.tmp_channels = None
+
+    def temporary_set_channel(self, channels, time):
+        if not self.tmp_channels:
+            self.tmp_channels = list(self.channels)
+        ret = self.set_channel(channels)
+        if ret:
+            timer_thread = threading.Timer(time, self.reverse_temporary)
+            timer_thread.start()
+        return ret
+
+    def set_channel(self, chan, run=True):
         new_channels = []
         if isinstance(chan, basestring):
             try:
@@ -50,17 +65,18 @@ class ChannelHopThread(threading.Thread):
                 self._say("bad channel setting %s" % chan)
                 return False
         if isinstance(chan, int):
-            new_channels = list(chan)
+            new_channels = [chan]
         if self.channels == new_channels:
             return False
-        self.stop = 1
+        self.stop = True
         if isinstance(chan, (list, tuple)):
             new_channels = chan
         self.channels = new_channels
-        self._say("changed channels to %s" % self.channels)
-        if not no_run:
+        if run:
             timer_thread = threading.Timer(self.hop_time, self.run)
             timer_thread.start()
+        else:
+            self._say("changed channels to %s" % self.channels)
         return True
 
     def change_channel(self, channel):
@@ -74,13 +90,13 @@ class ChannelHopThread(threading.Thread):
                     % (e.__class__.__name__ , e.message))
             import traceback
             traceback.print_exc()
-            self.stop = True
+            #self.stop = True
         if ret != 0:
             if channel not in self.bad_channels:
                 self._say("bad channel {chan} - ret: {ret}"\
                         .format(ret=ret, chan=channel))
                 self.bad_channels.add(channel)
-            self.stop = True
+            #self.stop = True
         else:
             #self._say("hopped to %s" % channel)
             self.current_chan = channel
@@ -95,7 +111,9 @@ class ChannelHopThread(threading.Thread):
                 self._say("Removing bad channels : %s" % self.bad_channels)
                 self.channels = [chan for chan in self.channels\
                         if chan not in self.bad_channels]
-            for channel in self.channels:
+            #self.channels can change while iterating
+            copy_channels = list(self.channels)
+            for channel in copy_channels:
                 if self.stop:
                     return
                 self.change_channel(channel)

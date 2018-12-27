@@ -16,19 +16,6 @@ import WMConfig
 from APCardInfoScreen import APCardInfoScreen
 from WMUtilityClasses import WMSelectableLabel, WMImageLink, WMCard
 
-""" Important no nesting rule """
-
-class APCardInfoBox(BoxLayout):
-    pass
-
-class APCardSecurityBox(BoxLayout):
-    pass
-
-class APCardDataBox(BoxLayout):
-    pass
-
-Builder.load_file(os.path.join("Static", "apcard.kv"))
-
 class APCard(WMCard):
 
     info_box = ObjectProperty(None)
@@ -36,18 +23,18 @@ class APCard(WMCard):
     data_box = ObjectProperty(None)
     open_link = ObjectProperty(None)
 
-    def __init__(self, **kwargs):
-        super(APCard, self).__init__(**kwargs)
-        self.type = "AP"
-        self.key = kwargs['key']
-        self.ap = kwargs.get('ap', None)
-        self.args = kwargs.get('args', None)
-        self.traffic = kwargs.get('traffic', None)
+    def __init__(self, key=None, ap=None, args=None, traffic=None, **kwargs):
+        self.key = key
+        self.ap = ap
+        self.args = args
+        self.traffic = traffic
         self.width_mult = WMConfig.conf.label_width_mult
         self.final_width = 0
         self.space = 2
         self.known_bg = False
         self.has_changed = False
+        super(APCard, self).__init__(**kwargs)
+        self.card_type = "AP"
         self.init_background()
         self.bind(size=self.draw_background)
         self.bind(pos=self.draw_background)
@@ -55,19 +42,24 @@ class APCard(WMCard):
 
     def _create_view(self, *args):
         self.update(self.ap, self.traffic)
-        self.open_link.card = self
+        self.open_link.wmtype = self.card_type
+        self.open_link.wmkey = self.ap.bssid
         #self.bssid.bind(on_click_right=self.open_link)
 
     def update(self, ap, traffic):
-        self.final_width = 0
-        self.ap = ap
+        if ap:
+            self.ap = ap
         if traffic:
             self.traffic = traffic
+        if not self.ap:
+            return
         self.has_changed = False
+        self.final_width = 0
         self._set_bssid()
         self._set_ssid()
         self._set_security()
-        self._set_data()
+        if self.traffic:
+            self._set_data()
         self._check_width_changed()
         self._check_known()
         return self.has_changed
@@ -132,13 +124,6 @@ class APCard(WMCard):
     def get_obj(self):
         return self.ap
 
-    def get_info_screen(self):
-        screen = APCardInfoScreen(
-                name=self.ap.bssid,
-                ap=self.ap,
-                traffic=self.traffic)
-        return screen
-
     """ Resize card """
 
     def _check_known(self):
@@ -172,7 +157,7 @@ class APCard(WMCard):
 	with self.canvas.before:
             if self.clicked:
 	        self._color = Color(0, 0, 1, 0.25)
-            elif self.ap.known:
+            elif self.ap and self.ap.known:
 	        self._color = Color(1, 1, 1, 0.25)
             else:
 	        self._color = Color(1, 0, 0, 0.25)
@@ -183,7 +168,7 @@ class APCard(WMCard):
         self._rectangle.size = self.size
         if self.clicked:
             self._color.rgba = (0, 0, 1, 0.25)
-        elif self.ap.known:
+        elif self.ap and self.ap.known:
             self._color.rgba = (1, 1, 1, 0.25)
         else:
             self._color.rgba = (1, 0, 0, 0.25)
@@ -191,3 +176,5 @@ class APCard(WMCard):
             self.open_link.y = self.y
             self.open_link.x = self.right - self.open_link.width
             #self.open_link.pos = self.pos
+
+Builder.load_file(os.path.join("Static", "apcard.kv"))

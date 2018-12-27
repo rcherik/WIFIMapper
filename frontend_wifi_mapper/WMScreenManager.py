@@ -87,30 +87,10 @@ class WMScreenManager(ScreenManager):
         screen = CardListScreen(**kwargs)
         self.add_widget(screen)
 
-    def open_card_link(self, which, key):
-        if which not in ('AP', 'Station'):
-            self._say("open_card_link: bad which")
-            return
-        card = None
-        for screen in self.screens:
-            if isinstance(screen, CardListScreen)\
-                    and screen.wm_screen_type == which:
-                card = screen.get_card(key)
-                break
-        if card:
-            screen = card.get_info_screen()
-            App.get_running_app().add_header(
-                    "%s: %s" % (card.type, card.get_name()),
-                    card.key, screen)
-        else:
-            toast("%s not found" % key)
-
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and hasattr(self.args, "debug")\
                 and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
-            print(s, **kwargs)
-        else:
             print(s, **kwargs)
 
     def __repr__(self):

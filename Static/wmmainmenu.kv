@@ -2,23 +2,25 @@
     auto_dismiss: True
     title: 'Main Menu'
     size_hint: (None, None)
-    size: (640, 540)
+    size: (640, 590)
     layout: layout
     BoxLayout:
         orientation: 'vertical'
+		padding: (0, 5)
         GridLayout:
             id: layout
             cols: 3
             row_force_default: True
             row_default_height: 45
             orientation: 'vertical'
-            spacing: (5, 5)
+            spacing: (5, 10)
             padding: (10, 10)
             status_label: status_label
             sniff_button: sniff_button
             sniff_interfaces: sniff_interfaces
             read_button: read_button
             save_button: save_button
+            clear_capture_button: clear_capture_button
             capture_button: capture_button
             time_label: time_label
             memory_label: memory_label
@@ -32,6 +34,9 @@
                 Rectangle:
                     pos: self.pos
                     size: self.size
+
+			#ACTIONS
+
             Widget:
             Label:
                 text: "Actions"
@@ -39,12 +44,14 @@
                 markup: True
             Widget:
 
+			#Sniffer
+
             Label:
                 id: status_label
                 text: "Not sniffing"
             Button:
                 id: sniff_button
-                text: 'Sniff interface'
+                text: 'Sniff Interface'
                 on_release: root.sniff()
             Label:
                 id: sniff_interfaces
@@ -54,18 +61,37 @@
                 text_size: self.width, None
                 height: self.texture_size[1]
 
-            Button:
-                id: read_button
-                text: 'Read Pcap'
-                on_release: root.read_pcap()
+			#Capture
+
             Button:
                 id: capture_button
                 text: 'Start Capture'
                 on_release: root.capture_pcap()
             Button:
                 id: save_button
-                text: 'Save pcap'
-                on_release: root.save_pcap()
+                text: 'Save Capture'
+                on_release: root.save_capture()
+            Button:
+                id: clear_capture_button
+                text: 'Clear Capture'
+                on_release: root.clear_capture()
+
+			#Offline
+
+            Button:
+                id: read_button
+                text: 'Read File'
+                on_release: root.read_file()
+            Button:
+                id: dump_button
+                text: 'Dump Data'
+                on_release: root.dump_wm_data()
+            Button:
+                id: settings_button
+                text: 'Open Settings'
+                on_release: root.open_settings()
+
+			#STATS
 
             Widget:
             Label:
@@ -84,6 +110,8 @@
                 id: packet_label
                 text: "25000 packets"
 
+			#Channels
+
             Label:
                 text: "Channels: "
             TextInput:
@@ -93,18 +121,25 @@
                 multiline: False
             Button:
                 id: channel_button
-                text: 'Change interface'
+                text: 'Channel Hop Interface'
                 on_release: root.set_channel_interface()
+
+			#Stats
+
 			Button:
 				id: channel_stat_button
 				text: "Channel stat"
 				on_release: root.open_channel_stat()
 			Widget:
 			Widget:
-        WMSeparator:
+
+		WMSeparator:
+
         BoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.2
+            size_hint_y: None
+			height: 60
+			padding: (5, 0)
             Widget:
             Button:
                 text: 'Cancel'

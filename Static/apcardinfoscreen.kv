@@ -1,4 +1,4 @@
-<APCardInfoInfoBox>:
+<APCardInfoInfoBox@BoxLayout>:
 		orientation: 'vertical'
 		bssid: bssid
 		ssid: ssid
@@ -10,7 +10,7 @@
 				id: ssid
 				markup: True
 
-<APCardInfoSecurityBox>:
+<APCardInfoSecurityBox@BoxLayout>:
 		size_hint: (1, 0.1)
 		orientation: 'horizontal'
 		security: security
@@ -24,7 +24,7 @@
 				size_hint: (0.5, 1)
 				markup: True
 
-<APCardInfoDataBox>:
+<APCardInfoDataBox@BoxLayout>:
 		size_hint: (1, 0.2)
 		orientation: 'horizontal'
 		rcv: rcv
@@ -65,7 +65,7 @@
 						pos: separator.x, separator.center_y
 						size: separator.width, 2
 
-<APCardInfoClientConnectedBox>:
+<APCardInfoClientConnectedBox@BoxLayout>:
 		box: station_box
 		orientation: 'vertical'
 		size_hint_x: 0.55
@@ -88,7 +88,7 @@
                 		padding: (10, 10)
 						spacing: (0, 5)
 
-<APCardInfoClientHistoryBox>:
+<APCardInfoClientHistoryBox@BoxLayout>:
 		box: station_hist_box
 		orientation: 'vertical'
 		size_hint_x: 0.45
@@ -111,8 +111,12 @@
                 		padding: (10, 10)
 						spacing: (0, 5)
 
-<APCardInfoAttackBox>:
+<APCardInfoAttackBox@BoxLayout>:
 		orientation: 'vertical'
+		disco_button: disco_button
+		disco_loop_button: disco_loop_button
+		geolocation_button: geolocation_button
+		mitm_button: mitm_button
 		canvas.before:
 				Color:
 						rgba: (1, 1, 1, 0.25)
@@ -126,9 +130,26 @@
 						text: "Attack Zone"
 						size_hint: (1, 1)
 						markup: True
-		Widget:
+		GridLayout:
+				cols: 2
+				row_force_default: True
+				row_default_height: 30
+				padding: (10, 10)
+				spacing: (10, 10)
+				Button:
+						id: disco_button
+						text: "Disconnect Stations"
+				Button:
+						id: disco_loop_button
+						text: "Disconnect Loop Stations"
+				Button:
+						id: geolocation_button
+						text: "Geolocation"
+				Button:
+						id: mitm_button
+						text: "Man in the middle"
 
-<APCardInfoGraphBox>:
+<APCardInfoGraphBox@BoxLayout>:
 		graph_buttons: graph_buttons
 		graph: graph
 		orientation: 'vertical'
@@ -154,6 +175,7 @@
 				padding: (20, 0)
 		BoxLayout:
 				id: graph
+				padding: (10, 10)
 				orientation: 'vertical'
 
 <APCardInfoScreen>:
@@ -165,6 +187,7 @@
         station_lst: station_lst
         station_hist_lst: station_hist_lst
 		graph_box: graph_box
+		attack_box: attack_box
 		checkbox_all: checkbox_all
         BoxLayout:
                 id: main_layout

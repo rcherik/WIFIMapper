@@ -97,7 +97,8 @@ if __name__ == '__main__':
         list_interfaces()
         sys.exit(1)
 
-    if not args.pcap and args.interface and (args.interface not in wireless_lst):
+    if not args.pcap and args.interface\
+            and (args.interface not in wireless_lst):
         say("Interface %s not wireless" % args.interface)
         list_interfaces()
         sys.exit(1)

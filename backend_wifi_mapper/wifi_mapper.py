@@ -1,5 +1,5 @@
 #! /usr/bin/python
-# -*- coding: utf-8 -*-
+#coding: utf-8
 
 from __future__ import print_function
 import sys
@@ -7,10 +7,12 @@ import struct
 #Import logging to silence scapy IPV6 error
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-from scapy.all import rdpcap, DNSRR, RadioTap, Dot11, Dot11Elt, Dot11Beacon,\
-		Dot11ProbeResp, Dot11ProbeReq, Raw, EAPOL, Dot11AssoReq,\
+from scapy.all import DNSRR, Raw, EAPOL
+from scapy.utils import rdpcap, wrpcap
+from scapy.layers.dot11 import RadioTap, Dot11, Dot11Elt, Dot11Beacon,\
+		Dot11ProbeResp, Dot11ProbeReq, Dot11AssoReq,\
 		Dot11ReassoReq, Dot11AssoResp, Dot11ReassoResp, Dot11Disas,\
-		Dot11Deauth, Dot11Auth, wrpcap
+		Dot11Deauth, Dot11Auth
 try:
 	from scapy.all import Dot11FCS
 except ImportError:
@@ -144,6 +146,18 @@ def sta_sender(pkt, dic, src, dst, channel=None):
 		ap = add_ap(dic, dst, channel=channel)
 	return ap, sta
 
+def _debug_pkt(packet):
+	ds = wifi_mapper_ds.get_addrs(packet)
+	if ds[WM_DS_SENDER] == "68:a3:78:d7:66:4c":
+		#packet.show()
+		print("Our sender %s | Our receiver %s" % (ds[WM_DS_SENDER], ds[WM_DS_RECEIVER]))
+		print(packet.summary())
+		print()
+	if ds[WM_DS_RECEIVER] == "68:a3:78:d7:66:4c":
+		print("Our receiver %s | Our sender %s" % (ds[WM_DS_RECEIVER], ds[WM_DS_SENDER]))
+		print(packet.summary())
+		print()
+
 def parse_pkt(pkt, dic, channel=None):
 	#ignore control frames
 	try:
@@ -154,6 +168,8 @@ def parse_pkt(pkt, dic, channel=None):
 
 	#get the sender and the destination
 	ds = wifi_mapper_ds.get_addrs(pkt)
+	if not ds:
+		return
 	src = ds[WM_DS_SENDER]
 	dst = ds[WM_DS_RECEIVER]
 
@@ -206,9 +222,13 @@ def parse_pkt(pkt, dic, channel=None):
 	elif pkt.haslayer(Dot11ReassoResp):
 		parse_assocResp(pkt, dic, sta, ap)
 	elif pkt.haslayer(Dot11Disas):
+		#pkt.show()
+		#print(pkt.summary())
 		if sta:
 			sta.set_disconnected() #TODO
 	elif pkt.haslayer(Dot11Deauth):
+		#pkt.show()
+		#print(pkt.summary())
 		if sta:
 			sta.set_disconnected() #TODO
 	elif is_data(pkt) and not is_broadcast(ds[WM_DS_SENDER]):

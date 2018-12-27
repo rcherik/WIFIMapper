@@ -5,6 +5,10 @@ import os
 import time
 import threading
 import subprocess
+try:
+    import cPickle as pickle
+except:
+    import pickle
 """ Scapy """
 import scapy
 import scapy.config
@@ -13,6 +17,7 @@ from scapy.utils import rdpcap, PcapReader, wrpcap
 from scapy.error import Scapy_Exception
 """ Our Stuff """
 import interface_utilities
+from backend_wifi_mapper.wifi_mapper_attack import send_pkt
 from backend_wifi_mapper.wifi_mapper import start_parsing_pkt
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES, get_wm_list
@@ -86,6 +91,17 @@ class PcapThread(threading.Thread):
         elif self.pcap_file:
             self.parse_pcap_file(self.pcap_file)
 
+    """ Attack Methods """ #TODO own thread ?
+
+    def send_packet(self, packet, iface=None, **kwargs):
+        if not iface and not self.channel_thread:
+            return False
+        if not iface:
+            iface = self.channel_thread.iface
+        #Wifi Mapper backend
+        send_pkt(packet, iface, **kwargs)
+
+
     """
         ****
             PcapThread GUI methods
@@ -119,6 +135,7 @@ class PcapThread(threading.Thread):
             self.n_saved_pkts += 1
         if current:
             self.pkt_stats[current] += 1
+        #Wifi Mapper backend
         start_parsing_pkt(self.pkt_dic, pkt, channel=current)
         self.n_pkts += 1
         self._start_update_timer()
@@ -139,6 +156,7 @@ class PcapThread(threading.Thread):
     """
 
     def reset_saved_pkts(self):
+        self.save_pkts = False
         self.n_saved_pkts = 0
         PcapThread.sniffed_pkt_list = []
         self.pkt_list = PcapThread.sniffed_pkt_list
@@ -170,7 +188,7 @@ class PcapThread(threading.Thread):
             sniff(iface=self.ifaces, prn=self._callback,
                     stop_filter=self._callback_stop, store=False)
             self.sniffing = False
-            while not self.get_input:
+            while not self.get_input and not self.stop:
                 pass
         self._say("Stopped sniffing")
         self._stop_channel_thread()
@@ -229,7 +247,7 @@ class PcapThread(threading.Thread):
         pause_time = WMConfig.conf.pcap_read_pause
         read_pkts_pause = WMConfig.conf.pcap_read_pkts_pause
         while not self.stop:
-            while not self.get_input:
+            while not self.get_input and not self.stop:
                 pass
             pkt = reader.read_packet()
             if pkt is None:
@@ -283,12 +301,84 @@ class PcapThread(threading.Thread):
         ****
     """
 
+    def dump_data(self, filename):
+        if not self.pkt_dic:
+            return
+        data = [
+            dict(self.pkt_dic[WM_AP]),
+            dict(self.pkt_dic[WM_STATION]),
+            dict(self.pkt_dic[WM_TRAFFIC])
+            ]
+        try:
+            with open(filename, 'wb') as f:
+                f.write(WMConfig.conf.magic_file)
+                pickle.dump(3, f)
+                for elem in data:
+                    pickle.dump(elem, f)
+            s = "Saved data to file %s" % (filename)
+            toast(s, False)
+            self._say(s)
+            return True
+        except IOError as err:
+            toast("Failed to save data to %s" % (filename), True)
+            self._say("{}".format(err))
+        return False
+
+    def _check_magic(self, f):
+        magic = f.read(len(WMConfig.conf.magic_file))
+        if magic.startswith(WMConfig.conf.magic_file):
+            return True
+        else:
+            raise NameError("Bad magic for loading "
+                    "Wifi Mapper file: '%s'" % magic)
+        return False
+
+    def _parse_data(self, f):
+        data = []
+        size = int(pickle.load(f))
+        self._say(str(size))
+        for i in range(size):
+            data.append(pickle.load(f))
+        return data
+
+    def load_data(self, filename):
+        self.app.stop_input()
+        try:
+            with open(filename, 'rb') as f:
+                if self._check_magic(f):
+                    data = self._parse_data(f)
+            self._say("Loaded data from %s" % (filename))
+            self.pkt_dic[WM_AP].update(data[WM_AP])
+            self.pkt_dic[WM_STATION].update(data[WM_STATION])
+            self.pkt_dic[WM_TRAFFIC].update(data[WM_TRAFFIC])
+            for bssid, obj in data[WM_AP].iteritems():
+                self.pkt_dic[WM_CHANGES][WM_AP].append(bssid)
+                obj.dic = self.pkt_dic
+            for bssid, obj in data[WM_STATION].iteritems():
+                self.pkt_dic[WM_CHANGES][WM_STATION].append(bssid)
+                obj.dic = self.pkt_dic
+            for bssid, obj in data[WM_TRAFFIC].iteritems():
+                obj.dic = self.pkt_dic
+            self.app.resume_input()
+            self._start_update_timer()
+            self._say("Start loading with new packets GUI")
+            toast("Loaded data from {}".format(filename), True)
+            return True
+        except IOError as err:
+            toast("{}".format(err), True)
+            self._say("{}".format(err))
+        except NameError as err:
+            toast("{}".format(err), True)
+            self._say("{}".format(err))
+        except ValueError as err:
+            toast("ValueError: old or corrupted Wfi Mapper dump file", True)
+            self._say("{}".format(err))
+        return False
+
     def write_pcap(self, filename, append=False):
         if not isinstance(filename, basestring)\
                 or not self.pkt_list:
             return
-        if not filename.endswith('.pcap'):
-            filename += ".pcap"
         self._say("Writing pcap to file %s" % filename)
         wrpcap(filename, self.pkt_list, append=append)
 
@@ -343,6 +433,12 @@ class PcapThread(threading.Thread):
         return False
 
     """ Utility """
+
+    def get_ap(self, key):
+        return self.pkt_dic[WM_AP].get(key, None)
+
+    def get_station(self, key):
+        return self.pkt_dic[WM_STATION].get(key, None)
 
     def doing_nothing(self):
         return not self.reading and not self.sniffing

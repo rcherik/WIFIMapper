@@ -13,14 +13,6 @@ from StationCardInfoScreen import StationCardInfoScreen
 from WMUtilityClasses import WMSelectableLabel, WMCard
 import WMConfig
 
-""" Important no nesting rule """
-
-class StationCardInfoBox(BoxLayout):
-    pass
-
-class StationCardDataBox(BoxLayout):
-    pass
-
 Builder.load_file(os.path.join("Static", "stationcard.kv"))
 
 class StationCard(WMCard):
@@ -31,28 +23,27 @@ class StationCard(WMCard):
     probes = ObjectProperty(None)
     open_link = ObjectProperty(None)
 
-    def __init__(self, **kwargs):
-        super(StationCard, self).__init__(**kwargs)
-        self.type = "Sta"
-        self.key = kwargs['key']
-        self.station = kwargs.get('station', None)
-        self.args = kwargs.get('args', None)
-        self.traffic = kwargs.get('traffic', None)
+    def __init__(self, key=None, station=None, args=None, traffic=None, **kwargs):
+        self.key = key
+        self.station = station
+        self.args = args
+        self.traffic = traffic
         self.width_mult = WMConfig.conf.label_width_mult
         self.final_width = 0
         self.space = 2
         self.known_bg = False
         self.has_changed = False
+        super(StationCard, self).__init__(**kwargs)
+        self.card_type = "Sta"
         self.init_background()
         self.bind(size=self.draw_background)
         self.bind(pos=self.draw_background)
-        self.ready = False
 	Clock.schedule_once(self._create_view)
 
     def _create_view(self, *args):
         self.update(self.station, self.traffic)
-        self.ready = True
-        self.open_link.card = self
+        self.open_link.wmtype = self.card_type
+        self.open_link.wmkey = self.station.bssid
 
     def update(self, station, traffic):
         self.final_width = 0
@@ -132,13 +123,6 @@ class StationCard(WMCard):
 
     def get_obj(self):
         return self.station
-
-    def get_info_screen(self):
-        screen = StationCardInfoScreen(
-                name=self.station.bssid,
-                station=self.station,
-                traffic=self.traffic)
-        return screen
 
     """ Resize Card """
 

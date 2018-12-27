@@ -13,6 +13,8 @@ from kivy.properties import ObjectProperty
 
 """ Our stuff """
 
+from PcapThread import PcapThread
+
 import WMConfig
 from WMUtilityClasses import WMInterfacesPopup
 from WMFileChooser import LoadDialog, SaveDialog
@@ -26,6 +28,11 @@ class WMMainMenu(Popup):
 
     def __init__(self, app, **kwargs):
         self.app = app
+        assert_class = self.app.__class__
+        assert hasattr(assert_class, 'get_focus'), "Broken"
+        assert hasattr(assert_class, 'parse_file'), "Broken"
+        assert hasattr(assert_class, 'start_sniffing'), "Broken"
+
         self.width_mult = WMConfig.conf.label_width_mult
         self.popup = None
         self.event = None
@@ -55,7 +62,7 @@ class WMMainMenu(Popup):
         if not t or not t.channel_thread:
             return
         if t.channel_thread.set_channel(widget.text):
-            widget.text = ', '.join(str(c) for c in t.channel_thread.channels)
+            widget.text = ','.join(str(c) for c in t.channel_thread.channels)
         else:
             self._set_channels()
 
@@ -138,12 +145,14 @@ class WMMainMenu(Popup):
         self._set_time()
 
     def _set_save_button(self, thread):
-        s = "Save Pcap"
+        s = "Save Capture"
         if thread and thread.n_saved_pkts:
             self.layout.save_button.disabled = False
-            s = "Save Pcap (%d)" % thread.n_saved_pkts
+            self.layout.clear_capture_button.disabled = False
+            s = "%s (%d)" % (s, thread.n_saved_pkts)
         else:
             self.layout.save_button.disabled = True
+            self.layout.clear_capture_button.disabled = True
         self._set_label(self.layout.save_button, s)
 
     def _set_channels(self, *args):
@@ -151,16 +160,16 @@ class WMMainMenu(Popup):
         if t and t.channel_thread:
             self.layout.channel_input.disabled = False
             self.layout.channel_stat_button.disabled = False
-            s = ', '.join(str(c) for c in t.channel_thread.channels)\
+            s = ','.join(str(c) for c in t.channel_thread.channels)\
                     if t.channel_thread.channels else ""
             self._set_label(self.layout.channel_input, s)
         else:
             self.layout.channel_input.disabled = True
             self.layout.channel_stat_button.disabled = True
 
-    """ Save Load Pcap """
+    """ Save Load File/Pcap """
 
-    def save_pcap_input_focus(self, widget, value):
+    def _remove_input_focus(self, widget, value):
         if not value:
             self.app.get_focus()
 
@@ -169,10 +178,10 @@ class WMMainMenu(Popup):
             self.popup.dismiss()
             self.popup = None
 
-    def read_pcap(self):
+    def read_file(self):
         if self.popup:
             self.popup.dismiss()
-        content = LoadDialog(load=self.load,
+        content = LoadDialog(load=self.load_file,
                 path=os.path.join(self.app.path, 'Traces_pcap'),
                 cancel=self.dismiss_popup)
         self.popup = Popup(title="Load file",
@@ -180,26 +189,46 @@ class WMMainMenu(Popup):
                             size_hint=(0.9, 0.9))
         self.popup.open()
 
-    def save_pcap(self):
+    def capture_pcap(self):
+        t = self.app.pcap_thread
+        if not t:
+            return
+        if not t.start_saving_pkts():
+            self._set_save_button(t)
+        self._set_capture(t)
+
+    def save_capture(self):
         if self.popup:
             self.popup.dismiss()
-        content = SaveDialog(save=self.save,
+        content = SaveDialog(save=self.save_pcap,
                 path=os.path.join(self.app.path, 'Traces_pcap'),
                 cancel=self.dismiss_popup)
-        content.text_input.bind(focus=self.save_pcap_input_focus)
+        content.text_input.bind(focus=self._remove_input_focus)
         self.popup = Popup(title="Save file",
                             content=content,
                             size_hint=(0.9, 0.9))
         self.popup.open()
 
-    def load(self, path, filename):
-        self.app.start_reading_pcap(os.path.join(path, filename[0]))
+    assert hasattr(PcapThread, 'reset_saved_pkts'), "Broken"
+
+    def clear_capture(self):
+        if self.app.pcap_thread:
+            self.app.pcap_thread.reset_saved_pkts()
+            self._set_save_button(self.app.pcap_thread)
+
+    def load_file(self, path, filename):
+        self.app.parse_file(os.path.join(path, filename[0]))
         self.dismiss_popup()
         self.app.get_focus()
 
-    def save(self, path, filename):
+    assert hasattr(PcapThread, 'write_pcap'), "Broken"
+
+    def save_pcap(self, path, filename):
         if self.app.pcap_thread:
-            self.app.pcap_thread.write_pcap(os.path.join(path, filename))
+            final_filename = os.path.join(path, filename)
+            if not final_filename.endswith('.pcap'):
+                final_filename += ".pcap"
+            self.app.pcap_thread.write_pcap(final_filename)
             self.app.pcap_thread.reset_saved_pkts()
             self._set_save_button(self.app.pcap_thread)
         self.dismiss_popup()
@@ -207,17 +236,36 @@ class WMMainMenu(Popup):
 
     """ Set buttons """
 
+    def open_settings(self):
+        self.app.open_settings()
+
+    assert hasattr(PcapThread, 'dump_data'), "Broken"
+
+    def dump_wm_data_to_file(self, path, filename):
+        if self.app.pcap_thread:
+            final_filename = os.path.join(path, filename)
+            if not final_filename.endswith(WMConfig.conf.wm_extension):
+                final_filename += WMConfig.conf.wm_extension
+            self.app.pcap_thread.dump_data(final_filename)
+        self.dismiss_popup()
+        self.app.get_focus()
+
+    def dump_wm_data(self):
+        if self.popup:
+            self.popup.dismiss()
+        content = SaveDialog(save=self.dump_wm_data_to_file,
+                path=os.path.join(self.app.path, 'Traces_pcap'),
+                cancel=self.dismiss_popup)
+        content.text_input.bind(focus=self._remove_input_focus)
+        self.popup = Popup(title="Dump Wifi Mapper Data",
+                            content=content,
+                            size_hint=(0.9, 0.9))
+        self.popup.open()
+
     def open_channel_stat(self):
         t = self.app.pcap_thread
         if t:
             print(t.pkt_stats)
-
-    def capture_pcap(self):
-        t = self.app.pcap_thread
-        if t:
-            if not t.start_saving_pkts():
-                self._set_save_button(t)
-            self._set_capture(t)
 
     def _channel_interfaces_popup_dismissed(self, widget):
         t = self.app.pcap_thread

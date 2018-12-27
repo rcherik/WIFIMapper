@@ -36,10 +36,10 @@ class WMTabbedPanel(TabbedPanel):
                 content=self.manager,
                 can_remove=False)
 
-    def __init__(self, **kwargs):
-	self.manager = kwargs.get('manager', None)
-	self.ap_tab = kwargs.get('ap', None)
-        self.args = kwargs.get('args', None)
+    def __init__(self, manager=None, ap=None, args=None, **kwargs):
+	self.manager = manager
+	self.ap_tab = ap
+        self.args = args
         self.header_dic = {}
         self.previous_header = None
         self._init_tabs()
@@ -52,10 +52,11 @@ class WMTabbedPanel(TabbedPanel):
         if key in self.header_dic:
             self.header_dic[key].text = txt
 
-    def add_header(self, text, key, screen, *args, **kwargs):
+    def add_header(self, screen, *args, **kwargs):
+        key = screen.name
         if key not in self.header_dic:
             self.manager.add_widget(screen)
-            header = WMPanelHeader(text=text,
+            header = WMPanelHeader(text=screen.get_header(),
                     master=self,
                     screen=key,
                     content=self.manager,
@@ -129,13 +130,16 @@ class WMTabbedPanel(TabbedPanel):
 
 class WMPanelHeader(TabbedPanelHeader):
 
-    def __init__(self, **kwargs):
-        self.screen = kwargs.get("screen", None)
-        self.master = kwargs.get("master", None)
-        self.can_remove = kwargs.get("can_remove", True)
+    def __init__(self, screen=None, master=None, can_remove=True, args=None, **kwargs):
+        self.screen = screen
+        self.master = master
+        #FU KIVY ITS SUPPOSED TO BE PARENT NOT PANEL
+        self.panel = master
+        #AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        self.can_remove = can_remove
         self.ready = False
+        self.args = args
         super(WMPanelHeader, self).__init__(**kwargs)
-        self.args = kwargs.get('args', None)
 	Clock.schedule_once(self._created_view)
 
     def _created_view(self, *args):
@@ -166,7 +170,7 @@ class WMCard(BoxLayout):
 
     def __init__(self, **kwargs):
         self.clicked = False
-        self.type = None
+        self.card_type = ""
         super(WMCard, self).__init__(**kwargs)
 
     def _get_nested_attr(self, value):
@@ -184,9 +188,6 @@ class WMCard(BoxLayout):
     def get_obj(self):
         pass
 
-    def get_info_screen(self):
-        return None
-
     def _say(self, s, **kwargs):
         if hasattr(self, "args") and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
@@ -194,9 +195,6 @@ class WMCard(BoxLayout):
         else:
             print(s, **kwargs)
  
-    def on_pressed(self, instance, pos):
-        self._say("pressed at {pos}".format(pos=pos))
-
     def on_touch_up(self, touch):
         if super(WMCard, self).on_touch_up(touch):
             return True
@@ -218,7 +216,13 @@ class WMScreen(Screen):
 
     def __init__(self, **kwargs):
         super(WMScreen, self).__init__(**kwargs)
-        #TODO
+        self.screen_type = ""
+
+    def get_header(self):
+        return "%s: %s" % (self.screen_type, self.get_name())
+
+    def get_name(self):
+        return ""
 
     def update_gui(self, dic):
         pass
@@ -411,8 +415,11 @@ class WMInterfacesPopup(Popup):
 
 from kivy.uix.checkbox import CheckBox
 
+class WMRedCheckBox(CheckBox):
+    pass
+
 Builder.load_string('''
-<WMRedCheckBox@Checkbox>:
+<WMRedCheckBox>:
     canvas.before:
         Color:
             rgb: 1,0,0
@@ -425,9 +432,6 @@ Builder.load_string('''
             pos:self.center_x-7, self.center_y-7
             size:[14,14]
 ''')
-
-class WMRedCheckBox(CheckBox):
-    pass
 
 from kivy.uix.label import Label
 from kivy.lang import Builder
@@ -442,18 +446,18 @@ Clipboard = None
 
 class WMSelectableLabel(Label):
 
-    def __init__(self, **kwargs):
-        self.hidden_text = kwargs.get('hidden_text', "")
-        self.can_copy = kwargs.get('can_copy', True)
+    def __init__(self, hidden_text="", can_copy=True, **kwargs):
+        self.hidden_text = hidden_text
+        self.can_copy = can_copy
 	self.register_event_type('on_double_tap')
-	super(WMSelectableLabel, self).__init__(**kwargs)
 	self._touch_count = 0
-        self.markup = True
         self.click_color = WMConfig.conf.click_color
 	if platform == 'linux':
 	    self._ensure_clipboard()
-        self.no_color_text = ""
+        self.old_text = ""
         self.event_unclick = None
+	super(WMSelectableLabel, self).__init__(**kwargs)
+        self.markup = True
 
     def _ensure_clipboard(self):
 	global Clipboard
@@ -461,8 +465,8 @@ class WMSelectableLabel(Label):
 	    from kivy.core.clipboard import Clipboard
 
     def set_clicked(self, value):
-        if not self.no_color_text:
-            self.no_color_text = value
+        if not self.old_text:
+            self.old_text = value
             if value.find('color') >= 0:
                 match = re.search(r'#[0-9a-fA-F]+', value)
                 if match:
@@ -472,9 +476,9 @@ class WMSelectableLabel(Label):
                 % (self.click_color, value)
 
     def set_unclicked(self, *args):
-        if self.no_color_text:
-            self.text = self.no_color_text
-            self.no_color_text = ""
+        if self.old_text:
+            self.text = self.old_text
+            self.old_text = ""
 
     def set_copy(self, value):
         if isinstance(value, basestring):
@@ -483,7 +487,7 @@ class WMSelectableLabel(Label):
             self.hidden_text = ""
 
     def is_clicked(self):
-        return self.no_color_text
+        return self.old_text
 
     def set_select_label_text(self, value):
         if self.is_clicked():
@@ -493,7 +497,7 @@ class WMSelectableLabel(Label):
 
     def check_select_label_text(self, value):
         if self.is_clicked():
-            return value != self.no_color_text
+            return value != self.old_text
         else:
             return value != self.text
 
@@ -533,17 +537,17 @@ from kivy.uix.behaviors import ButtonBehavior
 
 class WMPressableLabel(ButtonBehavior, Label):
 
-    def __init__(self, **kwargs):
-        self.key = kwargs.get('key', None)
-        super(WMPressableLabel, self).__init__(**kwargs)
+    def __init__(self, key=None, **kwargs):
+        self.key = key
         self.markup = True
-        self.no_color_text = ""
+        self.old_text = ""
         self.event_unclick = None
         self.click_color = WMConfig.conf.click_color
+        super(WMPressableLabel, self).__init__(**kwargs)
 
     def set_clicked(self, value):
-        if not self.no_color_text:
-            self.no_color_text = value
+        if not self.old_text:
+            self.old_text = value
             if value.find('color') >= 0:
                 match = re.search(r'#[0-9a-fA-F]+', value)
                 if match:
@@ -553,9 +557,9 @@ class WMPressableLabel(ButtonBehavior, Label):
                 % (self.click_color, value)
 
     def set_unclicked(self, *args):
-        if self.no_color_text:
-            self.text = self.no_color_text
-            self.no_color_text = ""
+        if self.old_text:
+            self.text = self.old_text
+            self.old_text = ""
 
     def add_event(self):
         if self.event_unclick:
@@ -566,7 +570,6 @@ class WMPressableLabel(ButtonBehavior, Label):
     def on_press(self):
         self.set_clicked(self.text)
         self.add_event()
-        pass
 
 from kivy.properties import StringProperty, ObjectProperty
 from kivy.uix.image import Image
@@ -574,7 +577,8 @@ from kivy.app import App
 
 class WMImageLink(Image):
 
-    card = ObjectProperty(None)
+    wmtype = ObjectProperty(None)
+    wmkey = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(WMImageLink, self).__init__(**kwargs)
@@ -582,13 +586,10 @@ class WMImageLink(Image):
     def on_touch_up(self, touch):
         if super(WMImageLink, self).on_touch_up(touch):
             return True
-        if self.card and self.collide_point(*touch.pos)\
+        if self.wmkey and self.collide_point(*touch.pos)\
                 and hasattr(touch, "button")\
                 and touch.button == "left":
-            screen = self.card.get_info_screen()
-            App.get_running_app().add_header(
-                    "%s: %s" % (self.card.type, self.card.get_name()),
-                    self.card.key, screen)
+            App.get_running_app().open_screen(self.wmtype, self.wmkey)
             return True
         return False
 

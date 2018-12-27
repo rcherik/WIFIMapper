@@ -30,25 +30,6 @@ try:
 except:
     pass
 
-""" Important no nesting rule """
-
-class StationCardInfoInfoBox(BoxLayout):
-    pass
-
-class StationCardInfoDataBox(BoxLayout):
-    pass
-
-class StationCardInfoHistoryBox(BoxLayout):
-    pass
-
-class StationCardInfoGraphBox(BoxLayout):
-    pass
-
-class StationCardInfoAttackBox(BoxLayout):
-    pass
-
-Builder.load_file(os.path.join("Static", "stationcardinfoscreen.kv"))
-
 class StationCardInfoScreen(WMScreen):
 
     main_layout = ObjectProperty(None)
@@ -62,9 +43,9 @@ class StationCardInfoScreen(WMScreen):
     station_box = ObjectProperty(None)
     graph_box = ObjectProperty(None)
 
-    def __init__(self, **kwargs):
-        self.station = kwargs.get('station', None)
-        self.traffic = kwargs.get('traffic', None)
+    def __init__(self, station=None, traffic=None, **kwargs):
+        self.station = station
+        self.traffic = traffic
         self.ready = False
         self.last_idx_hist = 0
         self.ui_paused = False
@@ -73,7 +54,13 @@ class StationCardInfoScreen(WMScreen):
         self.graph_btn_cancel = None
         self.graph_btn_update = None
 	super(StationCardInfoScreen, self).__init__(**kwargs)
+        self.name = self.station.bssid
+        self.screen_type = "Sta"
 	Clock.schedule_once(self._create_view)
+
+    @classmethod
+    def from_obj(cls, obj):
+        return cls(station=obj, traffic=obj.traffic)
 
     def _create_view(self, *args): 
        	self.ready = True
@@ -153,7 +140,7 @@ class StationCardInfoScreen(WMScreen):
         self._set_label(self.model, s, copy=model)
 
     def _open_ap(self, widget):
-        App.get_running_app().open_card_link("AP", widget.key)
+        App.get_running_app().open_screen("AP", widget.key)
 
     def _add_history_traffic(self, string, bssid):
         string = "{} (s:{send:d}, r:{recv:d})".format(
@@ -251,6 +238,9 @@ class StationCardInfoScreen(WMScreen):
 
     """ Overrides WMScreen """
 
+    def get_name(self):
+        return self.station.get_name()
+
     def set_ui_paused(self):
         self.ui_paused = True
 
@@ -279,3 +269,5 @@ class StationCardInfoScreen(WMScreen):
         """ Handles keyboard input sent by App to screen manager """
         if not self.current_screen:
             return False
+
+Builder.load_file(os.path.join("Static", "stationcardinfoscreen.kv"))

@@ -1,4 +1,4 @@
-<StationCardInfoInfoBox>:
+<StationCardInfoInfoBox@BoxLayout>:
 		orientation: 'vertical'
 		bssid: bssid
 		ap_bssid: ap_bssid
@@ -10,7 +10,7 @@
 				id: ap_bssid
 				markup: True
 
-<StationCardInfoDataBox>:
+<StationCardInfoDataBox@BoxLayout>:
 		size_hint: (1, 0.1)
 		orientation: 'horizontal'
 		rcv: rcv
@@ -40,7 +40,7 @@
 						pos: separator.x, separator.center_y
 						size: separator.width, 2
 
-<StationCardInfoHistoryBox>:
+<StationCardInfoHistoryBox@BoxLayout>:
 		box: hist_box
 		orientation: 'vertical'
 		size_hint_x: 1
@@ -63,8 +63,11 @@
                 		padding: (10, 10)
 						spacing: (0, 5)
 
-<StationCardInfoAttackBox>:
+<StationCardInfoAttackBox@BoxLayout>:
 		orientation: 'vertical'
+		disco_button: disco_button
+		disco_loop_button: disco_loop_button
+		taxonomy_button: taxonomy_button
 		canvas.before:
 				Color:
 						rgba: (1, 1, 1, 0.25)
@@ -78,9 +81,23 @@
 						text: "Attack Zone"
 						size_hint: (1, 1)
 						markup: True
-		Widget:
+		GridLayout:
+				cols: 2
+				row_force_default: True
+				row_default_height: 30
+				padding: (10, 10)
+				spacing: (10, 10)
+				Button:
+						id: disco_button
+						text: "Disconnect"
+				Button:
+						id: disco_loop_button
+						text: "Disconnect Loop"
+				Button:
+						id: taxonomy_button
+						text: "Get Taxonomy"
 
-<StationCardInfoGraphBox>:
+<StationCardInfoGraphBox@BoxLayout>:
 		graph_buttons: graph_buttons
 		graph: graph
 		orientation: 'vertical'
@@ -110,6 +127,7 @@
 						text: "Cancel"
 		BoxLayout:
 				id: graph
+				padding: (10, 10)
 				orientation: 'vertical'
 
 <StationCardInfoScreen>:
