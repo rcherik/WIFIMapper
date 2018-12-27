@@ -1,3 +1,5 @@
+#encoding: utf-8
+
 from __future__ import print_function
 import os
 """ Kivy """
@@ -63,6 +65,13 @@ class StationCard(WMCard):
     """ Setter for labels """
 
     def _set_label(self, label, string, copy=""):
+        try:
+            uni = unicode(string)
+        except UnicodeDecodeError as e:
+            self._say(e)
+            self._say(self.station)
+            self._say(string)
+            return
         if isinstance(label, WMSelectableLabel):
             if label.check_select_label_text(string):
                 self.has_changed = True

@@ -117,6 +117,8 @@
 		disco_loop_button: disco_loop_button
 		geolocation_button: geolocation_button
 		mitm_button: mitm_button
+		taxonomy_button: taxonomy_button
+		channel_button: channel_button
 		canvas.before:
 				Color:
 						rgba: (1, 1, 1, 0.25)
@@ -147,7 +149,13 @@
 						text: "Geolocation"
 				Button:
 						id: mitm_button
-						text: "Man in the middle"
+						text: "Man in the Middle"
+				Button:
+						id: taxonomy_button
+						text: "Grab Stations Taxonomy"
+				Button:
+						id: channel_button
+						text: "Stick on Channel"
 
 <APCardInfoGraphBox@BoxLayout>:
 		graph_buttons: graph_buttons

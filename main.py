@@ -49,7 +49,7 @@ def parse_args():
 def application_runtime_error(err):
     import traceback
     traceback.print_exc()
-    print("RuntimeError : " + err.message)
+    print("RuntimeError : %s" % err)
     WifiMapperApp.stop_app()
     os.kill(os.getpid(), signal.SIGKILL)
 
@@ -113,5 +113,10 @@ if __name__ == '__main__':
     try:
         app.run()
     except Exception as err:
+        from backend_wifi_mapper.wifi_mapper_utilities import WM_CHANGES
+        pkt = app.pcap_thread.pkt_dic
+        print("Last changes before going dark: ")
+        print(pkt[WM_CHANGES])
+        print("---- Error ----")
         application_runtime_error(err)
     WifiMapperApp.stop_app()

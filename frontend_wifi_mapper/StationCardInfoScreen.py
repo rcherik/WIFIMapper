@@ -1,5 +1,8 @@
+#encoding: utf-8
+
 from __future__ import print_function
 import os
+import time
 """ Kivy """
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
@@ -53,6 +56,7 @@ class StationCardInfoScreen(WMScreen):
         self.graph_btn_create = None
         self.graph_btn_cancel = None
         self.graph_btn_update = None
+        self.attacking = False
 	super(StationCardInfoScreen, self).__init__(**kwargs)
         self.name = self.station.bssid
         self.screen_type = "Sta"
@@ -73,6 +77,9 @@ class StationCardInfoScreen(WMScreen):
         self.graph_btn_update.bind(on_press=self.graph_callback)
         self.graph_btn_cancel.bind(on_press=self.remove_graph)
         self._set_graph_btn()
+        self.attack_box.disco_button.bind(on_press=self.disconnect_station)
+        self.attack_box.taxonomy_button.bind(on_press=self.get_taxonomy)
+        self.attack_box.channel_button.bind(on_press=self.stick_on_channel)
         self.update_gui(None, current=True)
 
     def update_gui(self, dic, current=True):
@@ -97,6 +104,13 @@ class StationCardInfoScreen(WMScreen):
     def _set_label(self, label, string, copy=""):
         if string is None:
             string = ""
+        try:
+            uni = unicode(string)
+        except UnicodeDecodeError as e:
+            self._say(e)
+            self._say(self.station)
+            self._say(string)
+            return
         if isinstance(label, WMSelectableLabel):
             if label.check_select_label_text(string):
                 label.set_select_label_text(string)
@@ -235,6 +249,39 @@ class StationCardInfoScreen(WMScreen):
 	if self.graph_canvas is not None:
             self.graph_box.graph.add_widget(self.graph_canvas)
             self._set_graph_btn()
+
+    """ Attack """
+
+    def disconnect_station(self, widget):
+        app = App.get_running_app()
+        if self.station.channel and self.station.ap_bssid:
+            self._say("Deauth from AP %s to Station %s"
+                    % (self.station.ap_bssid, self.station.bssid))
+            packets = self.station.get_deauth()
+            for packet in packets:
+                print(packet.summary())
+            app.send_packet(packets)
+            print()
+
+    def get_taxonomy(self, widget):
+        self.attack_box.taxonomy_button.disabled = True
+        app = App.get_running_app()
+        channel_hang_time = float(app.config.get("Attack", "ChannelWaitTime"))
+        if self.station.channel and self.station.ap_bssid:
+            self._say("Deauth from AP %s to Station %s"
+                    % (self.station.ap_bssid, self.station.bssid))
+            packets = self.station.get_deauth()
+            for packet in packets:
+                print(packet.summary())
+            app.stay_on_channel(self.station.channel, stay=channel_hang_time)
+            app.send_packet(packets)
+            print()
+            time.sleep(channel_hang_time)
+        self.attack_box.taxonomy_button.disabled = False
+
+    def stick_on_channel(self, widget):
+        app = App.get_running_app()
+        app.stay_on_channel(self.station.channel)
 
     """ Overrides WMScreen """
 

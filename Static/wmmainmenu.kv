@@ -26,6 +26,7 @@
             memory_label: memory_label
             packet_label: packet_label
             channel_button: channel_button
+            channel_reset_button: channel_reset_button
             channel_stat_button: channel_stat_button
             channel_input: channel_input
             canvas:
@@ -120,17 +121,20 @@
                 font_size: '14sp'
                 multiline: False
             Button:
-                id: channel_button
-                text: 'Channel Hop Interface'
-                on_release: root.set_channel_interface()
+                id: channel_reset_button
+                text: 'Reset Channels'
+                on_release: root.reset_channels()
 
 			#Stats
 
 			Button:
+                id: channel_button
+                text: 'Channel Hop Interface'
+                on_release: root.set_channel_interface()
+            Button:
 				id: channel_stat_button
 				text: "Channel stat"
 				on_release: root.open_channel_stat()
-			Widget:
 			Widget:
 
 		WMSeparator:
@@ -142,15 +146,9 @@
 			padding: (5, 0)
             Widget:
             Button:
-                text: 'Cancel'
+                text: 'Exit'
                 size_hint: (None, None)
                 height: 50
-                width: self.texture_size[0] + 32
+                width: 50
                 on_release: root.cancel()
-            Button:
-                text: 'Confirm'
-                size_hint: (None, None)
-                height: 50
-                width: self.texture_size[0] + 29
-                on_release: root.confirm()
 

@@ -2173,10 +2173,8 @@ database = {
         ('Xiaomi Mi', '5', '2.4GHz'),
     'wifi4|probe:0,1,50,45,221(0050f2,8),3,127,htcap:012f,htagg:1f,htmcs:000000ff,extcap:04000a020100004080|assoc:0,1,50,48,45,221(0050f2,2),127,221(00904c,4),htcap:012d,htagg:1f,htmcs:000000ff,extcap:0400080200000040|oui:xiaomi':
         ('Xiaomi Mi', '5', '2.4GHz'),
-
     'wifi4|probe:0,1,50,221(0050f2,4),221(506f9a,9),wps:Z820|assoc:0,1,50,45,48,127,221(0050f2,2),htcap:1172,htagg:03,htmcs:000000ff,extcap:01':
         ('ZTE Obsidian', '', '2.4GHz'),
-
 
     # ACCESS POINT SIGNATURES
 
@@ -2216,53 +2214,61 @@ database = {
 
     'wifi4|beacon:0,1,3,5,7,32,45,61,74,127,191,192,195,221(0050f2,2),221(00037f,1),48,221(0050f2,1),221(0050f2,4),htcap:09ef,htagg:1b,htmcs:0000ffff,vhtcap:338001b2,vhtrxmcs:0000ffea,vhttxmcs:0000ffea,extcap:0100000000000040,cap:0511':
         ('Technicolor DPC3941B', '', '5GHz'),
+
+    # OUR SIGNATURES
+
+    'wifi4|probe:0,1,50,3,45,127,221(506f9a,9),221(506f9a,16),221(00e0fc,128),221(00e0fc,128),221(00904c,51),221(00904c,4),221(0050f2,8),221(001018,2),htcap:0021,htagg:17,htmcs:000000ff,extcap:0000088001400040|assoc:0,1,50,33,36,48,70,45,127,221(00904c,51),221(001018,2),221(0050f2,2),htcap:0021,htagg:17,htmcs:000000ff,txpow:1605,extcap:0000080000000040':
+        ('Honor 8', '', '2.4GHz'),
+
+
 }
 
 def identify_wifi_device(bssid, probeReq, assocReq, oui):
-	"""Look up a wifi device by signature.
+        """Look up a wifi device by signature.
 
-	Arguments:
-	mac: MAC address of the client, a string of the form 'qq:rr:ss:tt:uu:vv'
-	probeReq: probe request from the client in hex
-	asssocReq: association request from the client in hex
-	oui: client's oui vendor
+        Arguments:
+        mac: MAC address of the client, a string of the form 'qq:rr:ss:tt:uu:vv'
+        probeReq: probe request from the client in hex
+        asssocReq: association request from the client in hex
+        oui: client's oui vendor
 
-	Returns:
-		The model of the device if known
-		If the signature is not known, return None
-	"""
-	try:
+        Returns:
+                The model of the device if known
+                If the signature is not known, return None
+        """
+        try:
                 process = ['./%s' % (TAXONOMY_C_FILE[:-2]), probeReq, assocReq]
                 signature = subprocess.check_output(process)
-        except Exception, e:
-		print("taxo failed: ", e)
+        except Exception as e:
+                print("Taxonomy failed: %s" % e)
                 return None
-	sig = signature.strip()
-#	opersys = dhcp.LookupOperatingSystem(mac)
-	suffixes = []
-#	for o in opersys:
-#		suffixes.append('|os:' + o)
-	if oui:
-		suffixes.append('|oui:' + oui)
-	suffixes.append
-	for suffix in suffixes:
-		parsed_sig = (sig + suffix).split('|')
-		for key, value in database.iteritems():
-			parsed_key = key.split('|')
-			#check if there is a suffix in key. If suffix does not match, stop comparing
-			if len(parsed_key) > 3:
-				if parsed_key[3] != parsed_sig[3]:
-					continue
-			d_key = parsed_key[1:3]
-			d_sig = parsed_sig[1:3]
-			try:
-				for i, elem in enumerate(d_sig):
-					values_sig = d_sig[i].split(',')
-					values_key = d_key[i].split(',')
-					diff = [i for i, j in zip(values_sig, values_key) if i != j]
-					if len(diff) < 2:
-						return value[0]
-			except:
-				continue
-	# We have no idea what the client is.
-	return None
+        sig = signature.strip()
+#       opersys = dhcp.LookupOperatingSystem(mac)
+        suffixes = []
+#       for o in opersys:
+#               suffixes.append('|os:' + o)
+        if oui:
+                suffixes.append('|oui:' + oui)
+        suffixes.append
+        for suffix in suffixes:
+                parsed_sig = (sig + suffix).split('|')
+                for key, value in database.iteritems():
+                        parsed_key = key.split('|')
+                        #check if there is a suffix in key. If suffix does not match, stop comparing
+                        if len(parsed_key) > 3:
+                                if parsed_key[3] != parsed_sig[3]:
+                                        continue
+                        d_key = parsed_key[1:3]
+                        d_sig = parsed_sig[1:3]
+                        try:
+                                for i, elem in enumerate(d_sig):
+                                        values_sig = d_sig[i].split(',')
+                                        values_key = d_key[i].split(',')
+                                        diff = [i for i, j in zip(values_sig, values_key) if i != j]
+                                        if len(diff) < 2:
+                                                return value[0]
+                        except:
+                                continue
+        # We have no idea what the client is.
+        print("Taxonomy unknown: %s" % sig)
+        return None

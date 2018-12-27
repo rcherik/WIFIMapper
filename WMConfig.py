@@ -1,3 +1,5 @@
+#encoding: utf-8
+
 import os
 
 """ Default Config for Wifi Mapper """
@@ -22,7 +24,8 @@ class WMConfig():
     label_width_mult = 8
 
     #files
-    taxo_file = os.path.join('backend_wifi_mapper', 'Utilities', 'C', 'create_signature.c')
+    taxo_file = os.path.join('backend_wifi_mapper', 'Utilities', 'C',
+            'create_signature.c')
     mac_list_file = os.path.join('backend_wifi_mapper', 'Utilities', 'mac_list')
 
     #attack

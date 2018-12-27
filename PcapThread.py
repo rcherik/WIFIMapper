@@ -40,7 +40,7 @@ class PcapThread(threading.Thread):
     channel_pkt_stats = [0 for i in range(1, 15)]
 
     def __init__(self, interface=None, pcap_file=None, no_hop=False,
-                                                debug=None, app=None):
+                        debug=None, app=None, save_pkts=False):
         threading.Thread.__init__(self)
         #Own values
         self.app = app
@@ -62,7 +62,7 @@ class PcapThread(threading.Thread):
         #Scapy pkts var
         self.pkt_dic = PcapThread.wm_pkt_dict
         self.pkt_list = PcapThread.sniffed_pkt_list
-        self.save_pkts = False
+        self.save_pkts = save_pkts
         self.n_saved_pkts = 0
         self.n_pkts = 0
         self.pkt_stats = PcapThread.channel_pkt_stats
@@ -454,7 +454,6 @@ class PcapThread(threading.Thread):
     """ Stop thread """
 
     def stop_thread(self):
-        #self._stop_channel_thread()
         self.stop = True
 
     def _stop_channel_thread(self):

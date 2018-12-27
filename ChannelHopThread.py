@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 """ System """
 from __future__ import print_function
 import sys
@@ -22,6 +24,7 @@ class ChannelHopThread(threading.Thread):
         self.bad_channels = set()
         self.channels = []
         self.tmp_channels = None
+        self.fixated_on_a_channel = False
         self.current_chan = -1
         self.hop_time = float(self.app.config.get('Sniffer', 'HopTime'))
         self.set_channel(channels or self.app.config.get('Sniffer', 'Channels'),
@@ -40,15 +43,18 @@ class ChannelHopThread(threading.Thread):
         return self.set_channel(WMConfig.conf.channels)
 
     def reverse_temporary(self):
-        #self._say("reversing to %s" % self.tmp_channels)
         self.set_channel(self.tmp_channels)
         self.tmp_channels = None
+        self.fixated_on_a_channel = False
 
     def temporary_set_channel(self, channels, time):
+        if self.fixated_on_a_channel:
+            return
         if not self.tmp_channels:
             self.tmp_channels = list(self.channels)
         ret = self.set_channel(channels)
         if ret:
+            self.fixated_on_a_channel = True
             timer_thread = threading.Timer(time, self.reverse_temporary)
             timer_thread.start()
         return ret
@@ -66,11 +72,12 @@ class ChannelHopThread(threading.Thread):
                 return False
         if isinstance(chan, int):
             new_channels = [chan]
+        elif isinstance(chan, (list, tuple)):
+            new_channels = chan
+        self.bad_channels = set() #IS IT BAD BEFORE RET ?
         if self.channels == new_channels:
             return False
         self.stop = True
-        if isinstance(chan, (list, tuple)):
-            new_channels = chan
         self.channels = new_channels
         if run:
             timer_thread = threading.Timer(self.hop_time, self.run)
@@ -121,7 +128,7 @@ class ChannelHopThread(threading.Thread):
 
     def _say(self, s, **kwargs):
         if self.debug:
-            s = "%s: " % (self.__class__.__name__) + s
+            s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
 
     def _wait_for_gui(self):

@@ -22,14 +22,19 @@ if kivy.__version__ >= "1.9.1":
 
 from kivy.config import Config
 
-Config.set('graphics', 'width', '1280')
+# Window settings
+Config.set('graphics', 'width', '1330')
 Config.set('graphics', 'height', '800')
 # Removes right clicks dots on gui
 Config.set('input', 'mouse', 'mouse,disable_multitouch,disable_on_activity')
+# Handle escape behavior ourselves
 Config.set('kivy', 'exit_on_escape', 0)
+# Handle pause behavior
 Config.set('kivy', 'pause_on_minimize', 1)
 Config.set('kivy', 'desktop', 1)
 Config.set('kivy', 'log_enable', 1)
+#FPS
+Config.set('modules', 'monitor', '')
 
 from kivy.clock import Clock
 Clock.max_iteration = 20
@@ -452,12 +457,15 @@ class WifiMapper(App):
             return t.send_packet(packet, iface=iface, **kwargs)
         return False
 
-    def stay_on_channel(self, channel, time=0):
+    def stay_on_channel(self, channel, stay=0):
         t = self.get_channel_thread()
         if not t:
             return False
-        if time:
-            return t.temporary_set_channel(channel, time)
+        if stay:
+            ret = t.temporary_set_channel(channel, stay)
+            if ret:
+                time.sleep(t.hop_time)
+            return ret
         return t.set_channel(channel)
 
     """ Utility """
@@ -485,14 +493,12 @@ class WifiMapper(App):
     def stop_pcap_thread(self):
         if not self.pcap_thread:
             return
-        """
-        if self.pcap_thread.channel_thread:
-            self.pcap_thread.channel_thread.stop = True
-            self.pcap_thread.channel_thread.join(timeout=1)
-            self.pcap_thread.channel_thread = None
-        """
         self.pcap_thread.stop_thread()
         if self.pcap_thread.started:
             self.pcap_thread.join(timeout=3)
             self._say("Pcap thread stopped")
+            if self.pcap_thread.sniffing or self.pcap_thread.reading:
+                self.pcap_thread._stop_channel_thread()
+                self._say("Killing App")
+                os.kill(os.getpid(), signal.SIGKILL)
             self.pcap_thread = None

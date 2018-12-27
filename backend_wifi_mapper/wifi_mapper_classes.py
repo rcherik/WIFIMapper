@@ -155,6 +155,25 @@ class Station():
 		del dic['traffic']
 		return dic
 
+	def get_deauth(self):
+		if not self.ap_bssid:
+			return []
+		packet_to_sta = RadioTap()/Dot11(
+					type=AccessPoint.TYPE_MANAGEMENT,
+					subtype=AccessPoint.SUBTYPE_DEAUTH,
+					addr1=self.bssid,
+					addr2=self.ap_bssid,
+					addr3=self.ap_bssid,
+				)/Dot11Deauth(reason=AccessPoint.DEAUTH_NO_LONGER_VALID)
+		packet_to_ap = RadioTap()/Dot11(
+					type=AccessPoint.TYPE_MANAGEMENT,
+					subtype=AccessPoint.SUBTYPE_DEAUTH,
+					addr1=self.ap_bssid,
+					addr2=self.bssid,
+					addr3=self.bssid,
+				)/Dot11Deauth(reason=AccessPoint.DEAUTH_CLIENT_LEFT)
+		return [packet_to_sta, packet_to_ap]
+
 	def get_ap_name(self, bssid):
 		obj = self.dic[WM_AP].get(bssid, None)
 		if obj:
@@ -194,6 +213,7 @@ class Station():
 		self.ap_bssid = ap_bssid
 		if new_ap_obj:
 			new_ap_obj.client_connected(self.bssid)
+			self.channel = new_ap_obj.channel if new_ap_obj.channel else self.channel
 
 	def set_disconnected(self):
 		if self.ap_bssid and self.connected:
@@ -248,6 +268,13 @@ class Station():
 
 	def get_ap_probed(self):
 		return ', '.join(self.ap_probed)
+
+	def __repr__(self):
+		return "WifiMapper Station {name:s}:\n\tbssid={bssid:s} "\
+			"connected_to={ap:s} channel={chan:d}\n\t"\
+			"model='{model:s}' probes='{probes:s}'".format(name=self.get_name(),
+				bssid=self.bssid, ap=self.ap_bssid, chan=self.channel,
+				model=self.model, probes=self.get_ap_probed())
 
 """
 	###############
@@ -425,6 +452,14 @@ class AccessPoint():
 
 	def __getitem__(self, key):
 		return self.__dict__[key]
+
+	def __repr__(self):
+		return "WifiMapper AccessPoint {name:s}:\n\tbssid={bssid:s} "\
+			"channel={chan:d} security='{secu:s}'\n\tbeacons={beacons:d} "\
+			"connected={co:d}".format(name=self.get_name(),
+				bssid=self.bssid, co=self.n_clients,
+				chan=self.channel, secu=self.get_security(),
+				beacons=self.beacons)
 
 	def get_seen(self):
 		#Used in web interface to get reasons why AP is in table

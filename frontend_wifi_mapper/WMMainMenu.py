@@ -1,5 +1,8 @@
+# encoding: utf-8
+
 """ System """
 
+from __future__ import print_function
 import time
 import os
 import sys
@@ -58,11 +61,11 @@ class WMMainMenu(Popup):
 
     def _on_channel_input_validate(self, widget):
         self.app.get_focus()
-        t = self.app.pcap_thread
-        if not t or not t.channel_thread:
+        t = self.app.get_channel_thread()
+        if not t:
             return
-        if t.channel_thread.set_channel(widget.text):
-            widget.text = ','.join(str(c) for c in t.channel_thread.channels)
+        if t.set_channel(widget.text):
+            widget.text = ','.join(str(c) for c in t.channels)
         else:
             self._set_channels()
 
@@ -110,7 +113,7 @@ class WMMainMenu(Popup):
         giga, remain = divmod(self.app.process.memory_info()[0], 1000000000)
         mega, rest = divmod(remain, 1000000)
         if giga:
-            s += "{}G:{}M".format(giga, mega)
+            s += "{} {}Mb".format(giga, mega)
         else:
             s += "{}M".format(mega)
         self._set_label(self.layout.memory_label, s)
@@ -160,12 +163,14 @@ class WMMainMenu(Popup):
         if t and t.channel_thread:
             self.layout.channel_input.disabled = False
             self.layout.channel_stat_button.disabled = False
+            self.layout.channel_reset_button.disabled = False
             s = ','.join(str(c) for c in t.channel_thread.channels)\
                     if t.channel_thread.channels else ""
             self._set_label(self.layout.channel_input, s)
         else:
             self.layout.channel_input.disabled = True
             self.layout.channel_stat_button.disabled = True
+            self.layout.channel_reset_button.disabled = True
 
     """ Save Load File/Pcap """
 
@@ -236,6 +241,12 @@ class WMMainMenu(Popup):
 
     """ Set buttons """
 
+    def reset_channels(self):
+        t = self.app.get_channel_thread()
+        if t:
+            t.reset_channels()
+            self._set_channels()
+
     def open_settings(self):
         self.app.open_settings()
 
@@ -265,19 +276,24 @@ class WMMainMenu(Popup):
     def open_channel_stat(self):
         t = self.app.pcap_thread
         if t:
-            print(t.pkt_stats)
+            print("Channels Stats:")
+            for i, stat in enumerate(t.pkt_stats):
+                if i > 0 and i % 3 == 0:
+                    print()
+                print("\t{}: {}\t\t".format(i, stat), end="")
+            print()
 
     def _channel_interfaces_popup_dismissed(self, widget):
-        t = self.app.pcap_thread
-        if t and t.channel_thread and widget.confirmed() and widget.selected:
-            t.channel_thread.set_interface(widget.selected[0])
+        t = self.app.get_channel_thread()
+        if t and widget.confirmed() and widget.selected:
+            t.set_interface(widget.selected[0])
         self.popup = None
 
     def set_channel_interface(self):
-        t = self.app.pcap_thread
+        t = self.app.get_channel_thread()
         to_down = []
-        if t and t.channel_thread:
-            to_down.append(t.channel_thread.iface)
+        if t:
+            to_down.append(t.iface)
         if not self.popup:
             self.popup = WMInterfacesPopup(group=True, to_down=to_down)
             self.popup.bind(on_dismiss=self._channel_interfaces_popup_dismissed)

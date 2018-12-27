@@ -1,3 +1,5 @@
+#encoding: utf-8
+
 from __future__ import print_function
 import os
 """ Kivy """
@@ -58,6 +60,7 @@ class APCardInfoScreen(WMScreen):
         self.graph_canvas = None
         self.connected_label = {}
         self.checkboxed_station = set()
+        self.attacking = False
 	super(APCardInfoScreen, self).__init__(**kwargs)
         self.name = self.ap.bssid
         self.screen_type = "AP"
@@ -79,6 +82,8 @@ class APCardInfoScreen(WMScreen):
         self.graph_btn_cancel.bind(on_press=self.remove_graph)
         self.checkbox_all.bind(active=self.on_checkbox_all_active)
         self.attack_box.disco_button.bind(on_press=self.disconnect_stations)
+        self.attack_box.taxonomy_button.bind(on_press=self.get_all_taxonomy)
+        self.attack_box.channel_button.bind(on_press=self.stick_on_channel)
         self._set_graph_btn()
         self.update_gui(None, current=True)
 
@@ -102,6 +107,13 @@ class APCardInfoScreen(WMScreen):
     """ Setter for label """
 
     def _set_label(self, label, string, copy=""):
+        try:
+            uni = unicode(string)
+        except UnicodeDecodeError as e:
+            self._say(e)
+            self._say(self.station)
+            self._say(string)
+            return
         if isinstance(label, WMSelectableLabel):
             if label.check_select_label_text(string):
                 self.has_changed = True
@@ -201,7 +213,9 @@ class APCardInfoScreen(WMScreen):
 
     def _change_connected(self):
         for bssid in self.ap.client_co:
-            self._set_label(self.connected_label[bssid],
+            label = self.connected_label.get(bssid, None)
+            if label:
+                self._set_label(label,
                     self._get_connected_label(bssid))
 
     def _set_connected(self):
@@ -213,9 +227,11 @@ class APCardInfoScreen(WMScreen):
     """ Attack """
 
     def disconnect_stations(self, widget):
+        if self.attacking:
+            return
+        self.attacking = True
+        self.attack_box.disco_button.disabled = True
         app = App.get_running_app()
-        thread = app.pcap_thread
-        time = float(app.config.get("Attack", "ChannelWaitTime"))
         for bssid in self.checkboxed_station:
             if self.ap.channel:
                 self._say("Deauth from AP %s to Station %s"
@@ -223,8 +239,38 @@ class APCardInfoScreen(WMScreen):
                 packets = self.ap.get_deauth(bssid)
                 for packet in packets:
                     print(packet.summary())
-                app.stay_on_channel(self.ap.channel, time=time)
                 app.send_packet(packets)
+        self.attack_box.disco_button.disabled = False
+        self.attacking = False
+
+    def get_all_taxonomy(self, widget):
+        if self.attacking:
+            return
+        self.attacking = True
+        self.attack_box.taxonomy_button.disabled = True
+        app = App.get_running_app()
+        channel_hang_time = float(app.config.get("Attack", "ChannelWaitTime"))
+        old_channel = -1
+        for bssid in self.checkboxed_station:
+            if self.ap.channel:
+
+                if old_channel >= 0 and old_channel != self.ap.channel:
+                    time.sleep(channel_hang_time)
+                old_channel = self.ap.channel
+
+                self._say("Taxo on station %s"
+                        % (bssid))
+                packets = self.ap.get_deauth(bssid)
+                for packet in packets:
+                    print(packet.summary())
+                app.stay_on_channel(self.ap.channel, stay=channel_hang_time)
+                app.send_packet(packets)
+        self.attack_box.taxonomy_button.disabled = False
+        self.attacking = False
+
+    def stick_on_channel(self, widget):
+        app = App.get_running_app()
+        app.stay_on_channel(self.ap.channel)
 
     """ Graph """
 

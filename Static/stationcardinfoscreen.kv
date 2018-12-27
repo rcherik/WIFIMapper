@@ -68,6 +68,7 @@
 		disco_button: disco_button
 		disco_loop_button: disco_loop_button
 		taxonomy_button: taxonomy_button
+		channel_button: channel_button
 		canvas.before:
 				Color:
 						rgba: (1, 1, 1, 0.25)
@@ -96,6 +97,9 @@
 				Button:
 						id: taxonomy_button
 						text: "Get Taxonomy"
+				Button:
+						id: channel_button
+						text: "Stick on Channel"
 
 <StationCardInfoGraphBox@BoxLayout>:
 		graph_buttons: graph_buttons
@@ -138,6 +142,7 @@
 		probes: probes
 		model: model
         station_hist_lst: station_hist_lst
+		attack_box: attack_box
 		graph_box: graph_box
         BoxLayout:
                 id: main_layout
