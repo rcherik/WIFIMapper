@@ -25,6 +25,8 @@ class StationCard(WMCard):
     probes = ObjectProperty(None)
     open_link = ObjectProperty(None)
 
+    clicked_dic = {}
+
     def __init__(self, key=None, station=None, args=None, traffic=None, **kwargs):
         self.key = key
         self.station = station
@@ -133,6 +135,22 @@ class StationCard(WMCard):
     def get_obj(self):
         return self.station
 
+    def set_clicked(self, clicked):
+        StationCard.clicked_dic[self.key] = clicked
+
+    def on_touch_up(self, touch):
+        if super(StationCard, self).on_touch_up(touch):
+            return True
+        if self.collide_point(*touch.pos)\
+                and hasattr(touch, "button")\
+                and touch.button == "left":
+            self.pressed = touch.pos
+            self.clicked = not self.clicked
+            self.set_clicked(self.clicked)
+            self.draw_background(self, self.pos)
+            return True
+        return False
+
     """ Resize Card """
 
     def _check_known(self):
@@ -175,7 +193,7 @@ class StationCard(WMCard):
     def draw_background(self, widget, prop):
         self._rectangle.pos = self.pos
         self._rectangle.size = self.size
-        if self.clicked:
+        if StationCard.clicked_dic.get(self.key, False):
             self._color.rgba = (0, 0, 1, 0.25)
         elif self.station.connected:
             self._color.rgba = (0, 1, 0, 0.25)

@@ -63,8 +63,9 @@ Config.set('kivy', 'window_icon', WMConfig.conf.app_icon)
 
 def stop_app():
     app = App.get_running_app()
-    app._say("stopping app")
-    app.exit()
+    if app.started:
+        app._say("stopping app")
+        app.exit()
 
 class WifiMapper(App):
 
@@ -80,6 +81,7 @@ class WifiMapper(App):
         self.paused = False
         self.popup = None
         self.pcap_thread = None
+        self.started = False
         """ Keyboard """
         self.shift = False
         self.alt = False
@@ -313,6 +315,7 @@ class WifiMapper(App):
     """ Build """
 
     def build(self):
+        self.started = True
         self.icon = WMConfig.conf.app_icon 
         self.version = WMConfig.conf.version
         self.title = "Wifi Mapper (%s)" % self.version
@@ -322,6 +325,8 @@ class WifiMapper(App):
                                         pcap_file=self.args.pcap,
                                         no_hop=self.args.no_hop,
                                         debug=self.args.debug,
+                                        dump_file=self.args.wmdump,
+                                        sniff=self.args.sniff,
                                         app=self)
         """ Screen Manager """
         self.manager = WMScreenManager(app=self,
@@ -512,7 +517,7 @@ class WifiMapper(App):
                     self._say("{}".format(e))
             else:
                 self._say("Not saved")
-        if PcapThread.wm_pkt_dict:
+        if PcapThread.check_if_data(PcapThread.wm_pkt_dict):
             answer = input("You had data to dump, "\
                 "would you like to save them ? [y/N] ")
             if answer == 'y':

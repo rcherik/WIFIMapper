@@ -155,7 +155,8 @@ class APCardInfoScreen(WMScreen):
         else:
             return
         #tuple is (time, name, status, bssid)
-        for tupl in self.ap.client_hist_co:
+        l = list(self.ap.client_hist_co)
+        for tupl in l:
             color = "#00FF00" if tupl[2] == 'connected' else "#FF0000"
             label = WMPressableLabel(text="[color=%s]%s - %s[/color]"
                     % (color, tupl[0], tupl[1]),
@@ -193,7 +194,8 @@ class APCardInfoScreen(WMScreen):
 
     def _create_connected(self):
         self._clear_connected()
-        for bssid in self.ap.client_co:
+        l = list(self.ap.client_co)
+        for bssid in l:
             """ Ensure label has text=bssid or change open_station """
             s = self._get_connected_label(bssid)
             label = WMPressableLabel(text=s,
@@ -251,14 +253,8 @@ class APCardInfoScreen(WMScreen):
         self.attack_box.taxonomy_button.disabled = True
         app = App.get_running_app()
         channel_hang_time = float(app.config.get("Attack", "ChannelWaitTime"))
-        old_channel = -1
         for bssid in self.checkboxed_station:
             if self.ap.channel:
-
-                if old_channel >= 0 and old_channel != self.ap.channel:
-                    time.sleep(channel_hang_time)
-                old_channel = self.ap.channel
-
                 self._say("Taxo on station %s"
                         % (bssid))
                 packets = self.ap.get_deauth(bssid)

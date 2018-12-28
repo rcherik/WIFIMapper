@@ -292,12 +292,12 @@ class CardListScreen(WMScreen):
                     card = self._get_card_from_obj(item)
             else:
                 card = item
-            if not self.card_memory:
-                self.card_dic[card.key] = card
-            if not card.parent:
+            if card and not card.parent:
+                if not self.card_memory:
+                    self.card_dic[card.key] = card
                 self.stack_layout.add_widget(card)
                 self.n_card = self.n_card + 1
-            self.has_to_sort = True
+                self.has_to_sort = True
         return True
 
     def _insert_card(self, item):
@@ -312,18 +312,29 @@ class CardListScreen(WMScreen):
             self.cards.append(item)
             self._add_card(item)
 
-    def _get_card_from_obj(self, obj):
+    def _get_card_from_obj(self, obj, retry=True):
         card = None
-        if self.show_ap:
-            card = APCard(key=obj.bssid,
-                    ap=obj,
-                    traffic=obj.traffic,
-                    args=self.args)
-        else:
-            card = StationCard(key=obj.bssid,
-                    station=obj,
-                    traffic=obj.traffic,
-                    args=self.args)
+        try: #################3
+            if self.show_ap:
+                card = APCard(key=obj.bssid,
+                        ap=obj,
+                        traffic=obj.traffic,
+                        args=self.args)
+            else:
+                card = StationCard(key=obj.bssid,
+                        station=obj,
+                        traffic=obj.traffic,
+                        args=self.args)
+        except AssertionError as e:
+            self._say("===========WTF==========")
+            self._say(e)
+            self._say(obj)
+            if card:
+                self._say(card)
+                card._print_rules()
+            self._say("===========WTF==========")
+            if retry:
+                return self._get_card_from_obj(obj, retry=False)
         return card
 
     def _set_card(self, bssid, obj):

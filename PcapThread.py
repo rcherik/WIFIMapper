@@ -39,8 +39,8 @@ class PcapThread(threading.Thread):
     #Channel pkt stat
     channel_pkt_stats = [0 for i in range(1, 15)]
 
-    def __init__(self, interface=None, pcap_file=None, no_hop=False,
-                        debug=None, app=None, save_pkts=False):
+    def __init__(self, interface=None, pcap_file=None, no_hop=False, sniff=False,
+                        debug=None, app=None, save_pkts=False, dump_file=None):
         threading.Thread.__init__(self)
         """ Own values """
         self.app = app
@@ -49,15 +49,18 @@ class PcapThread(threading.Thread):
         self.reading = False
         self.sniffing = False
         """ Check if file to read or set sniffing mode """
-        self.snifs = True if interface else False
-        if not self.snifs:
-            self._set_reading_file(pcap_file)
+        self._set_pcap_file(pcap_file)
+        self._set_dump_file(dump_file)
         """ Get the requested interface """
         self.ifaces = None
-        if self.snifs:
-            self.ifaces = interface
+        self.sniff = sniff 
+        self.ifaces = interface
+        if interface and not (pcap_file and dump_file):
+            self.sniff = True
+        if self.sniff and not self.ifaces:
+            self.ifaces = interface_utilities.find_iface()
             if not self.ifaces:
-                self.ifaces = interface_utilities.find_iface()
+                toast("No interface to sniff on found", True)
         self.started = False
         self.stop = False
         self.get_input = True
@@ -86,10 +89,12 @@ class PcapThread(threading.Thread):
         self.started = True
         self._say("using scapy (%s)" % scapy.config.conf.version)
         self._wait_for_gui()
-        if self.snifs:
-            self.start_sniffing(self.ifaces)
-        elif self.pcap_file:
+        if self.pcap_file:
             self.parse_pcap_file(self.pcap_file)
+        if self.dump_file:
+            self.load_data(self.dump_file)
+        if self.sniff:
+            self.start_sniffing(self.ifaces)
 
     """ Attack Methods """ #TODO own thread ?
 
@@ -130,7 +135,7 @@ class PcapThread(threading.Thread):
         current = None
         if self.channel_thread:
             current = self.channel_thread.current_chan
-        if self.snifs and self.save_pkts:
+        if self.sniff and self.save_pkts:
             self.pkt_list.append(pkt)
             self.n_saved_pkts += 1
         if current:
@@ -170,7 +175,7 @@ class PcapThread(threading.Thread):
             self.ifaces = [iface for iface in ifaces.split(';')]
         else:
             self.ifaces = ifaces
-        self.snifs = True
+        self.sniff = True
         self._sniff()
 
     def _sniff(self):
@@ -181,9 +186,11 @@ class PcapThread(threading.Thread):
                     app=self.app)
             self.channel_thread.start()
         while not self.stop:
-            self._say("starts sniffing on %s %s"\
-                    % ("interface" if len(self.ifaces) == 1 else "interfaces",
-                        self.ifaces))
+            s = "Starts sniffing on {:s} {:s}".format("interface"\
+                    if len(self.ifaces) == 1 else "interfaces",
+                    self.ifaces)
+            self._say(s)
+            toast(s, False)
             self.sniffing = True
             sniff(iface=self.ifaces, prn=self._callback,
                     stop_filter=self._callback_stop, store=False)
@@ -199,9 +206,13 @@ class PcapThread(threading.Thread):
         ****
     """
 
-    def _set_reading_file(self, path):
+    def _set_pcap_file(self, path):
         """ Set pcap file - Take absolute path """
         self.pcap_file = os.path.abspath(path) if path else None
+
+    def _set_dump_file(self, path):
+        """ Set pcap file - Take absolute path """
+        self.dump_file = os.path.abspath(path) if path else None
 
     def parse_pcap_file(self, path):
         """ Parse a pcap file """
@@ -273,11 +284,11 @@ class PcapThread(threading.Thread):
 
     def _read_pcap(self, path):
         """ Prepare read for updating GUI pkt per pkt """
-        self._say("reading file {name}".format(name=path))
+        s = "Reading file {name}".format(name=path)
         start_time = time.time()
         try:
             fdesc = PcapReader(path)
-            self._set_reading_file(path)
+            self._set_pcap_file(path)
         except (IOError, Scapy_Exception) as err:
             toast("{}".format(err), True)
             self._say("rdpcap: error: {}".format(err),
@@ -290,6 +301,8 @@ class PcapThread(threading.Thread):
             return False
         except KeyboardInterrupt:
             self._app_shutdown()
+        self._say(s)
+        toast(s, False)
         has_stopped = self._read_pkts(fdesc)
         l = self.n_pkts + self._recover_previously_read(path)
         PcapThread.files_read[path] = (l, has_stopped)
@@ -362,14 +375,20 @@ class PcapThread(threading.Thread):
             data.append(pickle.load(f))
         return data
 
+    @staticmethod
+    def check_if_data(data):
+        return data[WM_AP] or data[WM_STATION]
+
     def load_data(self, filename):
         """ Load dump data into our current backend """
         self.app.stop_input()
+        self.reading = True
+        ret = False
         try:
             with open(filename, 'rb') as f:
                 if PcapThread.check_magic(f):
                     data = PcapThread.parse_data(f)
-            self._say("Loaded data from %s" % (filename))
+            self._say("Start loading with new packets GUI")
             self.pkt_dic[WM_AP].update(data[WM_AP])
             self.pkt_dic[WM_STATION].update(data[WM_STATION])
             self.pkt_dic[WM_TRAFFIC].update(data[WM_TRAFFIC])
@@ -389,9 +408,9 @@ class PcapThread(threading.Thread):
                 obj.dic = self.pkt_dic
             self.app.resume_input()
             self._start_update_timer()
-            self._say("Start loading with new packets GUI")
-            toast("Loaded data from {}".format(filename), True)
-            return True
+            self._say("Loaded data from %s" % (filename))
+            toast("Loaded data from {}".format(filename), False)
+            ret = True
         except IOError as err:
             toast("{}".format(err), True)
             self._say("{}".format(err))
@@ -401,7 +420,8 @@ class PcapThread(threading.Thread):
         except ValueError as err:
             toast("ValueError: old or corrupted Wfi Mapper dump file", True)
             self._say("{}".format(err))
-        return False
+        self.reading = False
+        return ret
 
     @staticmethod
     def static_write_pcap(pkt_list, filename, append=False):
@@ -485,7 +505,8 @@ class PcapThread(threading.Thread):
         return not self.reading and not self.sniffing
 
     def no_purpose(self):
-        return not self.ifaces and not self.pcap_file
+        return not self.ifaces and not self.pcap_file\
+                and not self.dump_file
 
     def _say(self, s, **kwargs):
         if self.debug:

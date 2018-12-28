@@ -3,7 +3,7 @@ import copy
 import re
 """ Kivy """
 from kivy.uix.tabbedpanel import TabbedPanelHeader, TabbedPanel
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty, StringProperty, NumericProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -123,14 +123,14 @@ class WMTabbedPanel(TabbedPanel):
         self._current_tab = header
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and hasattr(self.args, "debug")\
-                and self.args.debug:
+        if self.args and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
 
 class WMPanelHeader(TabbedPanelHeader):
 
-    def __init__(self, screen=None, master=None, can_remove=True, args=None, **kwargs):
+    def __init__(self, screen=None, master=None,
+            can_remove=True, args=None, **kwargs):
         self.screen = screen
         self.master = master
         #FU KIVY ITS SUPPOSED TO BE PARENT NOT PANEL
@@ -159,8 +159,7 @@ class WMPanelHeader(TabbedPanelHeader):
         return False
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and hasattr(self.args, "debug")\
-                and self.args.debug:
+        if self.args and self.args.debug:
             s = "%s: " % (self.__class__.__name__) + s
             print(s, **kwargs)
 
@@ -171,7 +170,14 @@ class WMCard(BoxLayout):
     def __init__(self, **kwargs):
         self.clicked = False
         self.card_type = ""
+        self.args = None
         super(WMCard, self).__init__(**kwargs)
+
+    def _print_rules(self):
+        l = self.__dict__['_context']['Builder'].__dict__['rules']
+        for e in l:
+            print(e)
+        print()
 
     def _get_nested_attr(self, value):
         try:
@@ -186,15 +192,14 @@ class WMCard(BoxLayout):
         return self._get_nested_attr(value)
 
     def get_obj(self):
-        pass
+        return None
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
+        if self.args and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
-        else:
-            print(s, **kwargs)
  
+    """
     def on_touch_up(self, touch):
         if super(WMCard, self).on_touch_up(touch):
             return True
@@ -206,6 +211,7 @@ class WMCard(BoxLayout):
             self.draw_background(self, self.pos)
             return True
         return False
+    """
 
     def draw_background(self, widget, prop):
         pass
@@ -215,6 +221,7 @@ from kivy.uix.screenmanager import Screen
 class WMScreen(Screen):
 
     def __init__(self, **kwargs):
+        self.args = None
         super(WMScreen, self).__init__(**kwargs)
         self.screen_type = ""
 
@@ -231,7 +238,7 @@ class WMScreen(Screen):
         pass
 
     def _say(self, s, **kwargs):
-        if hasattr(self, "args") and self.args.debug:
+        if self.args and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
 
@@ -377,7 +384,8 @@ class WMInterfacesPopup(Popup):
         self.selected = []
         self.to_down = to_down
         self.should_group = group
-        self.wireless_lst, self.iface_lst = interface_utilities.list_interfaces()
+        self.wireless_lst, self.iface_lst = interface_utilities\
+                .list_interfaces()
         self.width_mult = WMConfig.conf.label_width_mult
 	super(WMInterfacesPopup, self).__init__(**kwargs)
         self.auto_dismiss = False
@@ -599,10 +607,9 @@ from kivy.properties import ObjectProperty
 class WMPageToggleButton(ToggleButton):
 
     screen = ObjectProperty(None)
+    page = NumericProperty(None)
 
     def __init__(self, **kwargs):
-        self.page = kwargs.get('page', None)
-        self.screen = kwargs.get('screen', None)
         self.init = False
         super(WMPageToggleButton, self).__init__(**kwargs)
         self.init = True

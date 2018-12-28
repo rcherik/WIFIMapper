@@ -6,6 +6,7 @@ import subprocess
 
 def find_iface():
     """ Find internet interface and returns it """
+    """
     try:
         dn = open(os.devnull, 'w')
     except IOError:
@@ -19,11 +20,16 @@ def find_iface():
             if 'IEEE 802.11' in line:
                 l = line.split()
                 iface = l[0]
-                return iface
+                return [iface]
     except Exception as e:
         if dn and not dn.closed:
             dn.close()
-        sys.exit('Could not find interface: ' + e.message)
+    """
+    wireless, dev = list_interfaces()
+    for iface in wireless:
+        if is_interface_monitoring(iface):
+            return [iface]
+    return None
 
 def list_interfaces():
     lst = []

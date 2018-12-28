@@ -21,10 +21,18 @@ def parse_args():
             type=str,
             default=None,
             help="Choose interfaces to sniff on; -i <iface1;iface2;...>")
+    parser.add_argument("-s", "--sniff",
+            action='store_true',
+            default=False,
+            help="Choose automaticaly an interface to sniff on")
     parser.add_argument("-p", "--pcap",
             type=str,
             default=None,
             help="Parse info from a pcap file; -p <pcapfilename>")
+    parser.add_argument("-w", "--wmdump",
+            type=str,
+            default=None,
+            help="Parse info from a dump file; -w <dumpfilename>")
     """
     parser.add_argument("-c", "--channels",
             type=str,
@@ -91,9 +99,10 @@ def recover_data(app):
 
 def last_data(app):
     from backend_wifi_mapper.wifi_mapper_utilities import WM_CHANGES
-    pkt = app.pcap_thread.pkt_dic
-    print("Last changes before going dark: ")
-    print(pkt[WM_CHANGES])
+    pkt = app.pcap_thread.pkt_dic if app.pcap_thread else None
+    if pkt:
+        print("Last changes before going dark: ")
+        print(pkt[WM_CHANGES])
 
 def application_runtime_error(err):
     import traceback
@@ -110,9 +119,17 @@ if __name__ == '__main__':
     if args.list:
         list_interfaces()
         sys.exit(0)
+    """
+    if args.interface and (args.pcap or args.wmdump)\
+            or args.pcap and (args.interface or args.wmdump)\
+            or args.wmdump and (args.interface or args.pcap):
+        say("You must either choose an interface to sniff on, "\
+                "a pcap file or a dump file")
+        sys.exit(1)
+    """
     if not validate_interface(args):
         sys.exit(1)
-    if (not args.pcap and args.interface) and os.geteuid():
+    if (args.interface or args.sniff) and os.geteuid():
         say("Please run as root")
         sys.exit(1)
     """ App """
