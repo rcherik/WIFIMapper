@@ -18,7 +18,8 @@ from kivy.app import App
 """ Our stuff """
 from backend_wifi_mapper.wifi_mapper_utilities import WM_AP, WM_STATION,\
         WM_TRAFFIC, WM_VENDOR, WM_CHANGES
-from WMUtilityClasses import WMRedCheckBox, WMPressableLabel, WMSelectableLabel, WMScreen
+from WMUtilityClasses import WMRedCheckBox, WMPressableLabel,\
+                                WMSelectableLabel, WMScreen
 """ Graph """
 import collections
 import numpy as np

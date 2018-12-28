@@ -15,6 +15,7 @@
             orientation: 'vertical'
             spacing: (5, 10)
             padding: (10, 10)
+
             status_label: status_label
             sniff_button: sniff_button
             sniff_interfaces: sniff_interfaces
@@ -22,6 +23,7 @@
             save_button: save_button
             clear_capture_button: clear_capture_button
             capture_button: capture_button
+
             time_label: time_label
             memory_label: memory_label
             packet_label: packet_label
@@ -29,6 +31,8 @@
             channel_reset_button: channel_reset_button
             channel_stat_button: channel_stat_button
             channel_input: channel_input
+            fps_label: fps_label
+
             canvas:
                 Color:
                     rgba: 0.5, 0.5, 0.5, 0.25
@@ -127,6 +131,9 @@
 
 			#Stats
 
+            Label:
+                id: fps_label
+                text: "60.0 FPS"
 			Button:
                 id: channel_button
                 text: 'Channel Hop Interface'
@@ -135,7 +142,6 @@
 				id: channel_stat_button
 				text: "Channel stat"
 				on_release: root.open_channel_stat()
-			Widget:
 
 		WMSeparator:
 

@@ -42,15 +42,17 @@ class PcapThread(threading.Thread):
     def __init__(self, interface=None, pcap_file=None, no_hop=False,
                         debug=None, app=None, save_pkts=False):
         threading.Thread.__init__(self)
-        #Own values
+        """ Own values """
         self.app = app
         self.debug = debug
         self.no_hop = no_hop
-        #Check if file to read or set sniffing mode
+        self.reading = False
+        self.sniffing = False
+        """ Check if file to read or set sniffing mode """
         self.snifs = True if interface else False
         if not self.snifs:
             self._set_reading_file(pcap_file)
-        #Try to get a valid interface
+        """ Get the requested interface """
         self.ifaces = None
         if self.snifs:
             self.ifaces = interface
@@ -59,24 +61,22 @@ class PcapThread(threading.Thread):
         self.started = False
         self.stop = False
         self.get_input = True
-        #Scapy pkts var
+        """ Scapy pkts var """
         self.pkt_dic = PcapThread.wm_pkt_dict
         self.pkt_list = PcapThread.sniffed_pkt_list
         self.save_pkts = save_pkts
         self.n_saved_pkts = 0
         self.n_pkts = 0
         self.pkt_stats = PcapThread.channel_pkt_stats
-        self.reading = False
-        self.sniffing = False
 
-        #Utilities
+        """ Utilities """
         self._get_mac_list()
         self._compile_c_file(TAXONOMY_C_FILE)
 
-        #Options
+        """ Option """
         self.update_time = float(self.app.config.get('GUI', 'UpdateTime'))
 
-        #Other classes
+        """ Other classes """
         self.channel_thread = None
         self.timer_thread = None
 
@@ -200,20 +200,23 @@ class PcapThread(threading.Thread):
     """
 
     def _set_reading_file(self, path):
+        """ Set pcap file - Take absolute path """
         self.pcap_file = os.path.abspath(path) if path else None
 
     def parse_pcap_file(self, path):
+        """ Parse a pcap file """
         if path in PcapThread.files_read\
                 and PcapThread.files_read[path][1] == False:
             toast("File %s already read" % path, True)
-            return
+            return False
         if self.reading:
             self.stop = True
             time.sleep(WMConfig.conf.pcap_read_pause)
             self.stop = False
-        self._read_pcap(path)
+        return self._read_pcap(path)
 
     def _recover_file_status(self, reader, skip_pkts):
+        """ Skip pkts already read """
         n = 0
         while not self.stop:
             pkt = reader.read_packet()
@@ -228,6 +231,10 @@ class PcapThread(threading.Thread):
             toast("Recovered !", False)
 
     def _recover_previously_read(self, path):
+        """
+            Check if had stopped and return number of pkts
+            PcapThread.files_read = [n_pkts_read, had_stopped]
+        """
         if path in PcapThread.files_read\
                 and PcapThread.files_read[path][1] == True:
             return PcapThread.files_read[path][0]
@@ -275,25 +282,24 @@ class PcapThread(threading.Thread):
             toast("{}".format(err), True)
             self._say("rdpcap: error: {}".format(err),
                     file=sys.stderr)
-            return
-            #self._app_shutdown()
+            return False
         except NameError as err:
             toast("{}".format(err), True)
             self._say("rdpcap error: not a pcap file ({})".format(err),
                     file=sys.stderr)
-            return
-            #self._app_shutdown()
+            return False
         except KeyboardInterrupt:
             self._app_shutdown()
         has_stopped = self._read_pkts(fdesc)
         l = self.n_pkts + self._recover_previously_read(path)
         PcapThread.files_read[path] = (l, has_stopped)
         if has_stopped:
-            return
+            return False
         read_time = time.time()
         toast("File {0:s} read - {1:d} packets".format(path, l), True)
         self._say("took {0:.3f} seconds to read and parse {1:d} packets"\
                 .format(read_time - start_time, l))
+        return True
 
     """
         ****
@@ -301,30 +307,44 @@ class PcapThread(threading.Thread):
         ****
     """
 
+    @staticmethod
+    def static_dump_data(data, filename):
+        """ Static method for dumping our backend data """
+        to_dump = [
+            dict(data[WM_AP]),
+            dict(data[WM_STATION]),
+            dict(data[WM_TRAFFIC])
+        ]
+        with open(filename, 'wb') as f:
+            f.write(WMConfig.conf.magic_file)
+            pickle.dump(3, f)
+            for elem in to_dump:
+                pickle.dump(elem, f)
+            return True
+        return False
+
     def dump_data(self, filename):
+        """ Use static method to dump data and checks result """
         if not self.pkt_dic:
             return
-        data = [
-            dict(self.pkt_dic[WM_AP]),
-            dict(self.pkt_dic[WM_STATION]),
-            dict(self.pkt_dic[WM_TRAFFIC])
-            ]
+        ret = False
         try:
-            with open(filename, 'wb') as f:
-                f.write(WMConfig.conf.magic_file)
-                pickle.dump(3, f)
-                for elem in data:
-                    pickle.dump(elem, f)
-            s = "Saved data to file %s" % (filename)
-            toast(s, False)
-            self._say(s)
-            return True
+            ret = PcapThread.static_dump_data(self.pkt_dic, filename)
+            if ret:
+                s = "Saved data to file %s" % (filename)
+                toast(s, False)
+                self._say(s)
         except IOError as err:
             toast("Failed to save data to %s" % (filename), True)
             self._say("{}".format(err))
-        return False
+        return ret
 
-    def _check_magic(self, f):
+    @staticmethod
+    def check_magic(f):
+        """
+            Static method for checking our magic number
+            at the beginning of a dump file
+        """
         magic = f.read(len(WMConfig.conf.magic_file))
         if magic.startswith(WMConfig.conf.magic_file):
             return True
@@ -333,30 +353,38 @@ class PcapThread(threading.Thread):
                     "Wifi Mapper file: '%s'" % magic)
         return False
 
-    def _parse_data(self, f):
+    @staticmethod
+    def parse_data(f):
+        """ Parse data from a dump file once the magic is read """
         data = []
         size = int(pickle.load(f))
-        self._say(str(size))
         for i in range(size):
             data.append(pickle.load(f))
         return data
 
     def load_data(self, filename):
+        """ Load dump data into our current backend """
         self.app.stop_input()
         try:
             with open(filename, 'rb') as f:
-                if self._check_magic(f):
-                    data = self._parse_data(f)
+                if PcapThread.check_magic(f):
+                    data = PcapThread.parse_data(f)
             self._say("Loaded data from %s" % (filename))
             self.pkt_dic[WM_AP].update(data[WM_AP])
             self.pkt_dic[WM_STATION].update(data[WM_STATION])
             self.pkt_dic[WM_TRAFFIC].update(data[WM_TRAFFIC])
+            """
+                Set some attributes not saved in dump
+                Load data into change dic so they can be updated
+            """
             for bssid, obj in data[WM_AP].iteritems():
                 self.pkt_dic[WM_CHANGES][WM_AP].append(bssid)
                 obj.dic = self.pkt_dic
+                obj.traffic = data[WM_TRAFFIC][obj.bssid]
             for bssid, obj in data[WM_STATION].iteritems():
                 self.pkt_dic[WM_CHANGES][WM_STATION].append(bssid)
                 obj.dic = self.pkt_dic
+                obj.traffic = data[WM_TRAFFIC][obj.bssid]
             for bssid, obj in data[WM_TRAFFIC].iteritems():
                 obj.dic = self.pkt_dic
             self.app.resume_input()
@@ -375,12 +403,25 @@ class PcapThread(threading.Thread):
             self._say("{}".format(err))
         return False
 
+    @staticmethod
+    def static_write_pcap(pkt_list, filename, append=False):
+        """ Static method for writing a pcap file """
+        wrpcap(filename, pkt_list, append=append)
+
     def write_pcap(self, filename, append=False):
+        """ Uses static method and check result """
         if not isinstance(filename, basestring)\
                 or not self.pkt_list:
             return
         self._say("Writing pcap to file %s" % filename)
-        wrpcap(filename, self.pkt_list, append=append)
+        try:
+            PcapThread.static_write_pcap(self.pkt_list, filename, append=append)
+            s = "Wrote pcap {}".format(filename)
+            self._say(s)
+            toast(s, False)
+        except IOError as e:
+            self._say(e)
+            toast("Failed to write pcap", True)
 
     def _compile_c_file(self, name):
         """ Compile a c file for later use """

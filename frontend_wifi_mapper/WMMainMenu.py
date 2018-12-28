@@ -119,7 +119,15 @@ class WMMainMenu(Popup):
         self._set_label(self.layout.memory_label, s)
 
     def _set_packets(self, n):
-        s = "%d packets" % n
+        if n >= 1000000:
+            millions, rest = divmod(n, 1000000)
+            thousands, hundreds = divmod(rest, 1000)
+            s = "{:d} {:0>3d} {:0>3d} packets".format(millions, thousands, hundreds)
+        elif n >= 1000:
+            thousands, rest = divmod(n, 1000)
+            s = "{:d} {:0>3d} packets".format(thousands, rest)
+        else:
+            s = "{:d} packets".format(n)
         self._set_label(self.layout.packet_label, s)
 
     def _set_capture(self, thread):
@@ -135,6 +143,11 @@ class WMMainMenu(Popup):
             s = "Capture packets"
         self._set_label(self.layout.capture_button, s)
 
+    def _set_fps(self):
+        fps = Clock.get_rfps()
+        s = "{:0.1f} FPS".format(fps)
+        self._set_label(self.layout.fps_label, s)
+
     def update(self, *args):
         t = self.app.pcap_thread
         if t:
@@ -146,13 +159,18 @@ class WMMainMenu(Popup):
             self._set_capture(t)
         self._set_memory()
         self._set_time()
+        self._set_fps()
 
     def _set_save_button(self, thread):
         s = "Save Capture"
-        if thread and thread.n_saved_pkts:
-            self.layout.save_button.disabled = False
-            self.layout.clear_capture_button.disabled = False
-            s = "%s (%d)" % (s, thread.n_saved_pkts)
+        if thread:
+            self.layout.save_button.disabled = True
+            self.layout.clear_capture_button.disabled = True
+            if thread.n_saved_pkts:
+                if not thread.save_pkts:
+                    s = "%s (%d)" % (s, thread.n_saved_pkts)
+                    self.layout.save_button.disabled = False
+                    self.layout.clear_capture_button.disabled = False
         else:
             self.layout.save_button.disabled = True
             self.layout.clear_capture_button.disabled = True
@@ -198,8 +216,8 @@ class WMMainMenu(Popup):
         t = self.app.pcap_thread
         if not t:
             return
-        if not t.start_saving_pkts():
-            self._set_save_button(t)
+        t.start_saving_pkts()
+        self._set_save_button(t)
         self._set_capture(t)
 
     def save_capture(self):

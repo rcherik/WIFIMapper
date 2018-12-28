@@ -41,20 +41,39 @@ def parse_args():
             action='store_true',
             default=False,
             help="Print some debug infos")
-    parser.add_argument("-t", "--test",
-            action='store_true',
-            help="Print packets for your monitoring then quits")
     return parser.parse_args()
-
-def application_runtime_error(err):
-    import traceback
-    traceback.print_exc()
-    print("RuntimeError : %s" % err)
-    WifiMapperApp.stop_app()
-    os.kill(os.getpid(), signal.SIGKILL)
 
 def say(s, **kwargs):
     print("WifiMapper: %s" % s, **kwargs)
+
+def validate_interface(args):
+    wireless_lst, iface_lst = interface_utilities.list_interfaces()
+    #Interface does not exists
+    if not args.pcap and args.interface\
+            and (args.interface not in iface_lst):
+        say("Interface%s not found"\
+                % (" " + args.interface if args.interface else ""))
+        list_interfaces()
+        return False
+
+    #Interface is not wireless
+    if not args.pcap and args.interface\
+            and (args.interface not in wireless_lst):
+        say("Interface %s not wireless" % args.interface)
+        list_interfaces()
+        return False
+
+    #Interface does not monitor
+    if not args.pcap and args.interface\
+            and not interface_utilities.\
+                is_interface_monitoring(args.interface):
+        say("Interface %s not monitoring" % args.interface)
+        say("to monitor: make monitor")
+        say("to rollback: make managed")
+        list_interfaces()
+        return False
+
+    return True
 
 def list_interfaces():
     wireless, ifaces = interface_utilities.list_interfaces()
@@ -67,56 +86,42 @@ def list_interfaces():
             s += " (monitoring)"
         print(s)
 
+def recover_data(app):
+    app.error_emergency_dump()
+
+def last_data(app):
+    from backend_wifi_mapper.wifi_mapper_utilities import WM_CHANGES
+    pkt = app.pcap_thread.pkt_dic
+    print("Last changes before going dark: ")
+    print(pkt[WM_CHANGES])
+
+def application_runtime_error(err):
+    import traceback
+    print("---- Error ----")
+    traceback.print_exc()
+    print("RuntimeError : %s" % err)
+    print("---- Stopping ----")
+    WifiMapperApp.stop_app()
+    os.kill(os.getpid(), signal.SIGKILL)
+    print("---- Killed ----")
+
 if __name__ == '__main__':
-
     args = parse_args()
-
     if args.list:
         list_interfaces()
         sys.exit(0)
-
-    wireless_lst, iface_lst = interface_utilities.list_interfaces()
-    args.interface = args.interface or None
-
-    if not args.pcap and args.interface and (args.interface not in iface_lst):
-        say("Interface%s not found"\
-                % (" " + args.interface if args.interface else ""))
-        list_interfaces()
+    if not validate_interface(args):
         sys.exit(1)
-
-    if args.test:
-        import pkts_test
-        pkts_test.test(args.interface)
-
-    if not args.pcap and args.interface\
-            and not interface_utilities.\
-                is_interface_monitoring(args.interface):
-        say("Interface %s not monitoring" % args.interface)
-        say("to monitor: make monitor")
-        say("to rollback: make managed")
-        list_interfaces()
-        sys.exit(1)
-
-    if not args.pcap and args.interface\
-            and (args.interface not in wireless_lst):
-        say("Interface %s not wireless" % args.interface)
-        list_interfaces()
-        sys.exit(1)
-
-    if ((not args.pcap and args.interface) or args.test) and os.geteuid():
+    if (not args.pcap and args.interface) and os.geteuid():
         say("Please run as root")
         sys.exit(1)
-
     """ App """
     import  WifiMapperApp
     app = WifiMapperApp.WifiMapper(args)
     try:
         app.run()
     except Exception as err:
-        from backend_wifi_mapper.wifi_mapper_utilities import WM_CHANGES
-        pkt = app.pcap_thread.pkt_dic
-        print("Last changes before going dark: ")
-        print(pkt[WM_CHANGES])
-        print("---- Error ----")
+        recover_data(app)
+        last_data(app)
         application_runtime_error(err)
-    WifiMapperApp.stop_app()
+    #WifiMapperApp.stop_app()

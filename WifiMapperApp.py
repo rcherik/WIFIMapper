@@ -33,8 +33,8 @@ Config.set('kivy', 'exit_on_escape', 0)
 Config.set('kivy', 'pause_on_minimize', 1)
 Config.set('kivy', 'desktop', 1)
 Config.set('kivy', 'log_enable', 1)
-#FPS
-Config.set('modules', 'monitor', '')
+#FPS at all time + input
+#Config.set('modules', 'monitor', '')
 
 from kivy.clock import Clock
 Clock.max_iteration = 20
@@ -115,6 +115,9 @@ class WifiMapper(App):
 
     def open_main_menu(self):
         if self.popup:
+            if isinstance(self.popup, WMMainMenu):
+                self.popup.dismiss()
+                return
             self.popup.dismiss()
         self.popup = WMMainMenu(self)
         self.popup.bind(on_dismiss=self._main_menu_popup_dismiss)
@@ -372,10 +375,11 @@ class WifiMapper(App):
             else:
                 self.close_settings()
             return True
-        if self.popup:
-            return True
         if keycode[1] == 'm':
             self.open_main_menu()
+        """ Not parsed if popup """
+        if self.popup:
+            return True
         if self.manager.keyboard_up(keyboard, keycode):
             return True
         if keycode[1] >= "1" and keycode[1] <= "9":
@@ -480,6 +484,50 @@ class WifiMapper(App):
                 and self.args.debug:
             s = "%s: %s" % (self.__class__.__name__, s)
             print(s, **kwargs)
+
+    def error_emergency_dump(self):
+        try:
+            input = raw_input
+        except NameError:
+            pass
+        if Window:
+            Window.close()
+        crash_dir = os.path.join(self.path, 'crash_dump')
+        t = time.time()
+        time_str = time.strftime("%d-%m-%Y_%H:%M:%S", time.gmtime(t))
+        self._say("Entering save mode")
+        if PcapThread.sniffed_pkt_list:
+            answer = input("You had saved packets for a pcap file, "\
+                "would you like to save them ? [y/N] ")
+            if answer == 'y':
+                if not os.path.exists(crash_dir):
+                    os.makedirs(crash_dir)
+                filename = os.path.join(crash_dir, 'emergency_pcap_{}.pcap'\
+                        .format(time_str))
+                try:
+                    PcapThread.static_write_pcap(PcapThread.sniffed_pkt_list,
+                                                                    filename)
+                    self._say("Wrote pcap {}".format(filename))
+                except IOError as e:
+                    self._say("{}".format(e))
+            else:
+                self._say("Not saved")
+        if PcapThread.wm_pkt_dict:
+            answer = input("You had data to dump, "\
+                "would you like to save them ? [y/N] ")
+            if answer == 'y':
+                if not os.path.exists(crash_dir):
+                    os.makedirs(crash_dir)
+                filename = os.path.join(crash_dir, 'emergency_dump_{}{}'\
+                        .format(time_str, WMConfig.conf.wm_extension))
+                try:
+                    PcapThread.static_dump_data(PcapThread.wm_pkt_dict,
+                                                                filename)
+                    self._say("Wrote dump {}".format(filename))
+                except IOError as e:
+                    self._say("{}".format(e))
+            else:
+                self._say("Not saved")
 
     """ Stopping methods """
 
