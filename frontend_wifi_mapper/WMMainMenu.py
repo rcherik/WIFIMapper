@@ -113,16 +113,17 @@ class WMMainMenu(Popup):
         giga, remain = divmod(self.app.process.memory_info()[0], 1000000000)
         mega, rest = divmod(remain, 1000000)
         if giga:
-            s += "{} {}Mb".format(giga, mega)
+            s += "{:d} {:0>3d} Mb".format(giga, mega)
         else:
-            s += "{}M".format(mega)
+            s += "{:0>3d} Mb".format(mega)
         self._set_label(self.layout.memory_label, s)
 
     def _set_packets(self, n):
         if n >= 1000000:
             millions, rest = divmod(n, 1000000)
             thousands, hundreds = divmod(rest, 1000)
-            s = "{:d} {:0>3d} {:0>3d} packets".format(millions, thousands, hundreds)
+            s = "{:d} {:0>3d} {:0>3d} packets".format(millions,
+                    thousands, hundreds)
         elif n >= 1000:
             thousands, rest = divmod(n, 1000)
             s = "{:d} {:0>3d} packets".format(thousands, rest)
@@ -138,7 +139,7 @@ class WMMainMenu(Popup):
             self.layout.capture_button.disabled = False
         s = ""
         if thread.save_pkts:
-            s = "Stop capturing (%d)" % thread.n_saved_pkts
+            s = "Stop capturing ({:d})".format(thread.n_saved_pkts)
         else:
             s = "Capture packets"
         self._set_label(self.layout.capture_button, s)
@@ -168,7 +169,7 @@ class WMMainMenu(Popup):
             self.layout.clear_capture_button.disabled = True
             if thread.n_saved_pkts:
                 if not thread.save_pkts:
-                    s = "%s (%d)" % (s, thread.n_saved_pkts)
+                    s = "{:s} ({:d})".format(s, thread.n_saved_pkts)
                     self.layout.save_button.disabled = False
                     self.layout.clear_capture_button.disabled = False
         else:

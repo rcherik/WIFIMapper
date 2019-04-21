@@ -486,6 +486,9 @@ class CardListScreen(WMScreen):
         """ Handles keyboard input sent by App to screen manager """
         if not self.current_screen:
             return False
+        if keycode[1] == 'f5':
+            self.reload_gui()
+            return True
         if keycode[1] == 'p':
             self.action_bar.actions.action_pause.state = 'down'\
                     if self.action_bar.actions.action_pause.state == 'normal'\
